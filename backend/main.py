@@ -38,7 +38,7 @@ def read_root():
 #    We built the 'student_router' in another file. 
 #    Now we plug it into the main app.
 #    It's like adding a "Student Department" sign to the building directory.
-from app.routes import student_routes, program_routes, exam_routes, attendance_routes, payment_routes, schedule_routes
+from app.routes import student_routes, program_routes, exam_routes, attendance_routes, payment_routes, schedule_routes, import_routes
 
 app.include_router(student_routes.router, tags=["Students"])
 app.include_router(program_routes.router, tags=["Programs"])
@@ -46,3 +46,4 @@ app.include_router(exam_routes.router, tags=["Exams"])
 app.include_router(attendance_routes.router, tags=["Attendance"])
 app.include_router(payment_routes.router, tags=["Payments"])
 app.include_router(schedule_routes.router, tags=["Scheduling"])
+app.include_router(import_routes.router, tags=["Bulk Operations"])

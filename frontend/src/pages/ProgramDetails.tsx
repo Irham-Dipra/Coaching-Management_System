@@ -7,10 +7,12 @@ import { Link } from 'react-router-dom';
 import CreateExamModal from '../components/CreateExamModal';
 import { AttendanceRepository } from '../repositories/AttendanceRepository';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { ScheduleRepository } from '../repositories/ScheduleRepository';
+import { Plus, X } from 'lucide-react';
 
 const ProgramDetails: React.FC = () => {
     const { id } = useParams<{ id: string }>();
-    const [activeTab, setActiveTab] = useState<'students' | 'exams' | 'attendance'>('students');
+    const [activeTab, setActiveTab] = useState<'students' | 'exams' | 'attendance' | 'schedule'>('students');
     const [isExamModalOpen, setIsExamModalOpen] = useState(false);
     const [attendanceDate, setAttendanceDate] = useState(new Date().toISOString().split('T')[0]);
     const [attendanceData, setAttendanceData] = useState<any[]>([]);
@@ -172,6 +174,15 @@ const ProgramDetails: React.FC = () => {
                     >
                         Attendance
                     </button>
+                    <button
+                        onClick={() => setActiveTab('schedule')}
+                        className={`flex-1 py-4 text-sm font-medium text-center transition-colors ${activeTab === 'schedule'
+                            ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50/50'
+                            : 'text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                            }`}
+                    >
+                        Schedule
+                    </button>
                 </div>
 
                 <div className="p-6">
@@ -305,9 +316,9 @@ const ProgramDetails: React.FC = () => {
                                                             key={status}
                                                             onClick={() => handleAttendanceChange(student.enrollment_id, status)}
                                                             className={`px-3 py-1 text-sm rounded-full border transition-colors ${student.status === status
-                                                                    ? status === 'Absent' ? 'bg-red-100 text-red-700 border-red-200 font-bold'
-                                                                        : 'bg-green-100 text-green-700 border-green-200 font-bold'
-                                                                    : 'text-gray-500 border-transparent hover:bg-gray-100'
+                                                                ? status === 'Absent' ? 'bg-red-100 text-red-700 border-red-200 font-bold'
+                                                                    : 'bg-green-100 text-green-700 border-green-200 font-bold'
+                                                                : 'text-gray-500 border-transparent hover:bg-gray-100'
                                                                 }`}
                                                         >
                                                             {status}
@@ -324,8 +335,335 @@ const ProgramDetails: React.FC = () => {
                             </div>
                         </div>
                     )}
+
+                    {/* SCHEDULE TAB */}
+                    {activeTab === 'schedule' && <ProgramScheduleManager programId={parseInt(id!)} />}
                 </div>
             </div>
+        </div>
+    );
+};
+
+// --- SUB-COMPONENT: PROGRAM SCHEDULE MANAGER ---
+
+const ProgramScheduleManager: React.FC<{ programId: number }> = ({ programId }) => {
+    const queryClient = useQueryClient();
+    const [isCreateOpen, setIsCreateOpen] = useState(false);
+    const [isConnectOpen, setIsConnectOpen] = useState(false);
+    const [selectedWindowIds, setSelectedWindowIds] = useState<number[]>([]);
+
+    // FETCH DATA
+    const { data: rooms } = useQuery({ queryKey: ['rooms'], queryFn: ScheduleRepository.getRooms });
+    const { data: assignedWindows } = useQuery({
+        queryKey: ['program_schedule', programId],
+        queryFn: () => ScheduleRepository.getProgramSchedule(programId)
+    });
+
+    // Sync local state when modal opens
+    React.useEffect(() => {
+        if (isConnectOpen && assignedWindows) {
+            setSelectedWindowIds(assignedWindows.map((w: any) => w.window_id));
+        }
+    }, [isConnectOpen, assignedWindows]);
+
+    // Fetch all windows only when needed for the Connect modal
+    const { data: allWindows } = useQuery({
+        queryKey: ['windows'],
+        queryFn: ScheduleRepository.getAllWindows,
+        enabled: isConnectOpen
+    });
+
+    // MUTATIONS
+    const updateScheduleMutation = useMutation({
+        mutationFn: (newIds: number[]) => ScheduleRepository.assignSchedule(programId, newIds),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['program_schedule', programId] });
+            setIsConnectOpen(false);
+        },
+        onError: (err) => alert("Failed: " + err)
+    });
+
+    const unassignMutation = useMutation({
+        mutationFn: (windowId: number) => {
+            const currentIds = assignedWindows?.map((w: any) => w.window_id) || [];
+            return ScheduleRepository.assignSchedule(programId, currentIds.filter((id: number) => id !== windowId));
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['program_schedule', programId] });
+        },
+        onError: (err) => alert("Failed to unlink: " + err)
+    });
+
+    // Quick Create State
+    const [newData, setNewData] = useState({
+        room_id: '',
+        day_of_week: 'Saturday',
+        start_time: '',
+        end_time: ''
+    });
+
+    const createMutation = useMutation({
+        mutationFn: () => ScheduleRepository.createWindow({
+            ...newData,
+            room_id: parseInt(newData.room_id),
+            program_ids: [programId] // Auto-assign
+        }),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['windows'] });
+            queryClient.invalidateQueries({ queryKey: ['program_schedule', programId] });
+            setIsCreateOpen(false);
+            setNewData({ room_id: '', day_of_week: 'Saturday', start_time: '', end_time: '' });
+            alert("New Slot Created & Assigned!");
+        },
+        onError: (err: any) => alert(err.message)
+    });
+
+    const handleCreateSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        createMutation.mutate();
+    };
+
+    const toggleConnection = (windowId: number) => {
+        setSelectedWindowIds(prev =>
+            prev.includes(windowId)
+                ? prev.filter(id => id !== windowId)
+                : [...prev, windowId]
+        );
+    };
+
+    const handleSaveConnection = () => {
+        updateScheduleMutation.mutate(selectedWindowIds);
+    };
+
+    const days = ['Saturday', 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+
+    if (!assignedWindows && !rooms) return <div className="p-4 text-gray-500">Loading schedule...</div>;
+
+    return (
+        <div className="space-y-8">
+            {/* HEADER & ACTIONS */}
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-gray-50 p-4 rounded-xl border border-gray-100">
+                <div>
+                    <h3 className="text-lg font-bold text-gray-900">Weekly Class Schedule</h3>
+                    <p className="text-sm text-gray-500">Manage time slots for this batch.</p>
+                </div>
+                <div className="flex gap-2">
+                    <button
+                        onClick={() => setIsConnectOpen(true)}
+                        className="bg-white border border-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-50 hover:text-blue-600 flex items-center gap-2 font-semibold transition-colors shadow-sm"
+                    >
+                        <Calendar size={18} /> Connect Existing
+                    </button>
+                    <button
+                        onClick={() => setIsCreateOpen(true)}
+                        className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 shadow-sm flex items-center gap-2 font-bold transition-colors"
+                    >
+                        <Plus size={18} /> Quick Create
+                    </button>
+                </div>
+            </div>
+
+            {/* ASSIGNED SLOTS LIST */}
+            <div className="bg-white rounded-xl border border-gray-200 min-h-[300px] shadow-sm">
+                {!assignedWindows || assignedWindows.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center py-16 text-gray-400">
+                        <Calendar size={64} className="mb-4 text-gray-200" />
+                        <p className="text-lg font-medium">No classes scheduled yet.</p>
+                        <p className="text-sm">Click "Quick Create" to add a new time slot.</p>
+                    </div>
+                ) : (
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 p-6">
+                        {days.map(day => {
+                            const mySlots = assignedWindows?.filter((w: any) => w.day_of_week === day).sort((a: any, b: any) => a.start_time.localeCompare(b.start_time));
+                            if (!mySlots || mySlots.length === 0) return null;
+
+                            return (
+                                <div key={day} className="border border-gray-200 rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+                                    <div className="bg-gray-50 px-5 py-3 border-b border-gray-100 flex justify-between items-center">
+                                        <h4 className="font-bold text-gray-700 uppercase text-xs tracking-wider">{day}</h4>
+                                        <span className="text-xs font-semibold bg-gray-200 text-gray-600 px-2 py-0.5 rounded-full">{mySlots.length} Classes</span>
+                                    </div>
+                                    <div className="divide-y divide-gray-100">
+                                        {mySlots.map((s: any) => (
+                                            <div key={s.window_id} className="p-4 flex justify-between items-center bg-white group hover:bg-gray-50 transition-colors">
+                                                <div>
+                                                    <div className="flex items-center gap-2">
+                                                        <Clock size={16} className="text-blue-500" />
+                                                        <span className="font-mono text-lg font-bold text-gray-800">
+                                                            {s.start_time.substring(0, 5)} - {s.end_time.substring(0, 5)}
+                                                        </span>
+                                                    </div>
+                                                    <div className="flex items-center gap-2 mt-1 ml-6">
+                                                        <span className="text-xs font-medium text-gray-500 bg-gray-100 px-2 py-0.5 rounded border border-gray-200">
+                                                            {s.room?.room_name || 'Room TBD'}
+                                                        </span>
+                                                    </div>
+                                                </div>
+                                                <button
+                                                    onClick={() => { if (confirm('Are you sure you want to remove this class from the schedule?')) unassignMutation.mutate(s.window_id) }}
+                                                    className="text-gray-300 hover:text-red-500 hover:bg-red-50 p-2 rounded-full transition-all opacity-0 group-hover:opacity-100"
+                                                    title="Remove from schedule"
+                                                >
+                                                    <X size={18} />
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                )}
+            </div>
+
+            {/* CREATE MODAL */}
+            {isCreateOpen && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-md overflow-hidden transform transition-all scale-100">
+                        <div className="px-6 py-4 border-b bg-gray-50 flex justify-between items-center">
+                            <h3 className="font-bold text-lg text-gray-800">Quick Create Slot</h3>
+                            <button onClick={() => setIsCreateOpen(false)} className="text-gray-400 hover:text-gray-600 rounded-full p-1 hover:bg-gray-200 transition-colors"><X size={20} /></button>
+                        </div>
+                        <form onSubmit={handleCreateSubmit} className="p-6 space-y-4">
+                            <div className="bg-blue-50 text-blue-800 text-sm p-4 rounded-lg mb-4 flex gap-3 items-start">
+                                <Users size={18} className="mt-0.5 shrink-0" />
+                                <div>
+                                    <p className="font-bold">Auto-Assignment</p>
+                                    <p className="text-xs opacity-90 mt-1">This slot will be created and automatically linked to this program.</p>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-semibold text-gray-700 mb-1">Select Room</label>
+                                <select
+                                    className="w-full border border-gray-300 rounded-lg px-3 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                                    value={newData.room_id}
+                                    onChange={e => setNewData({ ...newData, room_id: e.target.value })}
+                                    required
+                                >
+                                    <option value="">Choose a room...</option>
+                                    {rooms?.map((r: any) => (
+                                        <option key={r.room_id} value={r.room_id}>{r.room_name}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div className="grid grid-cols-1 gap-4">
+                                <div>
+                                    <label className="block text-sm font-semibold text-gray-700 mb-1">Day of Week</label>
+                                    <select
+                                        className="w-full border border-gray-300 rounded-lg px-3 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-white"
+                                        value={newData.day_of_week}
+                                        onChange={e => setNewData({ ...newData, day_of_week: e.target.value })}
+                                    >
+                                        {days.map(d => <option key={d} value={d}>{d}</option>)}
+                                    </select>
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-semibold text-gray-700 mb-1">Start Time</label>
+                                        <input
+                                            type="time"
+                                            className="w-full border border-gray-300 rounded-lg px-3 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                            value={newData.start_time}
+                                            onChange={e => setNewData({ ...newData, start_time: e.target.value })}
+                                            required
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-semibold text-gray-700 mb-1">End Time</label>
+                                        <input
+                                            type="time"
+                                            className="w-full border border-gray-300 rounded-lg px-3 py-2.5 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                            value={newData.end_time}
+                                            onChange={e => setNewData({ ...newData, end_time: e.target.value })}
+                                            required
+                                        />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <button type="submit" className="w-full bg-blue-600 text-white py-3 rounded-lg font-bold hover:bg-blue-700 transition-all shadow-md hover:shadow-lg mt-2">
+                                Create & Assign Slot
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* CONNECT MODAL */}
+            {isConnectOpen && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 backdrop-blur-sm animate-in fade-in duration-200">
+                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-3xl overflow-hidden flex flex-col h-[80vh]">
+                        <div className="px-6 py-4 border-b bg-gray-50 flex justify-between items-center shrink-0">
+                            <div>
+                                <h3 className="font-bold text-lg text-gray-800">Connect Existing Slots</h3>
+                                <p className="text-xs text-gray-500">Check the boxes to assign slots to this program.</p>
+                            </div>
+                            <button onClick={() => setIsConnectOpen(false)} className="text-gray-400 hover:text-gray-600 rounded-full p-1 hover:bg-gray-200 transition-colors"><X size={20} /></button>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto p-6 bg-gray-50/50">
+                            {!allWindows ? (
+                                <div className="flex justify-center items-center h-full text-gray-500">
+                                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mr-2"></div>
+                                    Loading available slots...
+                                </div>
+                            ) : (
+                                <div className="masonry-grid grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                    {days.map(day => {
+                                        const daySlots = allWindows.filter((w: any) => w.day_of_week === day).sort((a: any, b: any) => a.start_time.localeCompare(b.start_time));
+                                        if (daySlots.length === 0) return null;
+                                        return (
+                                            <div key={day} className="bg-white border rounded-lg overflow-hidden h-fit shadow-sm">
+                                                <div className="bg-gray-100 px-3 py-1.5 text-xs font-bold uppercase text-gray-600 border-b flex justify-between">
+                                                    <span>{day}</span>
+                                                    <span className="text-gray-400 font-normal">{daySlots.length} slots</span>
+                                                </div>
+                                                <div className="divide-y divide-gray-50">
+                                                    {daySlots.map((slot: any) => {
+                                                        const isSelected = selectedWindowIds.includes(slot.window_id);
+                                                        return (
+                                                            <div
+                                                                key={slot.window_id}
+                                                                onClick={() => toggleConnection(slot.window_id)}
+                                                                className={`p-3 flex items-start gap-3 cursor-pointer transition-colors ${isSelected ? 'bg-blue-50 hover:bg-blue-100' : 'hover:bg-gray-50'}`}
+                                                            >
+                                                                <div className={`mt-1 w-5 h-5 rounded border flex items-center justify-center shrink-0 transition-colors ${isSelected ? 'bg-blue-500 border-blue-500' : 'border-gray-300 bg-white'}`}>
+                                                                    {isSelected && <div className="w-2 h-2 bg-white rounded-full"></div>}
+                                                                </div>
+                                                                <div>
+                                                                    <div className={`font-mono font-bold text-sm ${isSelected ? 'text-blue-900' : 'text-gray-700'}`}>
+                                                                        {slot.start_time.substring(0, 5)} - {slot.end_time.substring(0, 5)}
+                                                                    </div>
+                                                                    <div className="text-xs text-gray-500 mt-0.5">{slot.room?.room_name}</div>
+                                                                    {slot.program_schedule?.length > 0 && (
+                                                                        <div className="flex flex-wrap gap-1 mt-1.5">
+                                                                            {slot.program_schedule.map((ps: any) => (
+                                                                                <span key={ps.program.program_id} className="text-[10px] bg-gray-100 text-gray-600 px-1.5 rounded truncate max-w-[100px]">
+                                                                                    {ps.program.program_name}
+                                                                                </span>
+                                                                            ))}
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        )
+                                                    })}
+                                                </div>
+                                            </div>
+                                        )
+                                    })}
+                                </div>
+                            )}
+                        </div>
+                        <div className="p-4 border-t bg-white shrink-0 flex justify-between items-center z-10">
+                            <span className="text-xs text-gray-500">Click Done to save changes.</span>
+                            <button onClick={handleSaveConnection} className="px-6 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-900 font-medium transition-colors">Done</button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

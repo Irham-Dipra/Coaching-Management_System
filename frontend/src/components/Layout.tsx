@@ -7,7 +7,8 @@ import {
     BookOpen,
     ClipboardCheck,
     CreditCard,
-    Settings
+    Settings,
+    Calendar
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -25,6 +26,7 @@ const Layout: React.FC = () => {
         { label: 'Students', path: '/students', icon: <GraduationCap size={20} /> },
         { label: 'Teachers', path: '/teachers', icon: <Users size={20} /> },
         { type: 'divider', label: 'Operations' },
+        { label: 'Scheduling', path: '/admin/scheduling', icon: <Calendar size={20} /> },
         { label: 'Attendance', path: '/attendance', icon: <ClipboardCheck size={20} /> },
         { label: 'Finance', path: '/finance', icon: <CreditCard size={20} /> },
         { type: 'divider', label: 'System' },

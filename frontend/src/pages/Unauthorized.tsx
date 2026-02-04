@@ -3,7 +3,7 @@ import { ShieldAlert, LogOut } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
 const Unauthorized: React.FC = () => {
-    const { signOut, userStatus } = useAuth();
+    const { signOut } = useAuth();
 
     return (
         <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
@@ -14,16 +14,9 @@ const Unauthorized: React.FC = () => {
 
                 <h1 className="text-2xl font-bold text-gray-800 mb-2">Access Restricted</h1>
 
-                {userStatus === 'pending' ? (
-                    <p className="text-gray-600 mb-6">
-                        Your account is currently <strong>Pending Approval</strong>. <br />
-                        Please contact the administrator to activate your access.
-                    </p>
-                ) : (
-                    <p className="text-gray-600 mb-6">
-                        You do not have permission to view this page.
-                    </p>
-                )}
+                <p className="text-gray-600 mb-6">
+                    You do not have permission to view this page.
+                </p>
 
                 <button
                     onClick={signOut}

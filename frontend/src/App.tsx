@@ -9,6 +9,8 @@ import ExamDetails from './pages/ExamDetails';
 import Exams from './pages/Exams';
 import Attendance from './pages/Attendance';
 import Finance from './pages/Finance';
+import Scheduling from './pages/Scheduling';
+import ScheduleDetails from './pages/ScheduleDetails';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 import Unauthorized from './pages/Unauthorized';
@@ -60,6 +62,8 @@ function App() {
 
               <Route path="/attendance" element={<Attendance />} />
               <Route path="/finance" element={<Finance />} />
+              <Route path="/admin/scheduling" element={<Scheduling />} />
+              <Route path="/admin/scheduling/:id" element={<ScheduleDetails />} />
 
               <Route path="/students" element={<StudentList />} />
               <Route path="/students/:id" element={<StudentProfile />} />

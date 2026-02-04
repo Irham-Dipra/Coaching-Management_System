@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { StudentRepository } from '../repositories/StudentRepository';
 import { ProgramRepository } from '../repositories/ProgramRepository';
+import StudentFinancialStatus from '../components/StudentFinancialStatus';
 import { User, Calendar, BookOpen, CreditCard, Edit2, Save, Plus, Trash2 } from 'lucide-react';
 
 const StudentProfile: React.FC = () => {
@@ -139,7 +140,13 @@ const StudentProfile: React.FC = () => {
                             )}
                         </div>
                     </div>
-                    <div>
+                    <div className="flex gap-2 items-center">
+                        <button className="bg-gray-800 text-white px-4 py-2 rounded hover:bg-gray-900 font-medium text-sm flex items-center gap-2">
+                            <CreditCard size={16} /> ID Card
+                        </button>
+                        <button className="border border-red-200 text-red-600 px-4 py-2 rounded hover:bg-red-50 font-medium text-sm">
+                            Suspend
+                        </button>
                         {isEditing ? (
                             <button onClick={handleSave} className="bg-green-600 text-white px-4 py-2 rounded flex items-center gap-2">
                                 <Save size={16} /> Save
@@ -193,10 +200,13 @@ const StudentProfile: React.FC = () => {
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="flex flex-col gap-6">
 
-                {/* LEFT COLUMN: Enrollments */}
-                <div className="lg:col-span-2 space-y-6">
+                {/* MAIN CONTENT: Enrollments & Finance */}
+                <div className="space-y-6">
+                    {/* FINANCIAL STATUS */}
+                    <StudentFinancialStatus studentId={id!} />
+
                     <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                         <div className="flex justify-between items-center mb-4">
                             <h3 className="font-bold text-gray-800 flex items-center gap-2">
@@ -269,37 +279,7 @@ const StudentProfile: React.FC = () => {
                     </div>
                 </div>
 
-                {/* RIGHT COLUMN: Fees & Stats */}
-                <div className="space-y-6">
-                    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                        <h3 className="font-bold text-gray-800 flex items-center gap-2 mb-4">
-                            <CreditCard size={20} className="text-green-600" />
-                            Financial Status
-                        </h3>
 
-                        <div className="space-y-4">
-                            <div className="flex justify-between items-center p-3 bg-red-50 rounded-lg border border-red-100">
-                                <span className="text-sm text-red-700 font-medium">Total Dues</span>
-                                <span className="text-xl font-bold text-red-700">৳0.00</span>
-                            </div>
-                            <button className="w-full py-2 border border-gray-300 rounded text-gray-600 hover:bg-gray-50 font-medium">
-                                View Payment History
-                            </button>
-                        </div>
-                    </div>
-
-                    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                        <h3 className="font-bold text-gray-800 mb-4">Quick Actions</h3>
-                        <div className="space-y-2">
-                            <button className="w-full py-2 bg-gray-800 text-white rounded hover:bg-gray-900 font-medium text-sm">
-                                Generate ID Card (PDF)
-                            </button>
-                            <button className="w-full py-2 border border-red-200 text-red-600 rounded hover:bg-red-50 font-medium text-sm">
-                                Suspend Student
-                            </button>
-                        </div>
-                    </div>
-                </div>
 
             </div>
         </div>

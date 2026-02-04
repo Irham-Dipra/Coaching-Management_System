@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException
 from app.repositories.student_repository import StudentRepository
 from app.schemas.student import StudentCreate
 from app.repositories.enrollment_repository import EnrollmentRepository
+from app.repositories.payment_repository import PaymentRepository
 from app.schemas.enrollment import EnrollmentCreate, EnrollmentResponse
 
 # 1. Create a Router (like a mini-app for students)
@@ -11,6 +12,7 @@ router = APIRouter()
 # 2. Add the Logic
 repo = StudentRepository()
 enrollment_repo = EnrollmentRepository()
+payment_repo = PaymentRepository()
 
 # 3. Define the "Endpoints" (URL paths)
 
@@ -51,3 +53,7 @@ def enroll_student(enrollment: EnrollmentCreate):
 @router.delete("/enrollments/{enrollment_id}")
 def delete_enrollment(enrollment_id: int):
     return enrollment_repo.delete_enrollment(enrollment_id)
+
+@router.get("/students/{student_id}/financial-summary")
+def get_student_financial_summary(student_id: int):
+    return payment_repo.get_student_financial_summary(student_id)

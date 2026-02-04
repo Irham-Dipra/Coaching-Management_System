@@ -1,7 +1,7 @@
 from typing import List
 from fastapi import APIRouter, HTTPException
 from app.repositories.payment_repository import PaymentRepository
-from app.schemas.payment import PaymentCreate
+from app.schemas.payment import PaymentCreate, PaymentUpdate
 
 router = APIRouter()
 payment_repo = PaymentRepository()
@@ -21,6 +21,14 @@ def create_payment(payment: PaymentCreate):
         # Step 1725: I REPLACED create_payment with create_bulk_payment!
         # So I MUST update this route to use create_bulk_payment but wrapping single item.
         return payment_repo.create_bulk_payment([payment.dict()])[0]
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@router.put("/payments/{payment_id}")
+def update_payment(payment_id: int, payment: PaymentUpdate): 
+    # PaymentUpdate enforces types but allows optionals.
+    try:
+        return payment_repo.update_payment(payment_id, payment.dict(exclude_unset=True))
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 

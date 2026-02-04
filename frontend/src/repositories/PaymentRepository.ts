@@ -34,6 +34,17 @@ export const PaymentRepository = {
         return await response.json();
     },
 
+    // Update Payment
+    async updatePayment(id: number, data: any) {
+        const response = await fetch(`${API_BASE_URL}/payments/${id}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(data),
+        });
+        if (!response.ok) throw new Error("Failed to update payment");
+        return await response.json();
+    },
+
     // New: Get Payment Status (Ledger)
     async getPaymentStatus(enrollmentId: number) {
         const response = await fetch(`${API_BASE_URL}/enrollments/${enrollmentId}/payment-status`);

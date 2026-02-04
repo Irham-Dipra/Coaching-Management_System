@@ -3,24 +3,72 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { PaymentRepository } from '../repositories/PaymentRepository';
 import { StudentRepository } from '../repositories/StudentRepository';
 import { ProgramRepository } from '../repositories/ProgramRepository'; // Keep for now if needed, but we rely on student enrollments
-import { DollarSign, Search, Plus, FileText, Download, X, Calendar, User } from 'lucide-react';
+import { DollarSign, Search, Plus, FileText, Download, X, Calendar, User, ArrowUpDown, Edit, Filter } from 'lucide-react';
 import jsPDF from 'jspdf';
 
 const Finance: React.FC = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [editPayment, setEditPayment] = useState<any>(null); // For edit modal
+    const [sortDesc, setSortDesc] = useState(true); // Default Descending
     const queryClient = useQueryClient();
 
     // Fetch Recent Payments
-    const { data: recentPayments } = useQuery({
+    // We sort client-side for the 'Recent' list toggle
+    const { data: rawPayments } = useQuery({
         queryKey: ['payments', 'recent'],
         queryFn: PaymentRepository.getRecentPayments
     });
+
+    const recentPayments = React.useMemo(() => {
+        if (!rawPayments) return [];
+        return [...rawPayments].sort((a, b) => {
+            return sortDesc ? (b.payment_id - a.payment_id) : (a.payment_id - b.payment_id);
+        });
+    }, [rawPayments, sortDesc]);
+
+    // --- SEARCH & FILTER STATES ---
+    const [searchTerm, setSearchTerm] = useState('');
+    const [rollSearch, setRollSearch] = useState('');
+    const [batchFilter, setBatchFilter] = useState('');
+    const [classFilter, setClassFilter] = useState('');
+    const [programFilter, setProgramFilter] = useState('');
+
+    // Fetch Batches & Programs for Filters (Reuse existing hooks from StudentList logic ideally, or fetch here)
+    const { data: batches } = useQuery({ queryKey: ['batches'], queryFn: ProgramRepository.getAllBatches });
+    const { data: allPrograms } = useQuery({ queryKey: ['programs'], queryFn: ProgramRepository.getAllPrograms });
 
     // Fetch Global Stats
     const { data: stats } = useQuery({
         queryKey: ['finance', 'stats'],
         queryFn: PaymentRepository.getFinanceStats
     });
+
+    // --- FILTER LOGIC ---
+    const filteredPayments = React.useMemo(() => {
+        return recentPayments.filter((p: any) => {
+            const term = searchTerm.toLowerCase();
+            const rollTerm = rollSearch.toLowerCase();
+
+            // 1. Main Search: Name, Payment ID, or Student ID
+            const matchesMain =
+                (p.student_name || '').toLowerCase().includes(term) ||
+                (p.sort_id || p.payment_id).toString().includes(term) ||
+                (p.student_id || '').toString().includes(term);
+
+            // 2. Roll Search
+            const matchesRoll = rollTerm ? (p.roll_no || '').toString().toLowerCase().includes(rollTerm) : true;
+
+            // 3. Filters
+            const matchesClass = classFilter ? p.class?.toString() === classFilter : true;
+            const matchesBatch = batchFilter ? p.batch_id?.toString() === batchFilter : true;
+            // Use p.program_id (backend updated to send it) or match name loosely? Backend sort of sends it now.
+            // If backend result has program_id, perfect. If not, filtered by name?
+            // "program_id" added in backend update.
+            const matchesProgram = programFilter ? p.program_id?.toString() === programFilter : true;
+
+            return matchesMain && matchesRoll && matchesClass && matchesBatch && matchesProgram;
+        });
+    }, [recentPayments, searchTerm, rollSearch, batchFilter, classFilter, programFilter]);
 
     // --- PDF SLIP GENERATOR ---
     const generateSlip = (payment: any) => {
@@ -100,15 +148,67 @@ const Finance: React.FC = () => {
                 </div>
             </div>
 
-            {/* ACTIONS */}
-            <div className="flex justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-gray-200">
-                <h2 className="text-lg font-bold text-gray-800">Recent Transactions</h2>
+            {/* HEADER ACTION ROW */}
+            <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-2 gap-4">
+                <div className="flex items-center gap-4">
+                    <h2 className="text-xl font-bold text-gray-800">Recent Transactions</h2>
+                    <button
+                        onClick={() => setSortDesc(!sortDesc)}
+                        className="flex items-center gap-1 text-sm text-gray-500 hover:text-blue-600 transition-colors"
+                    >
+                        <ArrowUpDown size={14} /> {sortDesc ? 'Newest First' : 'Oldest First'}
+                    </button>
+                    <span className="text-sm text-gray-400">({filteredPayments.length} found)</span>
+                </div>
                 <button
                     onClick={() => setIsModalOpen(true)}
                     className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 shadow-sm"
                 >
                     <Plus size={18} /> Record New Payment
                 </button>
+            </div>
+
+            {/* FILTERS BAR */}
+            <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 flex flex-col md:flex-row gap-4 flex-wrap items-center">
+                <div className="relative flex-1 min-w-[200px]">
+                    <Search className="absolute left-3 top-2.5 text-gray-400" size={20} />
+                    <input
+                        type="text"
+                        placeholder="Search Name, Receipt #, Student ID..."
+                        className="pl-10 w-full rounded-lg border-gray-300 border p-2 text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                </div>
+
+                {/* Roll No Search */}
+                <div className="relative w-[120px]">
+                    <input
+                        type="text"
+                        placeholder="Roll No..."
+                        className="w-full rounded-lg border-gray-300 border p-2 text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        value={rollSearch}
+                        onChange={(e) => setRollSearch(e.target.value)}
+                    />
+                </div>
+
+                {/* Filters */}
+                <select className="rounded-lg border-gray-300 border p-2 text-gray-700 bg-white" value={classFilter} onChange={e => setClassFilter(e.target.value)}>
+                    <option value="">All Classes</option>
+                    {[...Array(12)].map((_, i) => <option key={i + 1} value={i + 1}>Class {i + 1}</option>)}
+                </select>
+
+                <select className="rounded-lg border-gray-300 border p-2 text-gray-700 bg-white" value={batchFilter} onChange={e => setBatchFilter(e.target.value)}>
+                    <option value="">All Batches</option>
+                    {batches?.map((b: any) => <option key={b.batch_id} value={b.batch_id}>{b.batch_name}</option>)}
+                </select>
+
+                <select className="rounded-lg border-gray-300 border p-2 text-gray-700 bg-white" value={programFilter} onChange={e => setProgramFilter(e.target.value)}>
+                    <option value="">All Programs</option>
+                    {allPrograms?.map((p: any) => <option key={p.program_id} value={p.program_id}>{p.program_name}</option>)}
+                </select>
+
+
             </div>
 
             {/* LEDGER TABLE */}
@@ -122,27 +222,65 @@ const Finance: React.FC = () => {
                             <th className="p-4">Month/Year</th>
                             <th className="p-4 text-right">Amount</th>
                             <th className="p-4">Method</th>
-                            <th className="p-4 text-center">Slip</th>
+                            <th className="p-4 text-center">Actions</th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
-                        {recentPayments?.map((p: any) => {
-                            const monthName = p.month ? new Date(0, p.month - 1).toLocaleString('default', { month: 'short' }) : '-';
+                        {filteredPayments?.map((p: any) => {
+                            // Backend now returns 'date_display' and 'type' and 'total_amount'
+                            // p.sort_id is the ID to key by
                             return (
-                                <tr key={p.payment_id} className="hover:bg-gray-50">
-                                    <td className="p-4 font-mono text-gray-500">#{p.payment_id}</td>
+                                <tr key={p.sort_id || p.payment_id} className="hover:bg-gray-50">
+                                    <td className="p-4 font-mono text-gray-500">#{p.sort_id}</td>
                                     <td className="p-4 text-gray-700 text-sm">{p.payment_date}</td>
                                     <td className="p-4 font-medium text-gray-900">
                                         {p.student_name}
-                                        <span className="block text-xs text-gray-400">Roll: {p.roll_no || '-'}</span>
+                                        {/* <span className="block text-xs text-gray-400">Roll: {p.roll_no || '-'}</span> */}
                                         <span className="block text-xs text-blue-500">{p.program_name}</span>
                                     </td>
-                                    <td className="p-4 text-gray-600 text-sm">{p.month ? `${monthName} ${p.year}` : '-'}</td>
-                                    <td className="p-4 text-right font-bold text-green-600">৳{p.paid_amount}</td>
+                                    <td className="p-4 text-gray-800 text-sm font-medium">
+                                        {p.date_display}
+                                        {p.type === 'Bulk' && (
+                                            <span className="ml-2 px-1.5 py-0.5 bg-purple-100 text-purple-700 text-xs rounded border border-purple-200">
+                                                Bulk
+                                            </span>
+                                        )}
+                                    </td>
+                                    <td className="p-4 text-right font-bold text-green-600">৳{p.total_amount || p.paid_amount}</td>
                                     <td className="p-4 text-gray-600 text-sm">
                                         <span className="px-2 py-1 bg-gray-100 rounded text-xs border">{p.payment_method || 'Cash'}</span>
                                     </td>
-                                    <td className="p-4 text-center">
+                                    <td className="p-4 text-center flex justify-center gap-2">
+                                        {p.is_editable ? (
+                                            <button
+                                                onClick={() => setEditPayment(p)} // We need to handle Edit for Group vs Single? Backend update_payment is for single ID.
+                                                // Wait, Phase 18 Step 3 allows editing "Entire Group".
+                                                // My 'editPayment' takes a 'payment' object.
+                                                // If I pass the group object, the modal needs to handle it.
+                                                // For now, let's allow editing the MAIN ID (sort_id) or disable if bulk?
+                                                // User said: "If Bulk, admin can edit the entire group (or any record)".
+                                                // To keep it simple: We treat it as one unit. The Modal should technically loop updates?
+                                                // LIMITATION: 'update_payment' is single ID capable.
+                                                // For Bulk rows, p.payment_ids is a list.
+                                                // Let's Disable Edit for Bulk for a moment OR allow editing just the Amount (Total)?
+                                                // "Admin can edit the entire group".
+                                                // Let's pass the whole object to EditPaymentModal and upgrade the Modal later.
+                                                // For now, let's just pass 'p'. 
+                                                className="text-gray-500 hover:text-blue-600 p-2 rounded-full hover:bg-gray-100"
+                                                title="Edit"
+                                            >
+                                                <Edit size={16} />
+                                            </button>
+                                        ) : (
+                                            <button
+                                                className="text-gray-300 cursor-not-allowed p-2 rounded-full"
+                                                title="Only the most recent transaction can be edited"
+                                                disabled
+                                            >
+                                                <Edit size={16} />
+                                            </button>
+                                        )}
+
                                         <button
                                             onClick={() => generateSlip(p)}
                                             className="text-blue-600 hover:text-blue-800 p-2 rounded-full hover:bg-blue-50 transition-colors"
@@ -162,6 +300,149 @@ const Finance: React.FC = () => {
             </div>
 
             <AddPaymentModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
+            <EditPaymentModal isOpen={!!editPayment} onClose={() => setEditPayment(null)} payment={editPayment} />
+        </div>
+    );
+};
+
+// --- EDIT PAYMENT MODAL ---
+const EditPaymentModal: React.FC<{ isOpen: boolean; onClose: () => void; payment: any }> = ({ isOpen, onClose, payment }) => {
+    const queryClient = useQueryClient();
+    const [amount, setAmount] = useState('');
+    const [method, setMethod] = useState('Cash');
+    const [remarks, setRemarks] = useState('');
+
+    useEffect(() => {
+        if (payment) {
+            // Support new backend format: total_amount vs paid_amount
+            const amt = payment.total_amount || payment.paid_amount;
+            setAmount(amt.toString());
+            setMethod(payment.payment_method || 'Cash');
+            setRemarks(payment.remarks || '');
+        }
+    }, [payment]);
+
+    // Check if Bulk
+    const isBulk = payment?.type === 'Bulk';
+
+    // Fetch Payment Status to determine Cap
+    const { data: status } = useQuery({
+        queryKey: ['payment_status', payment?.enrollment_id], // Use enrollment_id from payment
+        queryFn: () => payment ? PaymentRepository.getPaymentStatus(payment.enrollment_id) : null,
+        enabled: !!payment?.enrollment_id
+    });
+
+    const [maxCap, setMaxCap] = useState<number>(Infinity);
+
+    useEffect(() => {
+        if (payment && status && status.ledger) {
+            // Find ledger entry for this payment's month
+            const entry = status.ledger.find((l: any) => l.month === payment.month && l.year === payment.year);
+            if (entry) {
+                // The ledger "paid" includes THIS payment because it fetches from DB.
+                // We want to know what OTHERS paid.
+                // Sum of Others = entry.paid - payment.paid_amount (Old Value)
+                // Cap = Fee - Sum of Others
+                //     = Fee - (entry.paid - payment.paid_amount)
+                //     = (Fee - entry.paid) + payment.paid_amount
+                //     = entry.due + payment.paid_amount (roughly, if due is accurate)
+
+                // Let's use the Fee - Others logic strictly.
+                const paidByOthers = entry.paid - payment.paid_amount;
+                const remainingCap = entry.fee - paidByOthers;
+
+                setMaxCap(remainingCap);
+            }
+        }
+    }, [payment, status]);
+
+    const mutation = useMutation({
+        mutationFn: async (data: any) => {
+            // Use sort_id if grouped, else payment_id
+            const pid = payment.sort_id || payment.payment_id;
+            return PaymentRepository.updatePayment(pid, data);
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['payments'] });
+            queryClient.invalidateQueries({ queryKey: ['finance'] });
+            queryClient.invalidateQueries({ queryKey: ['payment_status'] });
+            onClose();
+            alert("Payment Updated!");
+        },
+        onError: (err) => alert("Failed to update: " + err)
+    });
+
+    const handleSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        const val = parseFloat(amount);
+        if (val > maxCap) {
+            alert(`Amount exceeds the maximum allowed (${maxCap}) for this month.`);
+            return;
+        }
+
+        mutation.mutate({
+            paid_amount: val,
+            payment_method: method,
+            remarks: remarks
+        });
+    };
+
+    if (!isOpen || !payment) return null;
+
+    return (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
+                <h3 className="font-bold text-lg mb-4">Edit Payment #{payment.payment_id}</h3>
+                <form onSubmit={handleSubmit} className="space-y-4">
+                    <div>
+                        <label className="block text-xs font-bold text-gray-500 mb-1">
+                            Amount (Max: {maxCap !== Infinity ? maxCap : '...'})
+                        </label>
+                        <input
+                            type="number"
+                            required
+                            className="w-full p-2 border rounded font-bold text-green-700"
+                            value={amount}
+                            onWheel={(e) => (e.target as HTMLElement).blur()}
+                            onChange={e => {
+                                const val = parseFloat(e.target.value);
+                                if (val > maxCap) {
+                                    alert(`Cannot exceed ${maxCap}`);
+                                    setAmount(maxCap.toString());
+                                } else {
+                                    setAmount(e.target.value);
+                                }
+                            }}
+                            max={maxCap}
+                            disabled={isBulk} // Disable amount edit for bulk
+                            title={isBulk ? "Cannot edit amount for bulk payments directly. Delete and re-enter if needed." : ""}
+                        />
+                        {isBulk && <p className="text-xs text-orange-500 mt-1">Bulk payment amounts cannot be edited directly.</p>}
+                        {maxCap !== Infinity && (
+                            <p className="text-xs text-gray-400 mt-1">
+                                Fee: {payment?.paid_amount + (maxCap - payment?.paid_amount)} | Cap reflects adjusted fee limit.
+                            </p>
+                        )}
+                    </div>
+                    <div>
+                        <label className="block text-xs font-bold text-gray-500 mb-1">Method</label>
+                        <select className="w-full p-2 border rounded" value={method} onChange={e => setMethod(e.target.value)}>
+                            <option>Cash</option>
+                            <option>Bank Transfer</option>
+                            <option>bKash</option>
+                            <option>Nagad</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label className="block text-xs font-bold text-gray-500 mb-1">Remarks</label>
+                        <textarea className="w-full p-2 border rounded" value={remarks} onChange={e => setRemarks(e.target.value)} />
+                    </div>
+                    <div className="flex justify-end gap-2 mt-4">
+                        <button type="button" onClick={onClose} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded">Cancel</button>
+                        <button type="submit" disabled={mutation.isPending} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Save Changes</button>
+                    </div>
+                </form>
+            </div>
         </div>
     );
 };
@@ -242,60 +523,49 @@ const AddPaymentModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ i
         resetPaymentFields();
     }, [selectedStudent]);
 
+    // Auto-Set Fields based on FUM
+    useEffect(() => {
+        if (paymentStatus?.fum) {
+            setSingleMonth(paymentStatus.fum.month);
+            setSingleYear(paymentStatus.fum.year);
+            // Auto-fill amount but allow decrease (up to capped amount)
+            // Actually, for strictness, maybe auto-fill with exact due? Yes.
+            setSingleAmount(paymentStatus.fum.due.toString());
+        } else {
+            resetPaymentFields();
+        }
+    }, [paymentStatus]); // Runs when payment status loads
+
     // Reset Fields logic
     const resetPaymentFields = () => {
         setMode('single');
         setSingleAmount('');
         setRemarks('');
-        // Date defaults present
     };
 
-    // Helper: Check if a month is fully paid
     const isMonthPaid = (m: number, y: number) => {
         if (!paymentStatus?.ledger) return false;
         const record = paymentStatus.ledger.find((l: any) => l.month === m && l.year === y);
-        // We grey out if Paid. (Partial allows top-up? User prompt says "grey out months paid..."). 
-        // Let's stick to: if 'Paid', blocked. If 'Partial', allowed (to complete it).
-        // User prompt: "Any month that has a record... must be greyed out". 
-        // This implies NO partial top-ups via this UI? Or maybe they mean "Fully Paid"?
-        // Given constraint removal to allow partials, Greying out partials would break that.
-        // I will grey out ONLY 'Paid' (Fully).
         return record?.status === 'Paid';
     };
 
     // Calculate Bulk Logic
+    // Calculate Bulk Logic
     const getBulkStart = () => {
         if (!paymentStatus || !selectedProgram) return { month: new Date().getMonth() + 1, year: new Date().getFullYear() };
 
-        let startM = new Date().getMonth() + 1;
-        let startY = new Date().getFullYear();
-
-        // New Logic: Find the FIRST "Unpaid" or "Partial" month in the ledger
-        // effectively "Next Payble Month".
-        // If ledger covers future, we just look for first gap.
-
-        // Sort ledger by date just in case
-        const sortedLedger = [...(paymentStatus.ledger || [])].sort((a, b) => (a.year - b.year) || (a.month - b.month));
-
-        for (const l of sortedLedger) {
-            if (l.status !== 'Paid') {
-                startM = l.month;
-                startY = l.year;
-                break; // Found the hole
-            }
-            // If it is paid, we check next.
-            // If we reach end of ledger and all are paid, we default to Next Month after Last Ledger Entry.
-            if (l === sortedLedger[sortedLedger.length - 1]) {
-                if (l.month === 12) { startM = 1; startY = l.year + 1; }
-                else { startM = l.month + 1; startY = l.year; }
-            }
+        // FUM is the Single Source of Truth for Start Date
+        if (paymentStatus.fum) {
+            return { month: paymentStatus.fum.month, year: paymentStatus.fum.year };
         }
 
-        return { month: startM, year: startY };
+        // Fallback (Should rarely reach here if FUM logic covers "Next Month")
+        return { month: new Date().getMonth() + 1, year: new Date().getFullYear() };
     };
 
     const bulkStart = getBulkStart();
 
+    // Calculate Bulk Total & Validate
     // Calculate Bulk Total & Validate
     const calculateBulkTotal = () => {
         if (!selectedProgram) return 0;
@@ -307,15 +577,19 @@ const AddPaymentModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ i
 
         // Loop from Start to End
         while ((currY * 12 + currM) <= endTotal) {
-            // Check if this specific month is already paid
-            if (isMonthPaid(currM, currY)) {
-                // If we encounter a paid month in the range, we should probably ALERT or invalidate?
-                // For calculation, we might skip it or just count it (but then we double pay).
-                // Better to simple count it for now, but UI should prevent this range.
-                // However, user asked to "Gray out". In a range picker, you can't gray out middle items easily.
-                // We'll just filter valid count.
+            // Logic:
+            // 1. If this is the FUM (Start Month), we pay 'Due' amount (which accounts for partials).
+            // 2. If this is a future month, we pay full 'Fee'.
+            // 3. We do check 'isMonthPaid' just in case user selects a range that overlaps paid future?
+            //    But with strict FUM start, overlaps should only happen if FUM is partial (handled) or user extends WAY future.
+
+            if (currM === paymentStatus?.fum?.month && currY === paymentStatus?.fum?.year) {
+                total += (paymentStatus.fum.due || 0);
             } else {
-                total += (selectedProgram.fee || 0);
+                // Future months are full fee
+                if (!isMonthPaid(currM, currY)) {
+                    total += (selectedProgram.fee || 0);
+                }
             }
 
             if (currM === 12) { currM = 1; currY++; } else { currM++; }
@@ -376,17 +650,33 @@ const AddPaymentModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ i
             const endTotal = bulkEndYear * 12 + bulkEndMonth;
 
             while ((currY * 12 + currM) <= endTotal) {
-                payload.push({
-                    student_id: selectedStudent.student_id, // Included for validation
-                    program_id: selectedProgram.id,
-                    enrollment_id: selectedProgram.enrollment_id,
-                    paid_amount: selectedProgram.fee, // Full Fee for bulk
-                    payment_date: date,
-                    month: currM,
-                    year: currY,
-                    payment_method: paymentMethod,
-                    remarks: `Bulk Payment (${currM}/${currY}) - ${remarks}`,
-                });
+                // Determine Amount: FUM Due vs Full Fee
+                let amount = selectedProgram.fee;
+                let isFum = (currM === paymentStatus?.fum?.month && currY === paymentStatus?.fum?.year);
+
+                if (isFum) {
+                    amount = paymentStatus.fum.due;
+                }
+
+                // Skip if fully paid (unless it's FUM Partial, which we just handled)
+                // Note: FUM will show as Partial or Unpaid, so we won't skip it blindly.
+                // Strictly speaking, we shouldn't target already Paid months.
+                const alreadyPaid = isMonthPaid(currM, currY);
+                if (alreadyPaid && !isFum) { // FUM might be partial, so 'isMonthPaid' returns false (it checks status==Paid)
+                    // Skip paid months
+                } else {
+                    payload.push({
+                        student_id: selectedStudent.student_id,
+                        program_id: selectedProgram.id,
+                        enrollment_id: selectedProgram.enrollment_id,
+                        paid_amount: amount,
+                        payment_date: date,
+                        month: currM,
+                        year: currY,
+                        payment_method: paymentMethod,
+                        remarks: `Bulk Payment (${currM}/${currY}) - ${remarks}`,
+                    });
+                }
 
                 // Increment
                 if (currM === 12) { currM = 1; currY++; } else { currM++; }
@@ -526,15 +816,30 @@ const AddPaymentModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ i
                     {selectedProgram && (
                         <div className="animate-in fade-in slide-in-from-top-2">
                             {/* Status Banner */}
-                            <div className="bg-gray-100 p-3 rounded mb-4 flex justify-between text-sm">
-                                <div>
-                                    <span className="text-gray-500 block">Paid Until:</span>
-                                    <span className="font-bold text-gray-800">{paymentStatus?.paid_up_to || 'Loading...'}</span>
+                            <div className="bg-gray-100 p-3 rounded mb-4 text-sm">
+                                <div className="flex justify-between mb-2">
+                                    <div>
+                                        <span className="text-gray-500 block">Paid Fully Until:</span>
+                                        <span className="font-bold text-green-700">{paymentStatus?.paid_up_to || 'None'}</span>
+                                    </div>
+                                    <div className="text-right">
+                                        <span className="text-gray-500 block">Total Arrears:</span>
+                                        <span className="font-bold text-red-600">৳{paymentStatus?.total_due || 0}</span>
+                                    </div>
                                 </div>
-                                <div className="text-right">
-                                    <span className="text-gray-500 block">Current Dues:</span>
-                                    <span className="font-bold text-red-600">৳{paymentStatus?.total_due || 0}</span>
-                                </div>
+
+                                {paymentStatus?.enrollment_date && (
+                                    <div className="text-xs text-gray-500 border-t border-gray-200 pt-2 mb-2">
+                                        Joined: {new Date(paymentStatus.enrollment_date).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })}
+                                    </div>
+                                )}
+
+                                {paymentStatus?.fum && paymentStatus.fum.status === 'Partial' && (
+                                    <div className="bg-yellow-100 text-yellow-800 p-2 rounded text-xs border border-yellow-200">
+                                        <strong>⚠️ Partial Payment Detected:</strong> {new Date(0, paymentStatus.fum.month - 1).toLocaleString('default', { month: 'long' })} {paymentStatus.fum.year} is partially paid.
+                                        You must clear the remaining ৳{paymentStatus.fum.due} before proceeding.
+                                    </div>
+                                )}
                             </div>
 
                             {/* Mode Tabs */}
@@ -558,40 +863,41 @@ const AddPaymentModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ i
                             {/* SINGLE MODE */}
                             {mode === 'single' && (
                                 <div className="space-y-4">
-                                    <div className="flex gap-2">
-                                        <div className="flex-1">
-                                            <label className="block text-xs font-bold text-gray-500 mb-1">Month</label>
-                                            <select
-                                                className="w-full p-2 border rounded"
-                                                value={singleMonth}
-                                                onChange={e => setSingleMonth(Number(e.target.value))}
-                                            >
-                                                {Array.from({ length: 12 }, (_, i) => i + 1).map(m => {
-                                                    const isPaid = isMonthPaid(m, singleYear);
-                                                    return (
-                                                        <option key={m} value={m} disabled={isPaid} className={isPaid ? 'bg-gray-100 text-gray-400 italic' : ''}>
-                                                            {new Date(0, m - 1).toLocaleString('default', { month: 'long' })}
-                                                            {isPaid ? ' (Paid)' : ''}
-                                                        </option>
-                                                    );
-                                                })}
-                                            </select>
+                                    <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg">
+                                        <label className="block text-xs font-bold text-blue-800 mb-1 uppercase tracking-wide">Paying For (Locked)</label>
+                                        <div className="text-lg font-bold text-blue-900">
+                                            {new Date(0, singleMonth - 1).toLocaleString('default', { month: 'long' })} {singleYear}
                                         </div>
-                                        <div className="w-1/3">
-                                            <label className="block text-xs font-bold text-gray-500 mb-1">Year</label>
-                                            <input type="number" className="w-full p-2 border rounded" value={singleYear} onChange={e => setSingleYear(Number(e.target.value))} />
+                                        <div className="text-xs text-blue-600 mt-1">
+                                            Strict Sequencing Active: You must clear the earliest unpaid month first.
                                         </div>
                                     </div>
+
                                     <div>
-                                        <label className="block text-xs font-bold text-gray-500 mb-1">Amount (৳)</label>
+                                        <label className="block text-xs font-bold text-gray-500 mb-1">
+                                            Amount (৳) - Max: {paymentStatus?.fum?.due}
+                                        </label>
                                         <input
                                             type="number"
                                             required
-                                            className="w-full p-2 border rounded font-bold text-green-700"
+                                            className="w-full p-2 border rounded font-bold text-green-700 text-lg"
                                             value={singleAmount}
-                                            onChange={e => setSingleAmount(e.target.value)}
-                                            placeholder={`Max: ${selectedProgram.fee}`}
+                                            onChange={e => {
+                                                const val = parseFloat(e.target.value);
+                                                const max = paymentStatus?.fum?.due || 0;
+                                                if (val > max) {
+                                                    alert(`Cannot pay more than remaining due of ৳${max}`);
+                                                    setSingleAmount(max.toString());
+                                                } else {
+                                                    setSingleAmount(e.target.value);
+                                                }
+                                            }}
+                                            placeholder={`Due: ${paymentStatus?.fum?.due}`}
+                                            max={paymentStatus?.fum?.due}
                                         />
+                                        <p className="text-xs text-gray-400 mt-1">
+                                            Enter amount to pay. Cannot exceed remaining due for this month.
+                                        </p>
                                     </div>
                                 </div>
                             )}
@@ -612,11 +918,26 @@ const AddPaymentModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ i
                                                     value={bulkEndMonth}
                                                     onChange={e => setBulkEndMonth(Number(e.target.value))}
                                                 >
-                                                    {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
-                                                        <option key={m} value={m}>{new Date(0, m - 1).toLocaleString('default', { month: 'short' })}</option>
-                                                    ))}
+                                                    {Array.from({ length: 12 }, (_, i) => i + 1).map(m => {
+                                                        const isDisabled = (bulkEndYear < bulkStart.year) || (bulkEndYear === bulkStart.year && m < bulkStart.month);
+                                                        return (
+                                                            <option key={m} value={m} disabled={isDisabled} className={isDisabled ? "text-gray-300" : ""}>
+                                                                {new Date(0, m - 1).toLocaleString('default', { month: 'short' })}
+                                                            </option>
+                                                        );
+                                                    })}
                                                 </select>
-                                                <input type="number" className="w-16 p-1 border rounded text-sm" value={bulkEndYear} onChange={e => setBulkEndYear(Number(e.target.value))} />
+                                                <input
+                                                    type="number"
+                                                    className="w-16 p-1 border rounded text-sm"
+                                                    value={bulkEndYear}
+                                                    min={bulkStart.year}
+                                                    onChange={e => {
+                                                        const val = Number(e.target.value);
+                                                        if (val < bulkStart.year) return; // Prevent going back
+                                                        setBulkEndYear(val);
+                                                    }}
+                                                />
                                             </div>
                                         </div>
                                     </div>

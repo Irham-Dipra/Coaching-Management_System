@@ -124,5 +124,12 @@ export const StudentRepository = {
       throw new Error(err.detail || "Import failed");
     }
     return await response.json();
+  },
+
+  // 10. Get Financial Summary
+  async getFinancialSummary(studentId: string) {
+    const response = await fetch(`${API_BASE_URL}/students/${studentId}/financial-summary`);
+    if (!response.ok) throw new Error("Failed to fetch financial summary");
+    return await response.json();
   }
 }

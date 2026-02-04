@@ -24,6 +24,17 @@ class PaymentCreate(BaseModel):
     payment_method: str
     remarks: Optional[str] = None
 
+class PaymentUpdate(BaseModel):
+    enrollment_id: Optional[int] = None
+    paid_amount: Optional[float] = None
+    payment_date: Optional[str] = None
+    month: Optional[int] = None
+    year: Optional[int] = None
+    payment_method: Optional[str] = None
+    remarks: Optional[str] = None
+    status: Optional[str] = None
+
+
 class PaymentResponse(PaymentBase):
     student_name: str
     program_name: str

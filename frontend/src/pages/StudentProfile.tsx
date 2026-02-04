@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { StudentRepository } from '../repositories/StudentRepository';
 import { ProgramRepository } from '../repositories/ProgramRepository';
-import { User, Calendar, BookOpen, CreditCard, Edit2, Save, Plus } from 'lucide-react';
+import { User, Calendar, BookOpen, CreditCard, Edit2, Save, Plus, Trash2 } from 'lucide-react';
 
 const StudentProfile: React.FC = () => {
     const { id } = useParams<{ id: string }>();
@@ -27,10 +27,16 @@ const StudentProfile: React.FC = () => {
         enabled: !!id
     });
 
-    // 3. Fetch All Programs (for dropdown)
+    // 3. Fetch All Programs (for enrollment dropdown)
     const { data: allPrograms } = useQuery({
         queryKey: ['programs'],
         queryFn: ProgramRepository.getAllPrograms
+    });
+
+    // 4. Fetch Batches (for profile edit)
+    const { data: batches } = useQuery({
+        queryKey: ['batches'],
+        queryFn: ProgramRepository.getAllBatches
     });
 
     // Mutations
@@ -50,6 +56,19 @@ const StudentProfile: React.FC = () => {
         onSuccess: () => {
             setShowEnrollModal(false);
             queryClient.invalidateQueries({ queryKey: ['enrollments', id] });
+        },
+        onError: (err) => {
+            alert(err.message);
+        }
+    });
+
+    const deleteEnrollmentMutation = useMutation({
+        mutationFn: StudentRepository.deleteEnrollment,
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['enrollments', id] });
+        },
+        onError: (err) => {
+            alert("Failed to delete enrollment");
         }
     });
 
@@ -81,24 +100,40 @@ const StudentProfile: React.FC = () => {
                                         className="block w-full border p-1 rounded font-bold text-xl text-gray-900 bg-white"
                                         value={editForm.name}
                                         onChange={e => setEditForm({ ...editForm, name: e.target.value })}
+                                        placeholder="Full Name"
                                     />
                                     <div className="flex gap-2">
                                         <input
-                                            className="border p-1 rounded text-sm text-gray-900 bg-white" placeholder="Roll No"
-                                            value={editForm.roll_no}
-                                            onChange={e => setEditForm({ ...editForm, roll_no: parseInt(e.target.value) })}
+                                            className="border p-1 rounded text-sm text-gray-900 bg-white w-20" placeholder="Class"
+                                            value={editForm.class || ''}
+                                            onChange={e => {
+                                                const val = e.target.value;
+                                                setEditForm({ ...editForm, class: val === '' ? '' : parseInt(val) });
+                                            }}
                                         />
-                                        <input
-                                            className="border p-1 rounded text-sm text-gray-900 bg-white" placeholder="Class"
-                                            value={editForm.class}
-                                            onChange={e => setEditForm({ ...editForm, class: parseInt(e.target.value) })}
-                                        />
+                                        <select
+                                            className="border p-1 rounded text-sm text-gray-900 bg-white min-w-[120px]"
+                                            value={editForm.batch_id || ''}
+                                            onChange={e => setEditForm({ ...editForm, batch_id: e.target.value ? parseInt(e.target.value) : null })}
+                                        >
+                                            <option value="">No Batch</option>
+                                            {batches?.map((b: any) => (
+                                                <option key={b.batch_id} value={b.batch_id}>{b.batch_name}</option>
+                                            ))}
+                                        </select>
                                     </div>
                                 </div>
                             ) : (
                                 <>
                                     <h1 className="text-2xl font-bold text-gray-900">{student.name}</h1>
-                                    <p className="text-gray-500">Roll: {student.roll_no} • Class {student.class}</p>
+                                    <div className="flex gap-2 text-gray-500 items-center">
+                                        <span>Class {student.class}</span>
+                                        {student.batch && (
+                                            <span className="bg-purple-100 text-purple-700 px-2 py-0.5 rounded text-xs font-bold uppercase">
+                                                {student.batch.batch_name}
+                                            </span>
+                                        )}
+                                    </div>
                                     <p className="text-sm text-gray-400 mt-1">Student ID: #{student.student_id}</p>
                                 </>
                             )}
@@ -206,12 +241,25 @@ const StudentProfile: React.FC = () => {
 
                         <div className="space-y-3">
                             {enrollments?.map((enroll: any) => (
-                                <div key={enroll.enrollment_id} className="border border-gray-100 p-4 rounded-lg flex justify-between items-center hover:bg-gray-50">
+                                <div key={enroll.enrollment_id} className="border border-gray-100 p-4 rounded-lg flex justify-between items-center hover:bg-gray-50 group">
                                     <div>
                                         <p className="font-bold text-gray-900">{enroll.program?.program_name || 'Unknown Program'}</p>
-                                        <p className="text-sm text-gray-500">Joined: {enroll.enrollment_date || 'N/A'}</p>
+                                        <div className="flex gap-3 mt-1 text-sm text-gray-500">
+                                            <span className="font-mono bg-gray-100 px-2 rounded text-gray-700 font-bold">Roll: {enroll.roll_no || 'N/A'}</span>
+                                            <span>Joined: {enroll.enrollment_date || 'N/A'}</span>
+                                        </div>
                                     </div>
-                                    {/* Status Column Dropped */}
+                                    <button
+                                        onClick={() => {
+                                            if (confirm("Are you sure you want to remove this enrollment?")) {
+                                                deleteEnrollmentMutation.mutate(enroll.enrollment_id);
+                                            }
+                                        }}
+                                        className="text-red-400 hover:text-red-600 p-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                                        title="Delete Enrollment"
+                                    >
+                                        <Trash2 size={18} />
+                                    </button>
                                 </div>
                             ))}
                             {(!enrollments || enrollments.length === 0) && (

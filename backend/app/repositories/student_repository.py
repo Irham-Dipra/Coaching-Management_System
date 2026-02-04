@@ -9,10 +9,10 @@ class StudentRepository:
         self.table = "student"
 
     def get_all_students(self):
-        # 1. Select the table
-        # 2. Select all columns ("*")
-        # 3. Execute the query and wait for the result
-        response = supabase.table(self.table).select("*").execute()
+        # Fetch students with Batch info and Enrollment (Program) info
+        response = supabase.table(self.table)\
+            .select("*, batch(batch_name), enrollment(program_id, roll_no, program(program_name))")\
+            .execute()
         
         # Return only the 'data' part (ignoring status codes, etc.)
         return response.data
@@ -35,16 +35,28 @@ class StudentRepository:
     def get_student_by_id(self, student_id: int):
         # Join enrollment -> program to see what they are studying
         response = supabase.table(self.table)\
-            .select("*, enrollment(*, program(*))")\
+            .select("*, batch(*), enrollment(*, program(*))")\
             .eq("student_id", student_id)\
             .execute()
         return response.data[0] if response.data else None
 
     def update_student(self, student_id: int, updates: dict):
-        # Handle field renaming for 'class_grade' -> 'class' if present
+        # 1. Clean the payload
+        #    Remove fields that shouldn't be updated or are nested objects from Joins
+        start_keys = list(updates.keys())
+        for key in start_keys:
+            # Remove nested objects (dicts/lists) because they are joins (e.g. 'batch': {...})
+            if isinstance(updates[key], (dict, list)):
+                del updates[key]
+            # Remove PK/Audit fields
+            if key in ['student_id', 'created_at']:
+                del updates[key]
+
+        # 2. Handle simple renaming
         if 'class_grade' in updates:
             updates['class'] = updates.pop('class_grade')
             
+        # 3. Execute Update
         response = supabase.table(self.table)\
             .update(updates)\
             .eq("student_id", student_id)\

@@ -6,7 +6,6 @@ from app.schemas.program import ProgramResponse
 class EnrollmentBase(BaseModel):
     program_id: int
     enrollment_date: Optional[date] = None
-    status: str = "active"
 
 class EnrollmentCreate(EnrollmentBase):
     student_id: int

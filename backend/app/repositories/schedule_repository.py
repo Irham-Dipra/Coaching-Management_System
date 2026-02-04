@@ -121,8 +121,9 @@ class ScheduleRepository:
     @staticmethod
     def get_window_details(window_id: int):
         # 1. Fetch Window + Room + Programs
+        # FIX: roll_no is now on enrollment, not student
         res = supabase.table('schedule_window')\
-            .select('*, room(room_name), program_schedule(program(program_id, program_name, enrollment(student(student_id, name, roll_no, contact))))')\
+            .select('*, room(room_name), program_schedule(program(program_id, program_name, enrollment(roll_no, student(student_id, name, contact))))')\
             .eq('window_id', window_id)\
             .single()\
             .execute()
@@ -138,10 +139,11 @@ class ScheduleRepository:
             enrolls = prog.get('enrollment', [])
             for enroll in enrolls:
                 student = enroll['student']
-                # Avoid duplicates if student is in multiple programs in same slot (unlikely but possible)
+                # Avoid duplicates if student is in multiple programs in same slot
                 if not any(s['student_id'] == student['student_id'] for s in students):
                     students.append({
                         **student,
+                        'roll_no': enroll['roll_no'], # Add roll_no from enrollment
                         'program_name': prog['program_name'] # Tag source program
                     })
         

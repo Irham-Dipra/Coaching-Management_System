@@ -1,4 +1,4 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from app.repositories.student_repository import StudentRepository
 from app.schemas.student import StudentCreate
 from app.repositories.enrollment_repository import EnrollmentRepository
@@ -42,4 +42,12 @@ def get_student_enrollments(student_id: int):
 
 @router.post("/enrollments")
 def enroll_student(enrollment: EnrollmentCreate):
-    return enrollment_repo.enroll_student(enrollment)
+    try:
+        return enrollment_repo.enroll_student(enrollment)
+    except Exception as e:
+        # Catch duplicate error and return 400
+        raise HTTPException(status_code=400, detail=str(e))
+
+@router.delete("/enrollments/{enrollment_id}")
+def delete_enrollment(enrollment_id: int):
+    return enrollment_repo.delete_enrollment(enrollment_id)

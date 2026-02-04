@@ -205,7 +205,7 @@ const ProgramDetails: React.FC = () => {
                                         <tr key={enroll.enrollment_id} className="hover:bg-gray-50 border-b border-gray-50">
                                             <td className="p-3 text-gray-500 text-sm">#{enroll.student.student_id}</td>
                                             <td className="p-3 font-medium text-gray-900">{enroll.student.name}</td>
-                                            <td className="p-3 text-gray-600 text-sm font-mono">{enroll.student.roll_no}</td>
+                                            <td className="p-3 text-gray-600 text-sm font-mono">{enroll.roll_no}</td>
                                             <td className="p-3 text-gray-600 text-sm">{enroll.student.contact || '-'}</td>
                                             <td className="p-3 text-gray-600 text-sm">{enroll.enrollment_date || '-'}</td>
                                             <td className="p-3">

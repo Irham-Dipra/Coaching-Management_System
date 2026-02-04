@@ -8,7 +8,8 @@ import {
     ClipboardCheck,
     CreditCard,
     Settings,
-    Calendar
+    Calendar,
+    Layers
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -19,6 +20,7 @@ const Layout: React.FC = () => {
     // Navigation Items Configuration
     const navItems = [
         { label: 'Dashboard', path: '/', icon: <LayoutDashboard size={20} /> },
+        { label: 'Batches', path: '/batches', icon: <Layers size={20} /> },
         { type: 'divider', label: 'Academic Hub' },
         { label: 'Programs', path: '/programs', icon: <BookOpen size={20} /> },
         { label: 'Exams', path: '/exams', icon: <ClipboardCheck size={20} /> },

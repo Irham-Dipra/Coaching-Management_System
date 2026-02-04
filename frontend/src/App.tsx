@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import Layout from './components/Layout';
 import Dashboard from './pages/Dashboard';
+import Batches from './pages/Batches';
 import Programs from './pages/Programs';
 import StudentList from './components/StudentList';
 import StudentProfile from './pages/StudentProfile';
@@ -19,21 +20,19 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 
 // Protected Route Wrapper
 const PrivateRoute = () => {
-  const { session, userStatus, loading } = useAuth();
+  const { session, userRole, loading } = useAuth();
 
   if (loading) return <div className="h-screen flex items-center justify-center">Loading...</div>;
 
   // 1. Must be logged in
   if (!session) return <Navigate to="/login" replace />;
 
-  // 2. Must be approved (unless we decide to let pending users see *something*, but for now blockade)
-  if (userStatus === 'pending' || userStatus === 'rejected') {
-    return <Navigate to="/unauthorized" replace />;
-  }
+  // 2. (Optional) Check specific roles if needed
+  // if (userRole === 'restricted') return <Navigate to="/unauthorized" replace />;
 
   // 3. Render child routes (Layout > Dashboard etc.)
   return <Outlet />;
-};
+}
 
 function App() {
   return (
@@ -55,6 +54,8 @@ function App() {
               {/* Modules */}
               <Route path="/programs" element={<Programs />} />
               <Route path="/programs/:id" element={<ProgramDetails />} />
+
+              <Route path="/batches" element={<Batches />} /> {/* New Route */}
 
               {/* Exams Route */}
               <Route path="/exams" element={<Exams />} />

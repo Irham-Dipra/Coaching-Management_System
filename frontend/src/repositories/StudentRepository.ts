@@ -76,7 +76,53 @@ export const StudentRepository = {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     });
-    if (!response.ok) throw new Error("Failed to enroll student");
+    if (!response.ok) {
+      // Try to parse error message
+      const err = await response.json().catch(() => ({ detail: "Failed to enroll" }));
+      throw new Error(err.detail || "Failed to enroll student");
+    }
+    return await response.json();
+  },
+
+  // 7. Delete Enrollment
+  async deleteEnrollment(enrollmentId: number) {
+    const response = await fetch(`${API_BASE_URL}/enrollments/${enrollmentId}`, {
+      method: "DELETE",
+    });
+    if (!response.ok) throw new Error("Failed to delete enrollment");
+    return await response.json();
+  },
+
+  // 8. Download Import Template
+  async downloadTemplate() {
+    const response = await fetch(`${API_BASE_URL}/student-imports/template`);
+    if (!response.ok) throw new Error("Failed to download template");
+
+    // Trigger download
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = "student_import_template.xlsx";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  },
+
+  // 9. Import Students
+  async importStudents(file: File) {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const response = await fetch(`${API_BASE_URL}/student-imports/data`, {
+      method: 'POST',
+      body: formData, // Auto-sets Content-Type to multipart
+    });
+
+    if (!response.ok) {
+      const err = await response.json();
+      throw new Error(err.detail || "Import failed");
+    }
     return await response.json();
   }
 }

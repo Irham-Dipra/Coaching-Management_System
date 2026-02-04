@@ -169,7 +169,14 @@ const Finance: React.FC = () => {
 // --- MODAL COMPONENT ---
 const AddPaymentModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ isOpen, onClose }) => {
     // Search State
+    // Search State
     const [searchQuery, setSearchQuery] = useState('');
+    const [rollSearch, setRollSearch] = useState(''); // New separate search
+    // Filters
+    const [batchFilter, setBatchFilter] = useState('');
+    const [classFilter, setClassFilter] = useState('');
+    const [programFilter, setProgramFilter] = useState('');
+
     const [selectedStudent, setSelectedStudent] = useState<any>(null);
 
     // Form State
@@ -194,10 +201,15 @@ const AddPaymentModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ i
 
     // 1. Search Students
     const { data: searchResults } = useQuery({
-        queryKey: ['students', 'search', searchQuery],
+        queryKey: ['students', 'search'], // Removed query from key to just cache all
         queryFn: () => StudentRepository.getAllStudents(),
-        enabled: searchQuery.length > 1
+        // Always enabled effectively, or just enabled when modal is open? 
+        // Better: enabled: true (React Query will cache it)
     });
+
+    // 1b. Fetch Filter Data
+    const { data: batches } = useQuery({ queryKey: ['batches'], queryFn: ProgramRepository.getAllBatches });
+    const { data: allPrograms } = useQuery({ queryKey: ['programs'], queryFn: ProgramRepository.getAllPrograms });
 
     // 2. Fetch Student Details
     const { data: fullStudentDetails } = useQuery({
@@ -400,25 +412,88 @@ const AddPaymentModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ i
                     {!selectedStudent ? (
                         <div className="space-y-4">
                             {/* Search UI (Simplified for brevity, similar to before) */}
-                            <div className="relative">
-                                <Search className="absolute left-3 top-2.5 text-gray-400" size={18} />
-                                <input
-                                    type="text"
-                                    placeholder="Search by name or ID..."
-                                    className="w-full pl-10 p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-                                    value={searchQuery}
-                                    onChange={e => setSearchQuery(e.target.value)}
-                                    autoFocus
-                                />
+                            {/* Filters */}
+                            <div className="flex gap-2 mb-2">
+                                <select className="p-2 border rounded-lg text-sm bg-gray-50 flex-1" value={classFilter} onChange={e => setClassFilter(e.target.value)}>
+                                    <option value="">All Classes</option>
+                                    {[...Array(12)].map((_, i) => <option key={i} value={i + 1}>Class {i + 1}</option>)}
+                                </select>
+                                <select className="p-2 border rounded-lg text-sm bg-gray-50 flex-1" value={batchFilter} onChange={e => setBatchFilter(e.target.value)}>
+                                    <option value="">All Batches</option>
+                                    {batches?.map((b: any) => <option key={b.batch_id} value={b.batch_id}>{b.batch_name}</option>)}
+                                </select>
+                                <select className="p-2 border rounded-lg text-sm bg-gray-50 flex-1" value={programFilter} onChange={e => setProgramFilter(e.target.value)}>
+                                    <option value="">All Programs</option>
+                                    {allPrograms?.map((p: any) => <option key={p.program_id} value={p.program_id}>{p.program_name}</option>)}
+                                </select>
                             </div>
-                            {searchQuery.length > 1 && (
+
+                            {/* Search UI */}
+                            <div className="flex gap-2">
+                                <div className="relative flex-1">
+                                    <Search className="absolute left-3 top-2.5 text-gray-400" size={18} />
+                                    <input
+                                        type="text"
+                                        placeholder="Search Name or ID..."
+                                        className="w-full pl-10 p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                                        value={searchQuery}
+                                        onChange={e => setSearchQuery(e.target.value)}
+                                        autoFocus
+                                    />
+                                </div>
+                                <div className="relative w-1/3">
+                                    <input
+                                        type="text"
+                                        placeholder="Roll No..."
+                                        className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                                        value={rollSearch}
+                                        onChange={e => setRollSearch(e.target.value)}
+                                    />
+                                </div>
+                            </div>
+
+                            {(searchQuery.length > 0 || rollSearch.length > 0) && (
                                 <ul className="border rounded-lg max-h-60 overflow-y-auto divide-y">
-                                    {searchResults?.map((s: any) => (
-                                        <li key={s.student_id} onClick={() => { setSelectedStudent(s); setSearchQuery(''); }} className="p-3 hover:bg-blue-50 cursor-pointer">
-                                            <div className="font-bold">{s.name}</div>
-                                            <div className="text-xs text-gray-500">ID: {s.student_id}</div>
-                                        </li>
-                                    ))}
+                                    {searchResults
+                                        ?.filter((s: any) => {
+                                            const term = searchQuery.toLowerCase();
+                                            const rollTerm = rollSearch.toLowerCase();
+
+                                            const matchesName = s.name.toLowerCase().includes(term) || s.student_id.toString().includes(term);
+                                            // Roll Matches (Logic from StudentList)
+                                            let matchesRoll = true;
+                                            if (rollTerm) {
+                                                if (programFilter) {
+                                                    const enrollment = s.enrollment?.find((e: any) => e.program_id.toString() === programFilter);
+                                                    matchesRoll = enrollment?.roll_no?.toString().toLowerCase().includes(rollTerm) || false;
+                                                } else {
+                                                    matchesRoll = s.enrollment?.some((e: any) => e.roll_no && e.roll_no.toString().toLowerCase().includes(rollTerm)) || false;
+                                                }
+                                            }
+
+                                            const matchesBatch = batchFilter ? s.batch_id?.toString() === batchFilter : true;
+                                            const matchesClass = classFilter ? s.class?.toString() === classFilter : true;
+                                            const matchesProgram = programFilter ? s.enrollment?.some((e: any) => e.program_id.toString() === programFilter) : true;
+
+                                            return matchesName && matchesRoll && matchesBatch && matchesClass && matchesProgram;
+                                        })
+                                        .map((s: any) => (
+                                            <li key={s.student_id} onClick={() => { setSelectedStudent(s); setSearchQuery(''); setRollSearch(''); }} className="p-3 hover:bg-blue-50 cursor-pointer">
+                                                <div className="flex justify-between items-start">
+                                                    <div>
+                                                        <div className="font-bold text-gray-800">{s.name}</div>
+                                                        <div className="text-xs text-gray-500">ID: {s.student_id}</div>
+                                                    </div>
+                                                    <div className="text-right">
+                                                        {s.enrollment?.map((e: any, idx: number) => (
+                                                            <div key={idx} className="text-xs text-gray-600 bg-gray-100 px-1 rounded mb-1 inline-block ml-1">
+                                                                <span className="font-bold">{e.roll_no || '?'}</span> - {e.program?.program_name}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            </li>
+                                        ))}
                                 </ul>
                             )}
                         </div>

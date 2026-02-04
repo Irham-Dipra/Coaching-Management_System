@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query';
 import { StudentRepository } from '../repositories/StudentRepository';
+import { ProgramRepository } from '../repositories/ProgramRepository';
 import { X, Loader2 } from 'lucide-react';
 
 interface CreateStudentModalProps {
@@ -15,8 +16,14 @@ const CreateStudentModal: React.FC<CreateStudentModalProps> = ({ isOpen, onClose
         fathers_name: '',
         school: '',
         contact: '',
-        roll_no: '',
-        class_grade: ''
+        class_grade: '',
+        batch_id: '' // Added batch_id to formData
+    });
+
+    // Fetch Batches
+    const { data: batches } = useQuery({
+        queryKey: ['batches'],
+        queryFn: ProgramRepository.getAllBatches
     });
 
     const createMutation = useMutation({
@@ -24,7 +31,7 @@ const CreateStudentModal: React.FC<CreateStudentModalProps> = ({ isOpen, onClose
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['students'] });
             onClose();
-            setFormData({ name: '', fathers_name: '', school: '', contact: '', roll_no: '', class_grade: '' });
+            setFormData({ name: '', fathers_name: '', school: '', contact: '', class_grade: '', batch_id: '' }); // Reset batch_id
         },
         onError: (err) => {
             alert("Failed to add student: " + err);
@@ -40,12 +47,12 @@ const CreateStudentModal: React.FC<CreateStudentModalProps> = ({ isOpen, onClose
             fathers_name: formData.fathers_name || undefined,
             school: formData.school || undefined,
             contact: formData.contact || undefined,
-            roll_no: formData.roll_no ? parseInt(formData.roll_no) : undefined,
-            class_grade: formData.class_grade ? parseInt(formData.class_grade) : undefined
+            class_grade: formData.class_grade ? parseInt(formData.class_grade) : undefined,
+            batch_id: formData.batch_id ? parseInt(formData.batch_id) : undefined // Added batch_id to payload
         });
     };
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => { // Updated type for HTMLSelectElement
         setFormData({ ...formData, [e.target.name]: e.target.value });
     };
 
@@ -70,15 +77,7 @@ const CreateStudentModal: React.FC<CreateStudentModalProps> = ({ isOpen, onClose
                         />
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700">Roll No</label>
-                            <input
-                                name="roll_no" type="number"
-                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border text-gray-900 bg-white"
-                                value={formData.roll_no} onChange={handleChange}
-                            />
-                        </div>
+                    <div className="grid grid-cols-2 gap-4"> {/* Changed to grid-cols-2 */}
                         <div>
                             <label className="block text-sm font-medium text-gray-700">Class (Grade)</label>
                             <input
@@ -86,6 +85,19 @@ const CreateStudentModal: React.FC<CreateStudentModalProps> = ({ isOpen, onClose
                                 className="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border text-gray-900 bg-white"
                                 value={formData.class_grade} onChange={handleChange}
                             />
+                        </div>
+                        <div> {/* Added new div for Batch */}
+                            <label className="block text-sm font-medium text-gray-700">Batch (Cohort)</label>
+                            <select
+                                name="batch_id"
+                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border text-gray-900 bg-white"
+                                value={formData.batch_id} onChange={handleChange}
+                            >
+                                <option value="">Select Batch...</option>
+                                {batches?.map((b: any) => (
+                                    <option key={b.batch_id} value={b.batch_id}>{b.batch_name}</option>
+                                ))}
+                            </select>
                         </div>
                     </div>
 

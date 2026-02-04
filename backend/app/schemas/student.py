@@ -23,17 +23,16 @@ class StudentCreate(BaseModel):
 
     # 3. OPTIONAL FIELDS
     #    'Optional[str]' means it can be a string OR it can be None (empty).
-    #    '= None' sets the default value if the user doesn't send anything.
-    fathers_name: Optional[str] = None
-    school: Optional[str] = None
-    contact: Optional[str] = None
-    
-    # 4. INTEGER FIELDS
-    #    Pydantic will try to convert data for you.
-    #    If the user sends "10" (string), Pydantic converts it to 10 (int).
-    roll_no: Optional[int] = None
-    
-    # 5. RENAMING
+    # 4. RENAMING
     #    We call this 'class_grade' in Python because 'class' is a reserved keyword.
     #    (We will map this back to the database column 'class' later).
     class_grade: Optional[int] = None
+    
+    # 5. BATCH
+    #    Links student to a specific batch (Cohort).
+    batch_id: Optional[int] = None
+
+    # 6. DEMOGRAPHICS (Missing previously)
+    fathers_name: Optional[str] = None
+    school: Optional[str] = None
+    contact: Optional[str] = None

@@ -207,7 +207,7 @@ class PaymentRepository:
         """
         # Step 1 & 2: Query with Joins
         response = supabase.table(self.table)\
-            .select("*, enrollment(student(name, roll_no), program(program_name))")\
+            .select("*, enrollment(student(name), program(program_name))")\
             .order("payment_date", desc=True)\
             .limit(limit)\
             .execute()
@@ -224,7 +224,7 @@ class PaymentRepository:
             result.append({
                 **r,
                 "student_name": student.get("name"),
-                "roll_no": student.get("roll_no"),
+                # "roll_no": student.get("roll_no"), # Removed as it's not in student table anymore
                 "program_name": program.get("program_name")
             })
         return result

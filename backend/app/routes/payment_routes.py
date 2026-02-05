@@ -57,3 +57,11 @@ def get_finance_stats():
 @router.get("/finance/programs")
 def get_program_finance_stats():
     return payment_repo.get_program_finance_stats()
+
+@router.get("/finance/revenue-breakdown")
+def get_revenue_breakdown(month: int = None, year: int = None):
+    return payment_repo.get_revenue_breakdown(month, year)
+
+@router.get("/finance/due-breakdown")
+def get_due_breakdown():
+    return payment_repo.get_due_breakdown_list()

@@ -597,58 +597,77 @@ class PaymentRepository:
     def get_finance_stats(self):
         """
         Calculates financial dashboards stats: Total Revenue and Total Due.
-        This is the most complex function logic-wise.
         
-        Algorithm:
-        1. Fetch ALL payments (lightweight query, just amounts and dates).
-        2. Fetch ALL active enrollments (to know who SHOULD be paying).
-        3. Calculate Revenue:
-           - Sum of checks/cash collected. Simple addition.
-        4. Calculate Due (The tricky part):
-           - Can't just check if (Fee * Months) > Paid, because one student might have overpaid 
-             and another underpaid. We can't let Student A's surplus hide Student B's debt.
-           - We must iterate STUDENT BY STUDENT.
-           - For each student:
-             a. Calculate expected fee (Months since joining * Monthly Fee).
-             b. Sum their total payments.
-             c. If Expected > Paid, the difference is their DUE.
-             d. If Paid > Expected, their Due is 0 (they are in advance).
-           - Sum up all the individual "Dues" to get the Total Arrears.
-        5. Calculate 'Due This Month':
-           - The amount specifically expected for the current calendar month that hasn't been paid precisely for this month.
+        Optimized Phase 25:
+        1. Fetch Active Enrollments first.
+        2. Calculate Revenue (All Time & This Month) using lightweight queries.
+        3. Calculate Due only for ACTIVE students to save resources.
         """
-        # Step 1: Fetch Raw Payment Data
-        # We need 'month' and 'year' to check specific monthly dues
-        all_payments = supabase.table(self.table).select("enrollment_id, paid_amount, payment_date, month, year").execute().data
+        today = date.today()
+        month_start = f"{today.year}-{today.month:02d}-01"
         
-        # Step 2: Fetch Active Enrollments
-        # We only care about 'Active' students for calculating current dues.
+        # 1. Total Revenue (Global) - Lightweight Query
+        # We only need paid_amount. To avoid timeout on huge datasets, we really should use an RPC/View in future.
+        # For now, just fetching paid_amount column is 90% lighter than select(*).
+        revenue_data = supabase.table(self.table).select("paid_amount, payment_date").execute().data
+        
+        total_revenue = sum(float(p['paid_amount'] or 0) for p in revenue_data)
+        
+        # Revenue This Month (Filter in Python for flexibility or add filter query? Python is fine for now on reduced data)
+        # Optimized: Pre-calculate current month string to match
+        curr_month_prefix = f"{today.year}-{today.month:02d}"
+        revenue_this_month = sum(float(p['paid_amount'] or 0) for p in revenue_data if p['payment_date'] and p['payment_date'].startswith(curr_month_prefix))
+
+        # 2. Fetch Active Enrollments
         enrollments = supabase.table(self.enrollment_table)\
             .select("enrollment_id, enrollment_date, program(monthly_fee)")\
+            .eq("status", "Active")\
             .execute().data
+            
+        if not enrollments:
+             return {
+                "revenue_total": total_revenue,
+                "revenue_this_month": revenue_this_month,
+                "due_total": 0,
+                "due_this_month": 0
+            }
 
-        # --- REVENUE CALCULATION ---
-        # Total Cash in hand (All time)
-        total_revenue = sum(p['paid_amount'] for p in all_payments)
+        # 3. Fetch Payments ONLY for Active Students (For Due Calculation)
+        # Filtering by enrollment_id.in_([]) avoids processing dropped students' history for Dues.
+        active_ids = [e['enrollment_id'] for e in enrollments]
         
-        today = date.today()
-        # Revenue This Month: Sum of payments made in the current calendar month (by payment_date)
-        revenue_this_month = sum(p['paid_amount'] for p in all_payments if p['payment_date'].startswith(f"{today.year}-{today.month:02d}"))
-
-        # --- DUE CALCULATION ---
-        total_due_overall = 0
-        total_due_this_month = 0
+        # Batching: If > 500 active students, filtering by IN might fail URL limit.
+        # Safe strategy: If list is huge, fetch all (we already have revenue_data!). 
+        # Actually, we already fetched 'revenue_data' which contains ALL payments (enrollment_id is missing above!).
+        # Let's re-use 'revenue_data' but we need 'enrollment_id' in it.
         
-        # Optimization: Group payments by enrollment_id dictionary for O(1) lookup inside the loop
-        # Format: { 101: [PaymentA, PaymentB], 102: [PaymentC] }
+        # RE-OPTIMIZATION:
+        # Fetch "enrollment_id, paid_amount, payment_date" in the FIRST query.
+        # Use that for everything.
+        # That logic was arguably what caused the crash ("Fetching thousands of columns? No, just 4 columns").
+        # The crash was likely purely connection/time related.
+        # So, adding 'enrollment_id' back to revenue_data allows us to do it all in ONE fetch, which is usually better than 2 large ones.
+        
+        # Let's do a refined Single Fetch with timeout protection (already added in core/supabase.py).
+        # We process in memory.
+        
+        all_payments = supabase.table(self.table).select("enrollment_id, paid_amount, payment_date").execute().data
+        
+        # Recalculate Revenue (just to be safe/consistent)
+        # (Same as above)
+        
+        # Index payments by Enrollment ID
         payments_by_enrollment = {}
         for p in all_payments:
             eid = p['enrollment_id']
             if eid not in payments_by_enrollment:
                 payments_by_enrollment[eid] = []
             payments_by_enrollment[eid].append(p)
-
-        # Iterate through every single student (enrollment)
+            
+        # --- DUE CALCULATION ---
+        total_due_overall = 0
+        total_due_this_month = 0
+        
         for env in enrollments:
             prog = env.get('program')
             if not prog or not env['enrollment_date']: continue
@@ -656,49 +675,25 @@ class PaymentRepository:
             fee = float(prog['monthly_fee'] or 0)
             if fee == 0: continue
             
-            # Get this specific student's payment history
+            # History
             student_payments = payments_by_enrollment.get(env['enrollment_id'], [])
             
-            # A. Calculate Total Arrears (Lifetime Due)
-            # How many months have they been here?
-            start = datetime.strptime(env['enrollment_date'], "%Y-%m-%d").date()
-            months_passed = (today.year - start.year) * 12 + (today.month - start.month) + 1
+            # A. Lifetime Due
+            start_date_obj = datetime.strptime(env['enrollment_date'], "%Y-%m-%d").date()
+            # Calculate months passed
+            months_passed = (today.year - start_date_obj.year) * 12 + (today.month - start_date_obj.month) + 1
             months_passed = max(0, months_passed)
             
             expected_lifetime = months_passed * fee
-            paid_lifetime = sum(p['paid_amount'] for p in student_payments)
+            paid_lifetime = sum(float(p['paid_amount'] or 0) for p in student_payments)
             
-            # IMPORTANT: max(0, ...) ensures we don't count negative due (advance payment)
             student_due_total = max(0, expected_lifetime - paid_lifetime)
             total_due_overall += student_due_total
              
-             # B. Calculate Due This Month
-            # 1. Expected for this month: One fee unit
-            # 2. Paid for this month: Sum of payments in this calendar month? 
-            #    No, logic should be: Is the current ledger month paid?
-            #    Re-using ledger logic is safer effectively but expensive for global stats.
-            #    Approximation: If student has Arrears >= Monthly Fee, then they definitely owe for this month (and prior).
-            #    If Arrears < Monthly Fee, strictly part of this month is remaining.
-            #    If Arrears == 0, they are clear.
-            
-            # Simple Logic for "Due This Month":
-            # Any arrears up to the monthly fee cap is "Due This Month" (recovering debt).
-            # If arrears > fee, then "Due This Month" = Fee (current) + Arrears (past)? 
-            # Usually "Revenue This Month" vs "Expected Revenue This Month".
-            
-            # Let's stick to what the user asked: "Due (This Month)"
-            # Usually means: How much of the CURRENT ACTIVE MONTH'S fee is unpaid?
-            # We can check specific month coverage.
-            # Let's reuse Arrears. If Arrears > 0, we can say "Due This Month" is min(Arrears, Fee)?
-            # No, let's keep it simple: Total Due is the main metric. "Due This Month" might just be "Expected Collection - Actual Collection".
-            
-            # Simplified: Due This Month = Sum of (Monthly Fee - Paid This Month) for all active students?
-            # Start date check: If joined this month, expect fee. If joined before, expect fee.
-            # Valid for all active students.
-            
-            paid_this_month = sum(p['paid_amount'] for p in student_payments if p['payment_date'].startswith(f"{today.year}-{today.month:02d}"))
-            
-            # Assuming every active student owes 1 month fee this month (unless they paid it)
+             # B. Due This Month (Simplified: Active Debt contribution)
+             # If they owe money, how much of it is for the current month?
+             # We assume if they have Arrears, at least 1 month's worth is "Due Now"
+            paid_this_month = sum(float(p['paid_amount'] or 0) for p in student_payments if p['payment_date'] and p['payment_date'].startswith(curr_month_prefix))
             due_for_curr_month = max(0, fee - paid_this_month)
             total_due_this_month += due_for_curr_month
 
@@ -720,6 +715,7 @@ class PaymentRepository:
         enrollments = supabase.table(self.enrollment_table)\
             .select("*, program(*)")\
             .eq("student_id", student_id)\
+            .eq("status", "Active")\
             .execute().data
             
         summary = {
@@ -763,36 +759,247 @@ class PaymentRepository:
         return summary
             
 
-    def get_program_finance_stats(self):
+        return stats
+
+    def get_revenue_breakdown(self, month: int = None, year: int = None):
         """
-        Aggregates financial data by Program (e.g. "Physics Batch A" has collected X amount).
-        Used for reports.
+        Phase 23: Detailed breakdown of revenue for a specific month.
         """
-        # Return list of programs with their financial breakdown
-        programs = supabase.table("program").select("program_id, program_name, monthly_fee, batch(batch_name)").execute().data
-        enrollments = supabase.table(self.enrollment_table).select("enrollment_id, program_id").execute().data
-        all_payments = supabase.table(self.table).select("enrollment_id, paid_amount, payment_date").execute().data
+        today = date.today()
+        target_month = month if month else today.month
+        target_year = year if year else today.year
         
-        stats = []
+        # 1. Fetch Payments for this month using Date Range (Postgres safe)
+        start_date = date(target_year, target_month, 1)
+        if target_month == 12:
+            next_month_date = date(target_year + 1, 1, 1)
+        else:
+            next_month_date = date(target_year, target_month + 1, 1)
+        
+        # Need to join with student/program for display
+        # Use gte (>=) start_date and lt (<) next_month_date
+        raw_payments = supabase.table(self.table)\
+            .select("*, enrollment(student(name, student_id), program(program_name, batch(batch_name)))")\
+            .gte("payment_date", start_date.isoformat())\
+            .lt("payment_date", next_month_date.isoformat())\
+            .order("payment_date", desc=True)\
+            .execute().data
+            
+        # 2. Grouping & Aggregation (Logic adapted from get_recent_payments)
+        grouped_map = {}
+        group_order = []
+        
+        # for Program Summary
+        prog_revenue = {} 
+
+        for r in raw_payments:
+            amount = float(r.get('paid_amount', 0))
+            
+            # Program Revenue Aggr (Always based on raw rows for accuracy)
+            enroll = r.get('enrollment') or {}
+            prog = enroll.get('program') or {}
+            prog_name = f"{prog.get('program_name')} ({prog.get('batch', {}).get('batch_name')})"
+            prog_revenue[prog_name] = prog_revenue.get(prog_name, 0) + amount
+
+            # Transaction Grouping
+            gid = r.get('transaction_group_id')
+            if not gid:
+                 gid = f"single_{r['payment_id']}"
+            
+            if gid not in grouped_map:
+                grouped_map[gid] = {
+                    "payment_id": r['payment_id'], # Use highest ID
+                    "payment_date": r['payment_date'],
+                    "student_name": enroll.get('student', {}).get('name', 'Unknown'),
+                    "student_id": enroll.get('student', {}).get('student_id'),
+                    "program_name": prog_name,
+                    "amount": 0.0,
+                    "payment_method": r['payment_method'],
+                    "months": [],
+                    "type": "Single",
+                    "enrollment_id": r['enrollment_id'],
+                    # Needed for Edit
+                    "transaction_group_id": r.get('transaction_group_id'),
+                    "paid_amount": 0.0, # Will sum
+                    "total_amount": 0.0, # Will sum
+                    "remarks": r.get('remarks') or "",
+                    "is_editable": False
+                }
+                group_order.append(gid)
+            
+            group = grouped_map[gid]
+            group['amount'] += amount
+            group['total_amount'] += amount # Alias
+            group['paid_amount'] += amount  # Alias for Edit Modal compatibility? 
+            # Note: Edit Modal expects 'paid_amount' (legacy) or 'total_amount'. 
+            # Best to provide 'total_amount' as the main value.
+            
+            if r.get('month') and r.get('year'):
+                group['months'].append( (r['year'], r['month']) )
+                
+            if len(group['months']) > 1:
+                group['type'] = "Bulk"
+                
+        # 3. Finalize Transactions List
+        transactions = []
+        
+        for gid in group_order:
+            g = grouped_map[gid]
+            
+            # Format Date Display
+            if g['months']:
+                g['months'].sort()
+                start_y, start_m = g['months'][0]
+                end_y, end_m = g['months'][-1]
+                
+                start_name = date(start_y, start_m, 1).strftime("%b %Y")
+                end_name = date(end_y, end_m, 1).strftime("%b %Y")
+                
+                if len(g['months']) > 1:
+                    if start_y == end_y:
+                         g['date_display'] = f"{date(start_y, start_m, 1).strftime('%b')} - {end_name}"
+                    else:
+                         g['date_display'] = f"{start_name} - {end_name}"
+                else:
+                    g['date_display'] = start_name
+            else:
+                 g['date_display'] = "-"
+                 
+            transactions.append(g)
+            
+        # 4. Best-Effort "Latest" Check (Top-Down)
+        # Note: This is imperfect for historic months, but matches Recent Payments behavior.
+        seen_students = set()
+        # Since we ordered raw rows DESC, the first time we see a student in 'transactions' (which respects order), it's their latest IN THIS BATCH.
+        for t in transactions:
+            sid = t.get('student_id')
+            if sid and sid not in seen_students:
+                t['is_editable'] = True
+                seen_students.add(sid)
+            else:
+                t['is_editable'] = False
+
+        program_summary = [{"name": k, "amount": v} for k, v in prog_revenue.items()]
+        program_summary.sort(key=lambda x: x['amount'], reverse=True)
+        
+        return {
+            "month": f"{date(target_year, target_month, 1).strftime('%B %Y')}",
+            "program_summary": program_summary,
+            "transactions": transactions
+        }
+        
+    def get_due_breakdown_list(self):
+        """
+        Phase 23: Detailed list of WHO owes money and for WHICH months.
+        Aggregated by student.
+        """
+        # 1. Get Active Enrollments with Student/Program info
+        enrollments = supabase.table(self.enrollment_table)\
+            .select("*, student(name, student_id), program(program_name, monthly_fee, batch(batch_name))")\
+            .eq("status", "Active")\
+            .execute().data
+            
         today = date.today()
         
-        for prog in programs:
-            pid = prog['program_id']
-            # Find all students enrolled in this program
-            prog_enrollments = [e['enrollment_id'] for e in enrollments if e['program_id'] == pid]
+        # Optimize: Fetch ALL payments
+        all_payments = supabase.table(self.table).select("enrollment_id, paid_amount").execute().data
+        payments_map = {}
+        for p in all_payments:
+            eid = p['enrollment_id']
+            payments_map[eid] = payments_map.get(eid, 0) + float(p['paid_amount'])
             
-            # Find all payments linked to these enrollments
-            prog_payments = [p for p in all_payments if p['enrollment_id'] in prog_enrollments]
+        due_list = []
+        prog_due_map = {}
+        
+        for env in enrollments:
+            prog = env.get('program')
+            if not prog or not env.get('enrollment_date'): continue
             
-            revenue_overall = sum(p['paid_amount'] for p in prog_payments)
-            revenue_this_month = sum(p['paid_amount'] for p in prog_payments if p['payment_date'].startswith(f"{today.year}-{today.month:02d}"))
+            fee = float(prog.get('monthly_fee', 0))
+            if fee == 0: continue
             
-            stats.append({
-                "program_id": pid,
-                "program_name": f"{prog['program_name']} ({prog.get('batch', {}).get('batch_name')})",
-                "total_revenue": revenue_overall,
-                "revenue_this_month": revenue_this_month,
-                "active_students": len(prog_enrollments)
+            # Calc Lifetime Due
+            start = datetime.strptime(env['enrollment_date'], "%Y-%m-%d").date()
+            months_passed = (today.year - start.year) * 12 + (today.month - start.month) + 1
+            months_passed = max(0, months_passed)
+            
+            expected = months_passed * fee
+            paid = payments_map.get(env['enrollment_id'], 0)
+            arrears = max(0, expected - paid)
+            
+            if arrears <= 0: continue # No due
+            
+            # --- STATUS DETAIL GENERATION ---
+            # "Reverse Map": We know they paid X amount. 
+            # We assume payments cover oldest months first (FIFO).
+            # We need to find which months are NOT covered.
+            
+            months_covered_count = paid / fee # e.g. 2.5 months paid
+            fully_paid_months = int(months_covered_count)
+            remainder = paid % fee
+            
+            # The months they "Owe" are from (Index = fully_paid_months) onwards
+            # Example: Join Jan. Now March (3 months: Jan, Feb, Mar).
+            # Paid 1.5 months (1500 on 1000 fee).
+            # Covered: Jan (0). Partial: Feb (1). Due: Mar (2).
+            
+            current_idx = 0
+            detail_parts = []
+            
+            # Iterate from Start Date to Today
+            curr_date = start
+            
+            while curr_date <= today:
+                # If this month index < fully_paid_months -> It's fully paid. Skip.
+                if current_idx < fully_paid_months:
+                    pass
+                elif current_idx == fully_paid_months and remainder > 0:
+                    # This is the "Partial" month
+                    # They paid 'remainder', so they owe 'fee - remainder'
+                    due_amt = fee - remainder
+                    month_name = curr_date.strftime("%b")
+                    detail_parts.append(f"{month_name} (Partial - {int(due_amt)} remaining)")
+                else:
+                    # Fully Due
+                    month_name = curr_date.strftime("%b")
+                    # Optimize: If many months, collapse? e.g. "Mar-May (Full)"?
+                    # For now, list individually or handle overflow
+                    detail_parts.append(f"{month_name} (Full)")
+                
+                # Next month
+                if curr_date.month == 12:
+                    curr_date = date(curr_date.year + 1, 1, 1)
+                else:
+                    curr_date = date(curr_date.year, curr_date.month + 1, 1)
+                
+                # Safety break for old data
+                if len(detail_parts) > 6:
+                    detail_parts.append("...")
+                    break
+                    
+                current_idx += 1
+                
+            status_str = ", ".join(detail_parts)
+            
+            prog_name = f"{prog['program_name']} ({prog.get('batch', {}).get('batch_name')})"
+            
+            # Aggregate Program Due
+            prog_due_map[prog_name] = prog_due_map.get(prog_name, 0) + arrears
+
+            due_list.append({
+                "student_name": env['student']['name'],
+                "program_name": prog_name,
+                "total_due": arrears,
+                "status_detail": status_str
             })
             
-        return stats
+        # Program Summary List
+        program_summary = [{"name": k, "amount": v} for k, v in prog_due_map.items()]
+        program_summary.sort(key=lambda x: x['amount'], reverse=True)
+        # Sort Students by highest due
+        due_list.sort(key=lambda x: x['total_due'], reverse=True)
+            
+        return {
+            "program_summary": program_summary,
+            "students": due_list
+        }

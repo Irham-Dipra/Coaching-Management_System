@@ -11,11 +11,17 @@ class StudentRepository:
     def get_all_students(self):
         # Fetch students with Batch info and Enrollment (Program) info
         response = supabase.table(self.table)\
-            .select("*, batch(batch_name), enrollment(program_id, roll_no, program(program_name))")\
+            .select("*, batch(batch_name), enrollment(program_id, roll_no, status, program(program_name))")\
             .execute()
         
-        # Return only the 'data' part (ignoring status codes, etc.)
-        return response.data
+        # Phase 21: Filter out 'Withdrawn' enrollments from the list
+        # We process this in Python to keep the Student row even if they have no active enrollments
+        data = response.data
+        for student in data:
+            if 'enrollment' in student:
+                student['enrollment'] = [e for e in student['enrollment'] if e.get('status') == 'Active']
+                
+        return data
 
     def enroll_new_student(self, student_data: StudentCreate):
         # Convert Pydantic object to a dictionary
@@ -38,7 +44,17 @@ class StudentRepository:
             .select("*, batch(*), enrollment(*, program(*))")\
             .eq("student_id", student_id)\
             .execute()
-        return response.data[0] if response.data else None
+            
+        if not response.data:
+            return None
+            
+        student = response.data[0]
+        
+        # Phase 21: Filter out 'Withdrawn' enrollments
+        if 'enrollment' in student:
+             student['enrollment'] = [e for e in student['enrollment'] if e.get('status') == 'Active']
+             
+        return student
 
     def update_student(self, student_id: int, updates: dict):
         # 1. Clean the payload

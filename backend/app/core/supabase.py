@@ -12,11 +12,18 @@ from dotenv import load_dotenv
 load_dotenv()
 #This line loads the environment variables from the .env file.
 # It's a common practice to load environment variables at the start of a program.
+from supabase import create_client, Client, ClientOptions
+
 url: str = os.environ.get("SUPABASE_URL")
 key: str = os.environ.get("SUPABASE_KEY")
-#This line creates a Supabase client object using the URL and key.
-# It's a common practice to create a client object at the start of a program.
-supabase: Client = create_client(url, key)
+
+# Increase timeout to prevent disconnects on large queries
+# timeout is in seconds
+supabase: Client = create_client(
+    url, 
+    key,
+    options=ClientOptions(postgrest_client_timeout=60)
+)
 
 #1. Why use os.environ if we have a 
 #.env

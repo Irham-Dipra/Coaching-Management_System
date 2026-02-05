@@ -14,6 +14,7 @@ class EnrollmentResponse(EnrollmentBase):
     enrollment_id: int
     # We will nest the full program details here so the frontend can show "Physics 2024"
     program: Optional[ProgramResponse] = None
+    status: Optional[str] = "Active"
 
     class Config:
         from_attributes = True

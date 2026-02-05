@@ -5,10 +5,14 @@ import { StudentRepository } from '../repositories/StudentRepository';
 import { ProgramRepository } from '../repositories/ProgramRepository'; // Keep for now if needed, but we rely on student enrollments
 import { DollarSign, Search, Plus, FileText, Download, X, Calendar, User, ArrowUpDown, Edit, Filter } from 'lucide-react';
 import jsPDF from 'jspdf';
+import FinanceBreakdownModal from '../components/FinanceBreakdownModal';
+import { generatePaymentSlip } from '../utils/pdfGenerator';
 
 const Finance: React.FC = () => {
+
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editPayment, setEditPayment] = useState<any>(null); // For edit modal
+    const [breakdownType, setBreakdownType] = useState<'revenue' | 'due' | null>(null);
     const [sortDesc, setSortDesc] = useState(true); // Default Descending
     const queryClient = useQueryClient();
 
@@ -70,61 +74,7 @@ const Finance: React.FC = () => {
         });
     }, [recentPayments, searchTerm, rollSearch, batchFilter, classFilter, programFilter]);
 
-    // --- PDF SLIP GENERATOR ---
-    const generateSlip = (payment: any) => {
-        const doc = new jsPDF({
-            orientation: 'landscape',
-            unit: 'mm',
-            format: [210, 99]
-        });
 
-        // Watermark / Header
-        doc.setFontSize(22);
-        doc.setTextColor(40, 40, 40);
-        doc.text("Coaching Centre Name", 10, 15);
-        doc.setFontSize(10);
-        doc.text("Address Line 1, City", 10, 20);
-
-        doc.setFontSize(16);
-        doc.text("MONEY RECEIPT", 160, 15, { align: 'right' });
-        doc.setLineWidth(0.5);
-        doc.line(10, 25, 200, 25);
-
-        // Details
-        doc.setFontSize(12);
-        doc.text(`Receipt No: #${payment.payment_id}`, 10, 35);
-        doc.text(`Date: ${payment.payment_date}`, 160, 35, { align: 'right' });
-
-        doc.text(`Received with thanks from:`, 10, 45);
-        doc.setFont('helvetica', 'bold');
-        doc.text(`${payment.student_name} (Roll: ${payment.roll_no || '-'})`, 65, 45);
-
-        doc.setFont('helvetica', 'normal');
-        doc.text(`Program:`, 10, 52);
-        doc.text(`${payment.program_name}`, 65, 52);
-
-        // Payment Info
-        if (payment.month && payment.year) {
-            doc.text(`For: ${new Date(0, payment.month - 1).toLocaleString('default', { month: 'long' })} ${payment.year}`, 10, 59);
-        }
-        doc.text(`Method: ${payment.payment_method || 'Cash'}`, 160, 52, { align: 'right' });
-
-        // Amount Box
-        doc.rect(10, 65, 190, 20);
-        doc.setFontSize(14);
-        doc.text("Amount Paid:", 15, 78);
-        doc.setFont('helvetica', 'bold');
-        doc.text(`BDT ${payment.paid_amount}/-`, 50, 78);
-
-        // Remarks
-        if (payment.remarks) {
-            doc.setFontSize(10);
-            doc.setFont('helvetica', 'italic');
-            doc.text(`Remarks: ${payment.remarks}`, 10, 92);
-        }
-
-        doc.save(`Receipt_${payment.payment_id}.pdf`);
-    };
 
     return (
         <div className="space-y-6">
@@ -134,16 +84,25 @@ const Finance: React.FC = () => {
 
             {/* STATS */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-                    <p className="text-gray-500 text-xs font-bold uppercase tracking-wider">Revenue (This Month)</p>
+                <div
+                    onClick={() => setBreakdownType('revenue')}
+                    className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 cursor-pointer hover:shadow-md transition-shadow group"
+                >
+                    <p className="text-gray-500 text-xs font-bold uppercase tracking-wider group-hover:text-green-600 transition-colors">Revenue (This Month)</p>
                     <p className="text-3xl font-bold text-green-600 mt-2">৳{stats?.revenue_this_month?.toLocaleString() || 0}</p>
                 </div>
-                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-                    <p className="text-gray-500 text-xs font-bold uppercase tracking-wider">Due (This Month)</p>
+                <div
+                    onClick={() => setBreakdownType('due')}
+                    className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 cursor-pointer hover:shadow-md transition-shadow group"
+                >
+                    <p className="text-gray-500 text-xs font-bold uppercase tracking-wider group-hover:text-orange-600 transition-colors">Due (This Month)</p>
                     <p className="text-3xl font-bold text-orange-600 mt-2">৳{stats?.due_this_month?.toLocaleString() || 0}</p>
                 </div>
-                <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-                    <p className="text-gray-500 text-xs font-bold uppercase tracking-wider">Total Due (Arrears)</p>
+                <div
+                    onClick={() => setBreakdownType('due')}
+                    className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 cursor-pointer hover:shadow-md transition-shadow group"
+                >
+                    <p className="text-gray-500 text-xs font-bold uppercase tracking-wider group-hover:text-red-600 transition-colors">Total Due (Arrears)</p>
                     <p className="text-3xl font-bold text-red-600 mt-2">৳{stats?.due_total?.toLocaleString() || 0}</p>
                 </div>
             </div>
@@ -282,7 +241,7 @@ const Finance: React.FC = () => {
                                         )}
 
                                         <button
-                                            onClick={() => generateSlip(p)}
+                                            onClick={() => generatePaymentSlip(p)}
                                             className="text-blue-600 hover:text-blue-800 p-2 rounded-full hover:bg-blue-50 transition-colors"
                                             title="Download Receipt"
                                         >
@@ -301,6 +260,7 @@ const Finance: React.FC = () => {
 
             <AddPaymentModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
             <EditPaymentModal isOpen={!!editPayment} onClose={() => setEditPayment(null)} payment={editPayment} />
+            <FinanceBreakdownModal isOpen={!!breakdownType} onClose={() => setBreakdownType(null)} type={breakdownType} onEdit={setEditPayment} />
         </div>
     );
 };
@@ -894,6 +854,7 @@ const AddPaymentModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ i
                                             }}
                                             placeholder={`Due: ${paymentStatus?.fum?.due}`}
                                             max={paymentStatus?.fum?.due}
+                                            onWheel={(e) => (e.target as HTMLElement).blur()}
                                         />
                                         <p className="text-xs text-gray-400 mt-1">
                                             Enter amount to pay. Cannot exceed remaining due for this month.
@@ -937,6 +898,7 @@ const AddPaymentModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ i
                                                         if (val < bulkStart.year) return; // Prevent going back
                                                         setBulkEndYear(val);
                                                     }}
+                                                    onWheel={(e) => (e.target as HTMLElement).blur()}
                                                 />
                                             </div>
                                         </div>

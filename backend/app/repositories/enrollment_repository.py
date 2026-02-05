@@ -12,6 +12,7 @@ class EnrollmentRepository:
         response = supabase.table(self.table)\
             .select("*, program(*, batch(*))")\
             .eq("student_id", student_id)\
+            .eq("status", "Active")\
             .execute()
         return response.data
 
@@ -59,5 +60,25 @@ class EnrollmentRepository:
             raise e
 
     def delete_enrollment(self, enrollment_id: int):
-        response = supabase.table(self.table).delete().eq("enrollment_id", enrollment_id).execute()
+        # Phase 20: Smart Delete to preserve financial history
+        # 1. Check for existing payments linked to this enrollment
+        payments = supabase.table("payment")\
+            .select("payment_id", count="exact")\
+            .eq("enrollment_id", enrollment_id)\
+            .execute()
+            
+        has_payments = payments.count and payments.count > 0
+        
+        if has_payments:
+            # Soft Delete: Mark as 'Withdrawn' so they vanish from active lists but history persists
+            print(f"Soft deleting enrollment {enrollment_id} (Has {payments.count} payments)")
+            response = supabase.table(self.table)\
+                .update({"status": "Withdrawn"})\
+                .eq("enrollment_id", enrollment_id)\
+                .execute()
+        else:
+            # Hard Delete: Safe to remove
+            print(f"Hard deleting enrollment {enrollment_id} (No payments)")
+            response = supabase.table(self.table).delete().eq("enrollment_id", enrollment_id).execute()
+            
         return response.data

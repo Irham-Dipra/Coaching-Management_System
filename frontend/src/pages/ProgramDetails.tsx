@@ -8,7 +8,8 @@ import CreateExamModal from '../components/CreateExamModal';
 import { AttendanceRepository } from '../repositories/AttendanceRepository';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { ScheduleRepository } from '../repositories/ScheduleRepository';
-import { Plus, X } from 'lucide-react';
+import { StudentRepository } from '../repositories/StudentRepository'; // Added
+import { Plus, X, Trash2 } from 'lucide-react';
 
 const ProgramDetails: React.FC = () => {
     const { id } = useParams<{ id: string }>();
@@ -43,6 +44,18 @@ const ProgramDetails: React.FC = () => {
         onSuccess: () => {
             alert("Attendance Saved!");
             queryClient.invalidateQueries({ queryKey: ['attendance', id] });
+        }
+    });
+
+    // Added Delete Mutation
+    const deleteEnrollmentMutation = useMutation({
+        mutationFn: StudentRepository.deleteEnrollment,
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['program', id] });
+            // Also invalidate student list if needed
+        },
+        onError: (err) => {
+            alert("Failed to remove student");
         }
     });
 
@@ -197,24 +210,38 @@ const ProgramDetails: React.FC = () => {
                                         <th className="p-3 border-b">Roll</th>
                                         <th className="p-3 border-b">Contact</th>
                                         <th className="p-3 border-b">Joined Date</th>
-                                        <th className="p-3 border-b">Status</th>
+                                        <th className="p-3 border-b w-16"></th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {program.enrollment?.map((enroll: any) => (
-                                        <tr key={enroll.enrollment_id} className="hover:bg-gray-50 border-b border-gray-50">
-                                            <td className="p-3 text-gray-500 text-sm">#{enroll.student.student_id}</td>
-                                            <td className="p-3 font-medium text-gray-900">{enroll.student.name}</td>
-                                            <td className="p-3 text-gray-600 text-sm font-mono">{enroll.roll_no}</td>
-                                            <td className="p-3 text-gray-600 text-sm">{enroll.student.contact || '-'}</td>
-                                            <td className="p-3 text-gray-600 text-sm">{enroll.enrollment_date || '-'}</td>
-                                            <td className="p-3">
-                                                <span className="bg-green-100 text-green-700 px-2 py-1 rounded text-xs font-bold uppercase">
-                                                    {enroll.status}
-                                                </span>
-                                            </td>
-                                        </tr>
-                                    ))}
+                                    {program.enrollment
+                                        ?.filter((enroll: any) => enroll.status !== 'Withdrawn') // Filter out soft-deleted
+                                        .map((enroll: any) => (
+                                            <tr key={enroll.enrollment_id} className="hover:bg-gray-50 border-b border-gray-50 group">
+                                                <td className="p-3 text-gray-500 text-sm">#{enroll.student.student_id}</td>
+                                                <td className="p-3 font-medium text-gray-900">
+                                                    <Link to={`/students/${enroll.student.student_id}`} className="hover:text-blue-600 hover:underline">
+                                                        {enroll.student.name}
+                                                    </Link>
+                                                </td>
+                                                <td className="p-3 text-gray-600 text-sm font-mono">{enroll.roll_no}</td>
+                                                <td className="p-3 text-gray-600 text-sm">{enroll.student.contact || '-'}</td>
+                                                <td className="p-3 text-gray-600 text-sm">{enroll.enrollment_date || '-'}</td>
+                                                <td className="p-3">
+                                                    <button
+                                                        onClick={() => {
+                                                            if (confirm(`Are you sure you want to remove ${enroll.student.name} from this program?`)) {
+                                                                deleteEnrollmentMutation.mutate(enroll.enrollment_id);
+                                                            }
+                                                        }}
+                                                        className="text-gray-300 hover:text-red-600 p-2 rounded-full transition-all opacity-0 group-hover:opacity-100"
+                                                        title="Remove Student"
+                                                    >
+                                                        <Trash2 size={18} />
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))}
                                     {totalEnrolled === 0 && (
                                         <tr>
                                             <td colSpan={6} className="text-center py-8 text-gray-400">

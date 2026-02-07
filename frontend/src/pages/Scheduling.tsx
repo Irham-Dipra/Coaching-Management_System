@@ -130,6 +130,16 @@ const RoomManager: React.FC<{ rooms: Room[] }> = ({ rooms }) => {
 
 // --- SUB-COMPONENT: MASTER SCHEDULE ---
 
+// Helper for 12-hour format
+const formatTime = (timeStr: string) => {
+    if (!timeStr) return '';
+    const [hours, minutes] = timeStr.split(':');
+    const h = parseInt(hours, 10);
+    const ampm = h >= 12 ? 'PM' : 'AM';
+    const h12 = h % 12 || 12;
+    return `${h12}:${minutes} ${ampm}`;
+};
+
 const MasterSchedule: React.FC<{ rooms: Room[], windows: ScheduleWindow[] }> = ({ rooms, windows }) => {
     const queryClient = useQueryClient();
     const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
@@ -246,7 +256,7 @@ const MasterSchedule: React.FC<{ rooms: Room[], windows: ScheduleWindow[] }> = (
                                                             <div className="flex items-center gap-2 mb-1">
                                                                 <Clock size={16} className="text-blue-500" />
                                                                 <span className="font-mono font-bold text-lg text-gray-900">
-                                                                    {w.start_time.substring(0, 5)} - {w.end_time.substring(0, 5)}
+                                                                    {formatTime(w.start_time)} - {formatTime(w.end_time)}
                                                                 </span>
                                                                 {w.window_name && (
                                                                     <span className="ml-2 px-2 py-0.5 bg-yellow-100 text-yellow-800 text-xs font-bold rounded border border-yellow-200">
@@ -351,7 +361,7 @@ const MasterSchedule: React.FC<{ rooms: Room[], windows: ScheduleWindow[] }> = (
                                                             <div className="font-bold text-xs text-blue-900 truncate">
                                                                 {slot.window_name ? `${slot.window_name} ` : ''}
                                                                 <span className="font-mono opacity-75">
-                                                                    ({slot.start_time.substring(0, 5)} - {slot.end_time.substring(0, 5)})
+                                                                    ({formatTime(slot.start_time)} - {formatTime(slot.end_time)})
                                                                 </span>
                                                             </div>
                                                             <div className="text-[10px] text-blue-700 truncate">

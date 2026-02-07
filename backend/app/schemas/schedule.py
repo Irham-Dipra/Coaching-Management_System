@@ -22,6 +22,7 @@ class ScheduleWindowBase(BaseModel):
     day_of_week: str  # 'Saturday', 'Sunday', etc.
     start_time: time
     end_time: time
+    window_name: Optional[str] = None
 
     @validator('end_time')
     def end_time_must_be_after_start_time(cls, v, values):
@@ -45,7 +46,11 @@ class RoomObj(BaseModel):
 class ScheduleWindowResponse(ScheduleWindowBase):
     window_id: int
     room: Optional[RoomObj] = None
+    # Legacy nested structure
     program_schedule: Optional[List[ProgramScheduleObj]] = None
+    # New flattened structure from View
+    programs: Optional[List[ProgramShortObj]] = None 
+    student_count: Optional[int] = 0
 
     class Config:
         from_attributes = True

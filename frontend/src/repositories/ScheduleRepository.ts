@@ -14,16 +14,25 @@ export interface ScheduleWindow {
     window_id: number;
     room_id: number;
     room_name?: string;
+    room?: { room_name: string }; // Handle nested or flat
     day_of_week: string;
     start_time: string; // HH:MM:SS
     end_time: string;
-    // For joined data
+    window_name?: string;
+
+    // For joined data (Legacy)
     program_schedule?: {
         program: {
             program_id: number;
             program_name: string;
         }
     }[];
+    // New Flat Structure from View
+    programs?: {
+        program_id: number;
+        program_name: string;
+    }[];
+    student_count?: number;
 }
 
 export const ScheduleRepository = {

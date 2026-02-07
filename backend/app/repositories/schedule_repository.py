@@ -23,12 +23,38 @@ class ScheduleRepository:
     # --- SCHEDULE WINDOWS ---
     @staticmethod
     def get_all_windows():
-        # Join with room AND program_schedule -> program to get assignments
-        # Supabase syntax: select(*, room(*), program_schedule(program(*)))
-        res = supabase.table('schedule_window')\
-            .select('*, room(room_name), program_schedule(program(program_id, program_name))')\
-            .execute()
-        return res.data
+        # Query the VIEW which has pre-calculated counts and flattened programs
+        try:
+            res = supabase.table('master_schedule_view').select('*').execute()
+            # The view returns 'programs' as a JSONB list. Pydantic should handle it if names match.
+            # room_name is top level in view, but schema expects nested 'room' object?
+            # Schema: room: Optional[RoomObj]
+            # View: room_name
+            # We need to map it or update schema.
+            # Let's map it manually to match Schema structure for frontend compatibility (mostly).
+            # OR Update Schema to accept flat 'room_name'.
+            # I updated Schema to have 'room' as Optional[RoomObj].
+            # Let's map the View data to the Schema structure.
+            data = []
+            for row in res.data:
+                # Reconstruct nested objects if needed or just pass as is if schema allows.
+                # 'room' object needed
+                if row.get('room_name'):
+                    row['room'] = {'room_name': row['room_name']}
+                
+                # 'programs' is already a list of {program_id, program_name}
+                # row['programs'] = row['programs']
+                
+                # Ensure time objects for Pydantic? Supabase returns strings. Pydantic parses strings.
+                data.append(row)
+            return data
+        except Exception:
+            # Fallback if view doesn't exist yet (Migration safety)
+            # Old logic
+            res = supabase.table('schedule_window')\
+                .select('*, room(room_name), program_schedule(program(program_id, program_name))')\
+                .execute()
+            return res.data
 
     @staticmethod
     def create_schedule_window(window: ScheduleWindowCreate):
@@ -47,12 +73,13 @@ class ScheduleRepository:
             exist_end = datetime.strptime(w['end_time'], "%H:%M:%S").time()
             
             if new_start < exist_end and new_end > exist_start:
-                raise ValueError(f"Time overlapping with existing window in this Room: {w['start_time']} - {w['end_time']}")
+                raise ValueError(f"Time overlapping with existing window: {w['start_time']} - {w['end_time']}")
 
         # 2. Insert Window
-        payload = window.dict(exclude={'program_ids'}) # Exclude field not in DB table
+        payload = window.dict(exclude={'program_ids'}) 
         payload['start_time'] = str(window.start_time)
         payload['end_time'] = str(window.end_time)
+        # payload includes 'window_name' automatically from Base model
         
         res = supabase.table('schedule_window').insert(payload).execute()
         if not res.data: return None
@@ -61,8 +88,6 @@ class ScheduleRepository:
         
         # 3. Assign Programs (if any)
         if window.program_ids:
-            # Note: We should technically check for program conflicts (Student/Teacher double booking) here too.
-            # For now, let's just insert.
             assign_payload = [{"program_id": pid, "window_id": new_window['window_id']} for pid in window.program_ids]
             supabase.table('program_schedule').insert(assign_payload).execute()
             

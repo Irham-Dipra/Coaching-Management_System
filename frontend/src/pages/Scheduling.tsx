@@ -144,7 +144,8 @@ const MasterSchedule: React.FC<{ rooms: Room[], windows: ScheduleWindow[] }> = (
         day_of_week: 'Saturday',
         start_time: '',
         end_time: '',
-        program_ids: [] as number[] // Multi-select
+        window_name: '', // New Field
+        program_ids: [] as number[]
     });
 
     const createMutation = useMutation({
@@ -155,7 +156,7 @@ const MasterSchedule: React.FC<{ rooms: Room[], windows: ScheduleWindow[] }> = (
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['windows'] });
             setIsCreateOpen(false);
-            setFormData({ room_id: '', day_of_week: 'Saturday', start_time: '', end_time: '', program_ids: [] });
+            setFormData({ room_id: '', day_of_week: 'Saturday', start_time: '', end_time: '', window_name: '', program_ids: [] });
             alert("Time Slot Created!");
         },
         onError: (err: any) => alert(err.message)
@@ -184,8 +185,7 @@ const MasterSchedule: React.FC<{ rooms: Room[], windows: ScheduleWindow[] }> = (
     };
 
     // --- GRID VIEW HELPERS ---
-    const timeSlots = Array.from({ length: 13 }, (_, i) => i + 8); // 8 AM to 8 PM (20)
-    // Let's use a separate state for Grid View Day Filter
+    const timeSlots = Array.from({ length: 13 }, (_, i) => i + 8); // 8 AM to 8 PM
     const [gridDay, setGridDay] = useState('Saturday');
 
     return (
@@ -220,54 +220,78 @@ const MasterSchedule: React.FC<{ rooms: Room[], windows: ScheduleWindow[] }> = (
                         const dayWindows = windows?.filter((w: any) => w.day_of_week === day)
                             .sort((a: any, b: any) => a.start_time.localeCompare(b.start_time));
 
-                        if (!dayWindows || dayWindows.length === 0) return null;
+                        // We show the day header even if empty? User said "If a specific day has no scheduled windows, show a 'No classes scheduled' placeholder."
+                        // Current map returns null if empty. Let's change this.
 
                         return (
-                            <div key={day} className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm">
+                            <div key={day} className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm flex flex-col h-full">
                                 <div className="bg-gray-50 px-4 py-3 border-b flex justify-between items-center">
                                     <h3 className="font-bold text-gray-800">{day}</h3>
-                                    <span className="text-xs font-semibold bg-gray-200 text-gray-600 px-2 py-1 rounded-full">{dayWindows.length} Slots</span>
+                                    <span className="text-xs font-semibold bg-gray-200 text-gray-600 px-2 py-1 rounded-full">
+                                        {dayWindows?.length || 0} Slots
+                                    </span>
                                 </div>
-                                <div className="divide-y divide-gray-100">
-                                    {dayWindows.map((w: any) => (
-                                        <div key={w.window_id} className="relative group">
-                                            <Link to={`/admin/scheduling/${w.window_id}`} className="block p-4 hover:bg-gray-50 flex justify-between items-start transition-colors">
-                                                <div>
-                                                    <div className="flex items-center gap-2 mb-1">
-                                                        <Clock size={16} className="text-blue-500" />
-                                                        <span className="font-mono font-bold text-lg text-gray-900">
-                                                            {w.start_time.substring(0, 5)} - {w.end_time.substring(0, 5)}
-                                                        </span>
-                                                    </div>
-                                                    <div className="flex flex-wrap items-center gap-2 text-sm text-gray-500">
-                                                        <span className="flex items-center gap-1 bg-blue-50 text-blue-700 px-2 py-0.5 rounded border border-blue-100">
-                                                            <MapPin size={12} /> {w.room?.room_name || 'No Room'}
-                                                        </span>
-                                                        {/* Assigned Programs */}
-                                                        {w.program_schedule?.map((ps: any) => (
-                                                            <span key={ps.program.program_id} className="bg-purple-100 text-purple-700 px-2 py-0.5 rounded text-xs border border-purple-200">
-                                                                {ps.program.program_name}
-                                                            </span>
-                                                        ))}
-                                                        {(!w.program_schedule || w.program_schedule.length === 0) && (
-                                                            <span className="text-xs italic text-orange-400 flex items-center gap-1">
-                                                                <AlertCircle size={10} /> Unassigned
-                                                            </span>
-                                                        )}
-                                                    </div>
+                                <div className="divide-y divide-gray-100 flex-1">
+                                    {(!dayWindows || dayWindows.length === 0) ? (
+                                        <div className="p-8 text-center text-gray-400 italic text-sm">No classes scheduled</div>
+                                    ) : (
+                                        dayWindows.map((w: any) => {
+                                            // Handling Data Structure Compatibility (View vs Join)
+                                            const displayPrograms = w.programs || w.program_schedule?.map((ps: any) => ps.program) || [];
+
+                                            return (
+                                                <div key={w.window_id} className="relative group">
+                                                    <Link to={`/admin/scheduling/${w.window_id}`} className="block p-4 hover:bg-gray-50 flex justify-between items-start transition-colors">
+                                                        <div className="flex-1">
+                                                            <div className="flex items-center gap-2 mb-1">
+                                                                <Clock size={16} className="text-blue-500" />
+                                                                <span className="font-mono font-bold text-lg text-gray-900">
+                                                                    {w.start_time.substring(0, 5)} - {w.end_time.substring(0, 5)}
+                                                                </span>
+                                                                {w.window_name && (
+                                                                    <span className="ml-2 px-2 py-0.5 bg-yellow-100 text-yellow-800 text-xs font-bold rounded border border-yellow-200">
+                                                                        {w.window_name}
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                            <div className="flex flex-wrap items-center gap-2 text-sm text-gray-500 mt-2">
+                                                                <span className="flex items-center gap-1 bg-blue-50 text-blue-700 px-2 py-0.5 rounded border border-blue-100">
+                                                                    <MapPin size={12} /> {w.room?.room_name || w.room_name || 'No Room'}
+                                                                </span>
+
+                                                                {/* Student Count Badge */}
+                                                                <span className="flex items-center gap-1 bg-green-50 text-green-700 px-2 py-0.5 rounded border border-green-200" title="Active Students Enrolled">
+                                                                    <span className="font-bold">{w.student_count || 0}</span> Students
+                                                                </span>
+
+                                                                {/* Assigned Programs */}
+                                                                {displayPrograms.map((p: any) => (
+                                                                    <span key={p.program_id} className="bg-purple-100 text-purple-700 px-2 py-0.5 rounded text-xs border border-purple-200">
+                                                                        {p.program_name}
+                                                                    </span>
+                                                                ))}
+
+                                                                {displayPrograms.length === 0 && (
+                                                                    <span className="text-xs italic text-orange-400 flex items-center gap-1">
+                                                                        <AlertCircle size={10} /> Unassigned
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    </Link>
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.preventDefault();
+                                                            if (confirm('Delete schedule window?')) deleteMutation.mutate(w.window_id);
+                                                        }}
+                                                        className="absolute top-4 right-4 text-gray-300 hover:text-red-500 hover:bg-red-50 p-2 rounded-full transition-colors z-10"
+                                                    >
+                                                        <Trash2 size={18} />
+                                                    </button>
                                                 </div>
-                                            </Link>
-                                            <button
-                                                onClick={(e) => {
-                                                    e.preventDefault(); // Prevent Link click
-                                                    if (confirm('Delete schedule window?')) deleteMutation.mutate(w.window_id);
-                                                }}
-                                                className="absolute top-4 right-4 text-gray-300 hover:text-red-500 hover:bg-red-50 p-2 rounded-full transition-colors z-10"
-                                            >
-                                                <Trash2 size={18} />
-                                            </button>
-                                        </div>
-                                    ))}
+                                            );
+                                        })
+                                    )}
                                 </div>
                             </div>
                         );
@@ -307,36 +331,38 @@ const MasterSchedule: React.FC<{ rooms: Room[], windows: ScheduleWindow[] }> = (
                                     <tr key={hour}>
                                         <th className="p-3 border bg-gray-50 text-xs font-mono text-gray-400">{timeLabel}</th>
                                         {rooms?.map((r: any) => {
-                                            // Find window matching this room, day, and starting hour
                                             const slot = windows?.find((w: any) =>
                                                 w.room_id === r.room_id &&
                                                 w.day_of_week === gridDay &&
                                                 w.start_time.startsWith(timeLabel)
                                             );
 
-                                            // Check overlaps if slot starts earlier? 
-                                            // Simple View: Only exact start matches. 
-                                            // Advanced: Check if hour falls within range.
-
                                             const occupied = windows?.find((w: any) => {
                                                 if (w.room_id !== r.room_id || w.day_of_week !== gridDay) return false;
                                                 const startH = parseInt(w.start_time.split(':')[0]);
                                                 const endH = parseInt(w.end_time.split(':')[0]);
-                                                // If window is 10:00 - 12:00, it occupies 10 and 11.
-                                                // Logic: hour >= startH && hour < endH
                                                 return hour >= startH && hour < endH;
                                             });
 
                                             return (
                                                 <td key={r.room_id} className={`border p-1 h-16 relative ${occupied ? 'bg-blue-50/50' : ''}`}>
                                                     {slot && (
-                                                        <div className="absolute inset-1 bg-blue-100 border-l-4 border-blue-500 rounded p-1 text-left overflow-hidden shadow-sm z-10">
-                                                            <div className="font-bold text-xs text-blue-900">
-                                                                {slot.start_time.substring(0, 5)} - {slot.end_time.substring(0, 5)}
+                                                        <div className="absolute inset-1 bg-blue-100 border-l-4 border-blue-500 rounded p-1 text-left overflow-hidden shadow-sm z-10 transition-all hover:z-20 hover:shadow-md">
+                                                            <div className="font-bold text-xs text-blue-900 truncate">
+                                                                {slot.window_name ? `${slot.window_name} ` : ''}
+                                                                <span className="font-mono opacity-75">
+                                                                    ({slot.start_time.substring(0, 5)} - {slot.end_time.substring(0, 5)})
+                                                                </span>
                                                             </div>
                                                             <div className="text-[10px] text-blue-700 truncate">
-                                                                {slot.program_schedule?.map((p: any) => p.program.program_name).join(', ') || 'Unassigned'}
+                                                                {/* Handle flat programs vs legacy */}
+                                                                {(slot.programs || slot.program_schedule?.map((p: any) => p.program))?.map((p: any) => p.program_name).join(', ') || 'Unassigned'}
                                                             </div>
+                                                            {slot.student_count !== undefined && (
+                                                                <div className="absolute bottom-1 right-1 text-[9px] bg-white/80 px-1 rounded text-blue-800 font-bold">
+                                                                    {slot.student_count} Students
+                                                                </div>
+                                                            )}
                                                         </div>
                                                     )}
                                                 </td>
@@ -359,6 +385,18 @@ const MasterSchedule: React.FC<{ rooms: Room[], windows: ScheduleWindow[] }> = (
                             <button onClick={() => setIsCreateOpen(false)} className="text-gray-400 hover:text-gray-600">&times;</button>
                         </div>
                         <form onSubmit={handleSubmit} className="p-6 space-y-4">
+                            {/* Window Name */}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Subject / Window Name <span className="text-gray-400 font-normal">(Optional)</span></label>
+                                <input
+                                    type="text"
+                                    className="w-full border rounded-lg px-3 py-2"
+                                    placeholder="e.g. Morning Assembly, Biology 101"
+                                    value={formData.window_name}
+                                    onChange={e => setFormData({ ...formData, window_name: e.target.value })}
+                                />
+                            </div>
+
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Room</label>
                                 <select

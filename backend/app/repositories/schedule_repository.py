@@ -57,6 +57,21 @@ class ScheduleRepository:
             return res.data
 
     @staticmethod
+    @staticmethod
+    def _parse_time(t):
+        from datetime import datetime
+        if isinstance(t, str):
+            # Try full format first
+            try:
+                return datetime.strptime(t, "%H:%M:%S").time()
+            except ValueError:
+                # Try short format
+                try:
+                    return datetime.strptime(t, "%H:%M").time()
+                except ValueError:
+                     raise ValueError(f"Invalid time format: {t}. Expected HH:MM:SS or HH:MM")
+        return t
+
     def create_schedule_window(window: ScheduleWindowCreate):
         # 1. Conflict Validation (Same Room Overlap)
         existing = supabase.table('schedule_window').select('*')\
@@ -64,13 +79,15 @@ class ScheduleRepository:
             .eq('day_of_week', window.day_of_week)\
             .execute()
         
-        new_start = window.start_time
-        new_end = window.end_time
+        new_start = ScheduleRepository._parse_time(window.start_time)
+        new_end = ScheduleRepository._parse_time(window.end_time)
+        
+        if new_start >= new_end:
+            raise ValueError("Invalid Time Range: Start time must be before End time.")
         
         for w in existing.data:
-            from datetime import datetime
-            exist_start = datetime.strptime(w['start_time'], "%H:%M:%S").time()
-            exist_end = datetime.strptime(w['end_time'], "%H:%M:%S").time()
+            exist_start = ScheduleRepository._parse_time(w['start_time'])
+            exist_end = ScheduleRepository._parse_time(w['end_time'])
             
             if new_start < exist_end and new_end > exist_start:
                 raise ValueError(f"Room Conflict: Room is already booked from {w['start_time']} to {w['end_time']} on {window.day_of_week}.")
@@ -87,8 +104,8 @@ class ScheduleRepository:
                 
                 for row in prog_conflicts.data:
                     w = row['schedule_window']
-                    exist_start = datetime.strptime(w['start_time'], "%H:%M:%S").time()
-                    exist_end = datetime.strptime(w['end_time'], "%H:%M:%S").time()
+                    exist_start = ScheduleRepository._parse_time(w['start_time'])
+                    exist_end = ScheduleRepository._parse_time(w['end_time'])
                     
                     if new_start < exist_end and new_end > exist_start:
                         prog_name = row['program']['program_name'] if row.get('program') else f"Program {row['program_id']}"
@@ -156,12 +173,12 @@ class ScheduleRepository:
         windows = ScheduleRepository.get_program_schedule(program_id)
         day_windows = [w for w in windows if w['day_of_week'] == day]
         
-        new_start = datetime.strptime(start_time, "%H:%M:%S").time() if isinstance(start_time, str) else start_time
-        new_end = datetime.strptime(end_time, "%H:%M:%S").time() if isinstance(end_time, str) else end_time
+        new_start = ScheduleRepository._parse_time(start_time)
+        new_end = ScheduleRepository._parse_time(end_time)
         
         for w in day_windows:
-            exist_start = datetime.strptime(w['start_time'], "%H:%M:%S").time()
-            exist_end = datetime.strptime(w['end_time'], "%H:%M:%S").time()
+            exist_start = ScheduleRepository._parse_time(w['start_time'])
+            exist_end = ScheduleRepository._parse_time(w['end_time'])
             
             if new_start < exist_end and new_end > exist_start:
                 return True, f"Conflict with existing class: {w['start_time']} - {w['end_time']}"
@@ -222,13 +239,15 @@ class ScheduleRepository:
                 .neq('window_id', window_id)\
                 .execute()
             
-            from datetime import datetime
-            new_start_t = datetime.strptime(start, "%H:%M:%S").time() if isinstance(start, str) else start
-            new_end_t = datetime.strptime(end, "%H:%M:%S").time() if isinstance(end, str) else end
+            new_start_t = ScheduleRepository._parse_time(start)
+            new_end_t = ScheduleRepository._parse_time(end)
+            
+            if new_start_t >= new_end_t:
+                raise ValueError("Invalid Time Range: Start time must be before End time.")
 
             for w in existing.data:
-                exist_start = datetime.strptime(w['start_time'], "%H:%M:%S").time()
-                exist_end = datetime.strptime(w['end_time'], "%H:%M:%S").time()
+                exist_start = ScheduleRepository._parse_time(w['start_time'])
+                exist_end = ScheduleRepository._parse_time(w['end_time'])
                 if new_start_t < exist_end and new_end_t > exist_start:
                     raise ValueError(f"Room Conflict: Room is busy from {w['start_time']} to {w['end_time']}.")
 
@@ -254,13 +273,13 @@ class ScheduleRepository:
                     .neq('window_id', window_id)\
                     .execute()
                  
-                 new_start_t = datetime.strptime(start, "%H:%M:%S").time() if isinstance(start, str) else start
-                 new_end_t = datetime.strptime(end, "%H:%M:%S").time() if isinstance(end, str) else end
+                 new_start_t = ScheduleRepository._parse_time(start)
+                 new_end_t = ScheduleRepository._parse_time(end)
 
                  for row in prog_conflicts.data:
                     w = row['schedule_window']
-                    exist_start = datetime.strptime(w['start_time'], "%H:%M:%S").time()
-                    exist_end = datetime.strptime(w['end_time'], "%H:%M:%S").time()
+                    exist_start = ScheduleRepository._parse_time(w['start_time'])
+                    exist_end = ScheduleRepository._parse_time(w['end_time'])
                     
                     if new_start_t < exist_end and new_end_t > exist_start:
                          prog_name = row['program']['program_name'] if row.get('program') else f"Program {row['program_id']}"

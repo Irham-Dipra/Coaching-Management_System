@@ -21,6 +21,7 @@ const ScheduleDetails: React.FC = () => {
 
     const { data: rooms } = useQuery({ queryKey: ['rooms'], queryFn: ScheduleRepository.getRooms });
     const { data: allPrograms } = useQuery({ queryKey: ['programs'], queryFn: ProgramRepository.getAllPrograms });
+    const { data: allWindows } = useQuery({ queryKey: ['windows'], queryFn: ScheduleRepository.getAllWindows });
 
     // EDIT FORM STATE
     const [editData, setEditData] = useState<any>(null);
@@ -187,8 +188,8 @@ const ScheduleDetails: React.FC = () => {
                                 </div>
                             </div>
 
-                            <div className="space-y-2">
-                                <label className="block text-sm font-bold text-gray-700">Assigned Programs management</label>
+                            <div>
+                                <label className="block text-sm font-bold text-gray-700 mb-1">Assigned Programs</label>
 
                                 {/* Selected Programs List */}
                                 <div className="bg-white border rounded-lg p-2 min-h-[100px] max-h-[150px] overflow-y-auto space-y-1 mb-2">
@@ -208,23 +209,55 @@ const ScheduleDetails: React.FC = () => {
 
                                 {/* Add Program Dropdown */}
                                 <div className="relative">
-                                    <select
-                                        className="w-full border rounded p-2 bg-white text-sm"
-                                        onChange={(e) => {
-                                            if (e.target.value) {
-                                                toggleProgram(parseInt(e.target.value));
-                                                e.target.value = ''; // Reset
-                                            }
-                                        }}
-                                        defaultValue=""
-                                    >
-                                        <option value="" disabled>+ Add Program...</option>
-                                        {allPrograms?.filter((p: any) => !editData.program_ids.includes(p.program_id)).map((p: any) => (
-                                            <option key={p.program_id} value={p.program_id}>
-                                                {p.program_name} {p.batch?.batch_name ? `(${p.batch.batch_name})` : ''}
-                                            </option>
-                                        ))}
-                                    </select>
+                                    {(() => {
+                                        // Dynamic Busy Calculation
+                                        const busyMap = new Map<number, string>();
+                                        if (allWindows && editData.day_of_week && editData.start_time && editData.end_time) {
+                                            const newStart = parseInt(editData.start_time.replace(':', ''));
+                                            const newEnd = parseInt(editData.end_time.replace(':', ''));
+
+                                            // eslint-disable-next-line array-callback-return
+                                            allWindows.forEach((w: any) => {
+                                                if (w.window_id === parseInt(id!)) return; // Exclude current window
+                                                if (w.day_of_week !== editData.day_of_week) return;
+
+                                                const wStart = parseInt(w.start_time.replace(':', ''));
+                                                const wEnd = parseInt(w.end_time.replace(':', ''));
+
+                                                if (newStart < wEnd && newEnd > wStart) {
+                                                    const progs = w.programs || w.program_schedule?.map((ps: any) => ps.program) || [];
+                                                    progs.forEach((p: any) => {
+                                                        const roomName = w.room?.room_name || w.room_name || 'another room';
+                                                        busyMap.set(p.program_id, roomName);
+                                                    });
+                                                }
+                                            });
+                                        }
+
+                                        return (
+                                            <select
+                                                className="w-full border rounded p-2 bg-white text-sm"
+                                                onChange={(e) => {
+                                                    if (e.target.value) {
+                                                        toggleProgram(parseInt(e.target.value));
+                                                        e.target.value = ''; // Reset
+                                                    }
+                                                }}
+                                                defaultValue=""
+                                            >
+                                                <option value="" disabled>+ Add Program...</option>
+                                                {allPrograms?.filter((p: any) => !editData.program_ids.includes(p.program_id)).map((p: any) => {
+                                                    const busyRoom = busyMap.get(p.program_id);
+                                                    return (
+                                                        <option key={p.program_id} value={p.program_id} disabled={!!busyRoom} className={busyRoom ? "text-gray-400 bg-gray-50" : ""}>
+                                                            {p.program_name} {p.batch?.batch_name ? `(${p.batch.batch_name})` : ''}
+                                                            {busyRoom ? ` (Busy in ${busyRoom})` : ''}
+                                                        </option>
+                                                    );
+                                                })}
+                                            </select>
+                                        );
+                                    })()}
                                 </div>
                             </div>
                         </div>

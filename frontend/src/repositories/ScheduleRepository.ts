@@ -91,7 +91,13 @@ export const ScheduleRepository = {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(data)
         });
-        if (!res.ok) throw new Error('Update failed');
+        if (!res.ok) {
+            const err = await res.json();
+            const msg = Array.isArray(err.detail)
+                ? err.detail.map((e: any) => e.msg).join(', ')
+                : err.detail || 'Update failed';
+            throw new Error(msg);
+        }
         return res.json();
     },
 
@@ -103,14 +109,23 @@ export const ScheduleRepository = {
         });
         if (!response.ok) {
             const err = await response.json();
-            throw new Error(err.detail || 'Failed to create slot');
+            const msg = Array.isArray(err.detail)
+                ? err.detail.map((e: any) => e.msg).join(', ')
+                : err.detail || 'Failed to create slot';
+            throw new Error(msg);
         }
         return response.json();
     },
 
     deleteWindow: async (window_id: number): Promise<void> => {
         const response = await fetch(`${API_URL}/schedule-windows/${window_id}`, { method: 'DELETE' });
-        if (!response.ok) throw new Error('Failed to delete slot');
+        if (!response.ok) {
+            const err = await response.json();
+            const msg = Array.isArray(err.detail)
+                ? err.detail.map((e: any) => e.msg).join(', ')
+                : err.detail || 'Failed to delete slot';
+            throw new Error(msg);
+        }
     },
 
     // ASSIGNMENT

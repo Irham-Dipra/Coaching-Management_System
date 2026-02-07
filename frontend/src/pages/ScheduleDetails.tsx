@@ -3,7 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ScheduleRepository } from '../repositories/ScheduleRepository';
 import { ProgramRepository } from '../repositories/ProgramRepository';
-import { Calendar, Clock, MapPin, Users, Edit, Save, ArrowLeft, Trash2 } from 'lucide-react';
+import { Calendar, Clock, MapPin, Users, Edit, Save, ArrowLeft, Trash2, AlertCircle, Plus, X } from 'lucide-react';
 
 const DAYS = ['Saturday', 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
 
@@ -24,11 +24,13 @@ const ScheduleDetails: React.FC = () => {
 
     // EDIT FORM STATE
     const [editData, setEditData] = useState<any>(null);
+    const [error, setError] = useState<string | null>(null);
 
     // Initialize edit data when window loads
     React.useEffect(() => {
         if (window) {
             setEditData({
+                window_name: window.window_name || '',
                 room_id: window.room_id,
                 day_of_week: window.day_of_week,
                 start_time: window.start_time,
@@ -43,9 +45,10 @@ const ScheduleDetails: React.FC = () => {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['window', id] });
             setIsEditing(false);
+            setError(null);
             alert("Schedule Updated!");
         },
-        onError: (err) => alert("Failed: " + err)
+        onError: (err: any) => setError(err.message || "Failed to update schedule.")
     });
 
     const deleteMutation = useMutation({
@@ -84,7 +87,7 @@ const ScheduleDetails: React.FC = () => {
                     <div>
                         <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
                             <Clock className="text-blue-600" />
-                            {isEditing ? 'Edit Schedule Window' : `${window.day_of_week}, ${window.start_time.substring(0, 5)} - ${window.end_time.substring(0, 5)}`}
+                            {isEditing ? 'Edit Schedule Window' : (window.window_name || `${window.day_of_week}, ${window.start_time.substring(0, 5)} - ${window.end_time.substring(0, 5)}`)}
                         </h1>
                         <p className="text-gray-500 mt-1 flex items-center gap-2">
                             <MapPin size={16} /> {rooms?.find((r: any) => r.room_id === window.room_id)?.room_name || 'Room TBD'}
@@ -115,63 +118,114 @@ const ScheduleDetails: React.FC = () => {
 
                 {/* EDIT FORM */}
                 {isEditing && (
-                    <div className="p-6 bg-blue-50/50 border-b grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in slide-in-from-top-4 duration-200">
-                        <div className="space-y-4">
-                            <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-1">Day of Week</label>
-                                <select
-                                    className="w-full border rounded p-2 bg-white"
-                                    value={editData.day_of_week}
-                                    onChange={e => setEditData({ ...editData, day_of_week: e.target.value })}
-                                >
-                                    {DAYS.map(d => <option key={d} value={d}>{d}</option>)}
-                                </select>
-                            </div>
-                            <div className="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label className="block text-sm font-bold text-gray-700 mb-1">Start Time</label>
-                                    <input
-                                        type="time"
-                                        className="w-full border rounded p-2 bg-white"
-                                        value={editData.start_time}
-                                        onChange={e => setEditData({ ...editData, start_time: e.target.value })}
-                                    />
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-bold text-gray-700 mb-1">End Time</label>
-                                    <input
-                                        type="time"
-                                        className="w-full border rounded p-2 bg-white"
-                                        value={editData.end_time}
-                                        onChange={e => setEditData({ ...editData, end_time: e.target.value })}
-                                    />
-                                </div>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-1">Room</label>
-                                <select
-                                    className="w-full border rounded p-2 bg-white"
-                                    value={editData.room_id}
-                                    onChange={e => setEditData({ ...editData, room_id: e.target.value })}
-                                >
-                                    {rooms?.map((r: any) => <option key={r.room_id} value={r.room_id}>{r.room_name}</option>)}
-                                </select>
-                            </div>
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-bold text-gray-700 mb-2">Assigned Programs</label>
-                            <div className="bg-white border rounded-lg h-48 overflow-y-auto p-2 space-y-1">
-                                {allPrograms?.map((prog: any) => (
-                                    <div
-                                        key={prog.program_id}
-                                        onClick={() => toggleProgram(prog.program_id)}
-                                        className={`p-2 rounded cursor-pointer flex justify-between items-center text-sm ${editData.program_ids.includes(prog.program_id) ? 'bg-blue-100 text-blue-800 font-medium' : 'hover:bg-gray-50'}`}
-                                    >
-                                        <span>{prog.program_name}</span>
-                                        {editData.program_ids.includes(prog.program_id) && <div className="w-2 h-2 bg-blue-500 rounded-full" />}
+                    <div className="p-6 bg-blue-50/50 border-b space-y-6 animate-in fade-in slide-in-from-top-4 duration-200">
+                        {error && (
+                            <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-r shadow-sm">
+                                <div className="flex items-start">
+                                    <AlertCircle className="text-red-500 mr-2 mt-0.5 flex-shrink-0" size={18} />
+                                    <div>
+                                        <p className="text-sm text-red-700 font-bold">Validation Error</p>
+                                        <p className="text-xs text-red-600 mt-1">{error}</p>
                                     </div>
-                                ))}
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="space-y-4">
+                                <div>
+                                    <label className="block text-sm font-bold text-gray-700 mb-1">Subject / Name</label>
+                                    <input
+                                        type="text"
+                                        className="w-full border rounded p-2 bg-white"
+                                        placeholder="e.g. Physics Lab, Weekly Meeting"
+                                        value={editData.window_name}
+                                        onChange={e => setEditData({ ...editData, window_name: e.target.value })}
+                                    />
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 mb-1">Start Time</label>
+                                        <input
+                                            type="time"
+                                            className="w-full border rounded p-2 bg-white"
+                                            value={editData.start_time}
+                                            onChange={e => setEditData({ ...editData, start_time: e.target.value })}
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 mb-1">End Time</label>
+                                        <input
+                                            type="time"
+                                            className="w-full border rounded p-2 bg-white"
+                                            value={editData.end_time}
+                                            onChange={e => setEditData({ ...editData, end_time: e.target.value })}
+                                        />
+                                    </div>
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 mb-1">Day</label>
+                                        <select
+                                            className="w-full border rounded p-2 bg-white"
+                                            value={editData.day_of_week}
+                                            onChange={e => setEditData({ ...editData, day_of_week: e.target.value })}
+                                        >
+                                            {DAYS.map(d => <option key={d} value={d}>{d}</option>)}
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-bold text-gray-700 mb-1">Room</label>
+                                        <select
+                                            className="w-full border rounded p-2 bg-white"
+                                            value={editData.room_id}
+                                            onChange={e => setEditData({ ...editData, room_id: e.target.value })}
+                                        >
+                                            {rooms?.map((r: any) => <option key={r.room_id} value={r.room_id}>{r.room_name}</option>)}
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="block text-sm font-bold text-gray-700">Assigned Programs management</label>
+
+                                {/* Selected Programs List */}
+                                <div className="bg-white border rounded-lg p-2 min-h-[100px] max-h-[150px] overflow-y-auto space-y-1 mb-2">
+                                    {editData.program_ids.length === 0 && <p className="text-gray-400 text-xs italic p-2">No programs assigned.</p>}
+                                    {editData.program_ids.map((pid: number) => {
+                                        const prog = allPrograms?.find((p: any) => p.program_id === pid);
+                                        return (
+                                            <div key={pid} className="flex justify-between items-center bg-blue-50 text-blue-800 px-3 py-1.5 rounded text-sm">
+                                                <span>{prog?.program_name || `Program ${pid}`}</span>
+                                                <button onClick={() => toggleProgram(pid)} className="text-blue-400 hover:text-red-500">
+                                                    <X size={14} />
+                                                </button>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+
+                                {/* Add Program Dropdown */}
+                                <div className="relative">
+                                    <select
+                                        className="w-full border rounded p-2 bg-white text-sm"
+                                        onChange={(e) => {
+                                            if (e.target.value) {
+                                                toggleProgram(parseInt(e.target.value));
+                                                e.target.value = ''; // Reset
+                                            }
+                                        }}
+                                        defaultValue=""
+                                    >
+                                        <option value="" disabled>+ Add Program...</option>
+                                        {allPrograms?.filter((p: any) => !editData.program_ids.includes(p.program_id)).map((p: any) => (
+                                            <option key={p.program_id} value={p.program_id}>
+                                                {p.program_name} {p.batch?.batch_name ? `(${p.batch.batch_name})` : ''}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
                             </div>
                         </div>
                     </div>

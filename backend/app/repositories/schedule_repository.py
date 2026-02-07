@@ -173,12 +173,13 @@ class ScheduleRepository:
         
         return False, None
 
+
+
     @staticmethod
     def get_window_details(window_id: int):
-        # 1. Fetch Window + Room + Programs
-        # FIX: roll_no is now on enrollment, not student
+        # 1. Fetch Window + Room + Programs + Enrollments
         res = supabase.table('schedule_window')\
-            .select('*, room(room_name), program_schedule(program(program_id, program_name, enrollment(roll_no, student(student_id, name, contact))))')\
+            .select('*, room(room_name), program_schedule(program(program_id, program_name, enrollment(roll_no, status, student(student_id, name, contact))))')\
             .eq('window_id', window_id)\
             .single()\
             .execute()
@@ -186,20 +187,21 @@ class ScheduleRepository:
         if not res.data: return None
         window = res.data
 
-        # 2. Aggregate Students
+        # 2. Aggregate Students (Active Only)
         students = []
         programs = window.get('program_schedule', [])
         for ps in programs:
             prog = ps['program']
             enrolls = prog.get('enrollment', [])
             for enroll in enrolls:
+                if enroll.get('status') != 'Active': continue # Filter Withdrawn/Deleted
+
                 student = enroll['student']
-                # Avoid duplicates if student is in multiple programs in same slot
                 if not any(s['student_id'] == student['student_id'] for s in students):
                     students.append({
                         **student,
-                        'roll_no': enroll['roll_no'], # Add roll_no from enrollment
-                        'program_name': prog['program_name'] # Tag source program
+                        'roll_no': enroll['roll_no'],
+                        'program_name': prog['program_name']
                     })
         
         window['students'] = students
@@ -207,17 +209,80 @@ class ScheduleRepository:
 
     @staticmethod
     def update_window(window_id: int, updates: Dict[str, Any]):
-        # Handle Program Re-assignment if 'program_ids' is present
+        # 1. Validation (Room Conflict - Check Exclusion)
+        if 'room_id' in updates or 'day_of_week' in updates or 'start_time' in updates or 'end_time' in updates:
+            # We need current values for any missing updates to check full context
+            current = supabase.table('schedule_window').select('*').eq('window_id', window_id).single().execute().data
+            if not current: raise ValueError("Window not found")
+            
+            rid = updates.get('room_id', current['room_id'])
+            day = updates.get('day_of_week', current['day_of_week'])
+            start = updates.get('start_time', current['start_time'])
+            end = updates.get('end_time', current['end_time'])
+            
+            # Check Room Conflict (Exclude self)
+            existing = supabase.table('schedule_window').select('*')\
+                .eq('room_id', rid)\
+                .eq('day_of_week', day)\
+                .neq('window_id', window_id)\
+                .execute()
+            
+            from datetime import datetime
+            new_start_t = datetime.strptime(start, "%H:%M:%S").time() if isinstance(start, str) else start
+            new_end_t = datetime.strptime(end, "%H:%M:%S").time() if isinstance(end, str) else end
+
+            for w in existing.data:
+                exist_start = datetime.strptime(w['start_time'], "%H:%M:%S").time()
+                exist_end = datetime.strptime(w['end_time'], "%H:%M:%S").time()
+                if new_start_t < exist_end and new_end_t > exist_start:
+                    raise ValueError(f"Room Conflict: Room is busy from {w['start_time']} to {w['end_time']}.")
+
+        # 2. Program Management & Conflict Check
+        # If program_ids are passed, we must validate them first!
         if 'program_ids' in updates:
-            program_ids = updates.pop('program_ids')
-            # 1. Clear existing
+            program_ids = updates['program_ids']
+            # We need the day/time to check context. (Might be updated or current)
+            # Re-fetch if not already established above (optimize later)
+            if 'current' not in locals():
+                 current = supabase.table('schedule_window').select('*').eq('window_id', window_id).single().execute().data
+            
+            day = updates.get('day_of_week', current['day_of_week'])
+            start = updates.get('start_time', current['start_time'])
+            end = updates.get('end_time', current['end_time'])
+             
+            # Validation: Check if these programs are busy elsewhere (Exclude THIS window)
+            if program_ids:
+                 prog_conflicts = supabase.table('program_schedule')\
+                    .select('program_id, program(program_name), schedule_window!inner(window_id, start_time, end_time, day_of_week)')\
+                    .in_('program_id', program_ids)\
+                    .eq('schedule_window.day_of_week', day)\
+                    .neq('window_id', window_id)\
+                    .execute()
+                 
+                 new_start_t = datetime.strptime(start, "%H:%M:%S").time() if isinstance(start, str) else start
+                 new_end_t = datetime.strptime(end, "%H:%M:%S").time() if isinstance(end, str) else end
+
+                 for row in prog_conflicts.data:
+                    w = row['schedule_window']
+                    exist_start = datetime.strptime(w['start_time'], "%H:%M:%S").time()
+                    exist_end = datetime.strptime(w['end_time'], "%H:%M:%S").time()
+                    
+                    if new_start_t < exist_end and new_end_t > exist_start:
+                         prog_name = row['program']['program_name'] if row.get('program') else f"Program {row['program_id']}"
+                         raise ValueError(f"Program Conflict: '{prog_name}' is busy from {w['start_time']} to {w['end_time']}.")
+
+            # If Valid, Sync
+            # 1. Delete old
             supabase.table('program_schedule').delete().eq('window_id', window_id).execute()
-            # 2. Add new
+            # 2. Insert new
             if program_ids:
                 payload = [{"program_id": pid, "window_id": window_id} for pid in program_ids]
                 supabase.table('program_schedule').insert(payload).execute()
+            
+            # Remove from updates dict so we don't try to update schedule_window with it
+            del updates['program_ids']
 
-        # Update core fields if any
+        # 3. Update core fields
         if updates:
             supabase.table('schedule_window').update(updates).eq('window_id', window_id).execute()
         

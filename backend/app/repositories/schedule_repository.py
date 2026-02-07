@@ -72,7 +72,37 @@ class ScheduleRepository:
                      raise ValueError(f"Invalid time format: {t}. Expected HH:MM:SS or HH:MM")
         return t
 
+    @staticmethod
+    def _validate_capacity(room_id, program_ids):
+        if not room_id or not program_ids: return
+
+        # 1. Get Room Capacity
+        room_res = supabase.table('room').select('capacity, room_name').eq('room_id', room_id).execute()
+        if not room_res.data: return
+        room = room_res.data[0]
+        capacity = room.get('capacity')
+        
+        if not capacity: return # No capacity limit set
+        
+        # 2. Get Total Active Students in these Programs
+        # We can't easily do a sum of counts for multiple programs in one simple query without a view or group by.
+        # But we can just count all active enrollments that match ANY of the program_ids.
+        enroll_res = supabase.table('enrollment')\
+            .select('*', count='exact', head=True)\
+            .in_('program_id', program_ids)\
+            .eq('status', 'Active')\
+            .execute()
+            
+        total_students = enroll_res.count
+        
+        if total_students > capacity:
+             raise ValueError(f"Capacity Error: Room '{room['room_name']}' (Cap: {capacity}) cannot fit {total_students} active students.")
+
     def create_schedule_window(window: ScheduleWindowCreate):
+        # 0. Capacity Validation
+        if window.program_ids:
+            ScheduleRepository._validate_capacity(window.room_id, window.program_ids)
+
         # 1. Conflict Validation (Same Room Overlap)
         existing = supabase.table('schedule_window').select('*')\
             .eq('room_id', window.room_id)\
@@ -221,6 +251,40 @@ class ScheduleRepository:
 
     @staticmethod
     def update_window(window_id: int, updates: Dict[str, Any]):
+        # 0. Capacity Validation (if changing room or programs)
+        # We need to check capacity if:
+        # A) Room changed
+        # B) Programs changed
+        # C) Both changed
+        
+        check_capacity = False
+        target_room_id = updates.get('room_id')
+        target_programs = updates.get('program_ids')
+        
+        if 'program_ids' in updates: # Programs changing, MUST check
+             check_capacity = True
+        elif 'room_id' in updates: # Room changing, existing programs might not fit
+             check_capacity = True
+             
+        if check_capacity:
+             # Need full context. If something is missing in updates, fetch current.
+             current_data = None
+             if not target_room_id or (target_programs is None and 'program_ids' not in updates):
+                  current_data = supabase.table('schedule_window').select('*').eq('window_id', window_id).single().execute().data
+             
+             final_room_id = target_room_id if target_room_id else current_data['room_id']
+             
+             if 'program_ids' in updates:
+                 final_program_ids = target_programs
+             else:
+                 # Fetch existing programs
+                 prog_res = supabase.table('program_schedule').select('program_id').eq('window_id', window_id).execute()
+                 final_program_ids = [p['program_id'] for p in prog_res.data]
+            
+             if final_program_ids:
+                 ScheduleRepository._validate_capacity(final_room_id, final_program_ids)
+
+
         # 1. Validation (Room Conflict - Check Exclusion)
         if 'room_id' in updates or 'day_of_week' in updates or 'start_time' in updates or 'end_time' in updates:
             # We need current values for any missing updates to check full context

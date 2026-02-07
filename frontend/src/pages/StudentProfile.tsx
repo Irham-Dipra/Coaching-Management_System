@@ -65,16 +65,6 @@ const StudentProfile: React.FC = () => {
         }
     });
 
-    const deleteEnrollmentMutation = useMutation({
-        mutationFn: StudentRepository.deleteEnrollment,
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['enrollments', id] });
-        },
-        onError: (err) => {
-            alert("Failed to delete enrollment");
-        }
-    });
-
     if (isLoading) return <div className="p-8">Loading profile...</div>;
     if (!student) return <div className="p-8">Student not found</div>;
 

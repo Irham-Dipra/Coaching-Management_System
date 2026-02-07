@@ -3,7 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ScheduleRepository } from '../repositories/ScheduleRepository';
 import { ProgramRepository } from '../repositories/ProgramRepository';
-import { Calendar, Clock, MapPin, Users, Edit, Save, ArrowLeft, Trash2, AlertCircle, Plus, X } from 'lucide-react';
+import { Clock, MapPin, Users, Edit, Save, ArrowLeft, Trash2, AlertCircle, X } from 'lucide-react';
 
 const DAYS = ['Saturday', 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
 
@@ -109,9 +109,23 @@ const ScheduleDetails: React.FC = () => {
                         ) : (
                             <>
                                 <button onClick={() => setIsEditing(false)} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg">Cancel</button>
-                                <button onClick={handleSave} className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium shadow-sm">
-                                    <Save size={16} /> Save Changes
-                                </button>
+                                {(() => {
+                                    const selectedRoom = rooms?.find((r: any) => r.room_id.toString() === editData?.room_id?.toString());
+                                    const capacity = selectedRoom?.capacity || 0;
+                                    const selectedPrograms = allPrograms?.filter((p: any) => editData?.program_ids?.includes(p.program_id)) || [];
+                                    const totalStudents = selectedPrograms.reduce((sum: number, p: any) => sum + (p.student_count || 0), 0);
+                                    const isOverCapacity = capacity > 0 && totalStudents > capacity;
+
+                                    return (
+                                        <button
+                                            onClick={handleSave}
+                                            disabled={isOverCapacity || updateMutation.isPending}
+                                            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                                        >
+                                            <Save size={16} /> Save Changes
+                                        </button>
+                                    );
+                                })()}
                             </>
                         )}
                     </div>
@@ -182,7 +196,11 @@ const ScheduleDetails: React.FC = () => {
                                             value={editData.room_id}
                                             onChange={e => setEditData({ ...editData, room_id: e.target.value })}
                                         >
-                                            {rooms?.map((r: any) => <option key={r.room_id} value={r.room_id}>{r.room_name}</option>)}
+                                            {rooms?.map((r: any) => (
+                                                <option key={r.room_id} value={r.room_id}>
+                                                    {r.room_name} (Cap: {r.capacity || '∞'})
+                                                </option>
+                                            ))}
                                         </select>
                                     </div>
                                 </div>
@@ -191,21 +209,53 @@ const ScheduleDetails: React.FC = () => {
                             <div>
                                 <label className="block text-sm font-bold text-gray-700 mb-1">Assigned Programs</label>
 
-                                {/* Selected Programs List */}
-                                <div className="bg-white border rounded-lg p-2 min-h-[100px] max-h-[150px] overflow-y-auto space-y-1 mb-2">
-                                    {editData.program_ids.length === 0 && <p className="text-gray-400 text-xs italic p-2">No programs assigned.</p>}
-                                    {editData.program_ids.map((pid: number) => {
-                                        const prog = allPrograms?.find((p: any) => p.program_id === pid);
-                                        return (
-                                            <div key={pid} className="flex justify-between items-center bg-blue-50 text-blue-800 px-3 py-1.5 rounded text-sm">
-                                                <span>{prog?.program_name || `Program ${pid}`}</span>
-                                                <button onClick={() => toggleProgram(pid)} className="text-blue-400 hover:text-red-500">
-                                                    <X size={14} />
-                                                </button>
+                                {(() => {
+                                    // Calculate Capacity for UI
+                                    const selectedRoom = rooms?.find((r: any) => r.room_id.toString() === editData.room_id?.toString());
+                                    const capacity = selectedRoom?.capacity || 0;
+                                    const selectedPrograms = allPrograms?.filter((p: any) => editData.program_ids.includes(p.program_id)) || [];
+                                    const totalStudents = selectedPrograms.reduce((sum: number, p: any) => sum + (p.student_count || 0), 0);
+                                    const isOverCapacity = capacity > 0 && totalStudents > capacity;
+
+                                    return (
+                                        <>
+                                            <div className="flex justify-between items-center mb-2">
+                                                <span className="text-xs text-gray-500">Manage enrolled classes</span>
+                                                {editData.room_id && (
+                                                    <span className={`text-xs font-bold px-2 py-1 rounded ${isOverCapacity ? 'bg-red-100 text-red-600' : 'bg-blue-50 text-blue-600'}`}>
+                                                        {totalStudents} / {capacity || '∞'} Students
+                                                    </span>
+                                                )}
                                             </div>
-                                        );
-                                    })}
-                                </div>
+
+                                            {isOverCapacity && (
+                                                <div className="mb-2 text-xs text-red-600 font-bold flex items-center bg-red-50 p-2 rounded border border-red-200 animate-pulse">
+                                                    <AlertCircle size={14} className="mr-2" />
+                                                    Capacity Exceeded!
+                                                </div>
+                                            )}
+
+                                            {/* Selected Programs List */}
+                                            <div className="bg-white border rounded-lg p-2 min-h-[100px] max-h-[150px] overflow-y-auto space-y-1 mb-2">
+                                                {editData.program_ids.length === 0 && <p className="text-gray-400 text-xs italic p-2">No programs assigned.</p>}
+                                                {editData.program_ids.map((pid: number) => {
+                                                    const prog = allPrograms?.find((p: any) => p.program_id === pid);
+                                                    return (
+                                                        <div key={pid} className="flex justify-between items-center bg-blue-50 text-blue-800 px-3 py-1.5 rounded text-sm group hover:bg-blue-100 transition-colors">
+                                                            <div className="flex flex-col">
+                                                                <span className="font-medium">{prog?.program_name || `Program ${pid}`}</span>
+                                                                <span className="text-[10px] text-blue-600/70">{prog?.student_count || 0} students</span>
+                                                            </div>
+                                                            <button onClick={() => toggleProgram(pid)} className="text-blue-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                                <X size={14} />
+                                                            </button>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        </>
+                                    );
+                                })()}
 
                                 {/* Add Program Dropdown */}
                                 <div className="relative">
@@ -213,16 +263,17 @@ const ScheduleDetails: React.FC = () => {
                                         // Dynamic Busy Calculation
                                         const busyMap = new Map<number, string>();
                                         if (allWindows && editData.day_of_week && editData.start_time && editData.end_time) {
-                                            const newStart = parseInt(editData.start_time.replace(':', ''));
-                                            const newEnd = parseInt(editData.end_time.replace(':', ''));
+                                            const parseT = (t: string) => parseInt(t.replace(/:/g, '').substring(0, 4));
+                                            const newStart = parseT(editData.start_time);
+                                            const newEnd = parseT(editData.end_time);
 
                                             // eslint-disable-next-line array-callback-return
                                             allWindows.forEach((w: any) => {
                                                 if (w.window_id === parseInt(id!)) return; // Exclude current window
                                                 if (w.day_of_week !== editData.day_of_week) return;
 
-                                                const wStart = parseInt(w.start_time.replace(':', ''));
-                                                const wEnd = parseInt(w.end_time.replace(':', ''));
+                                                const wStart = parseT(w.start_time);
+                                                const wEnd = parseT(w.end_time);
 
                                                 if (newStart < wEnd && newEnd > wStart) {
                                                     const progs = w.programs || w.program_schedule?.map((ps: any) => ps.program) || [];
@@ -250,7 +301,7 @@ const ScheduleDetails: React.FC = () => {
                                                     const busyRoom = busyMap.get(p.program_id);
                                                     return (
                                                         <option key={p.program_id} value={p.program_id} disabled={!!busyRoom} className={busyRoom ? "text-gray-400 bg-gray-50" : ""}>
-                                                            {p.program_name} {p.batch?.batch_name ? `(${p.batch.batch_name})` : ''}
+                                                            {p.program_name} {p.batch?.batch_name ? `(${p.batch.batch_name})` : ''} ({p.student_count || 0} students)
                                                             {busyRoom ? ` (Busy in ${busyRoom})` : ''}
                                                         </option>
                                                     );

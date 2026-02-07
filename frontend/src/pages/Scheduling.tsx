@@ -456,7 +456,9 @@ const MasterSchedule: React.FC<{ rooms: Room[], windows: ScheduleWindow[] }> = (
                                 >
                                     <option value="">Select Room...</option>
                                     {rooms?.map((r: any) => (
-                                        <option key={r.room_id} value={r.room_id}>{r.room_name}</option>
+                                        <option key={r.room_id} value={r.room_id}>
+                                            {r.room_name} (Cap: {r.capacity || '∞'})
+                                        </option>
                                     ))}
                                 </select>
                             </div>
@@ -494,54 +496,96 @@ const MasterSchedule: React.FC<{ rooms: Room[], windows: ScheduleWindow[] }> = (
                                 </div>
                             </div>
 
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-2">Assign Programs (Optional)</label>
-                                <div className="border rounded-lg max-h-40 overflow-y-auto divide-y">
-                                    {(() => {
-                                        const busyProgramMap = new Map<number, any>();
-                                        if (windows && formData.day_of_week && formData.start_time && formData.end_time) {
-                                            const newStart = parseInt(formData.start_time.replace(':', ''));
-                                            const newEnd = parseInt(formData.end_time.replace(':', ''));
+                            {/* Capacity and Program Assignment */}
+                            {(() => {
+                                // Calculate Capacity
+                                const selectedRoom = rooms?.find((r: any) => r.room_id.toString() === formData.room_id.toString());
+                                const capacity = selectedRoom?.capacity || 0;
+                                const selectedPrograms = programs?.filter((p: any) => formData.program_ids.includes(p.program_id)) || [];
+                                const totalStudents = selectedPrograms.reduce((sum: number, p: any) => sum + (p.student_count || 0), 0);
+                                const isOverCapacity = capacity > 0 && totalStudents > capacity;
 
-                                            // eslint-disable-next-line array-callback-return
-                                            windows.forEach((w: any) => {
-                                                if (w.day_of_week !== formData.day_of_week) return;
-                                                const existStart = parseInt(w.start_time.replace(':', ''));
-                                                const existEnd = parseInt(w.end_time.replace(':', ''));
+                                return (
+                                    <div>
+                                        <div className="flex justify-between items-center mb-2">
+                                            <label className="block text-sm font-medium text-gray-700">Assign Programs (Optional)</label>
+                                            {formData.room_id && (
+                                                <span className={`text-xs font-bold px-2 py-1 rounded ${isOverCapacity ? 'bg-red-100 text-red-600' : 'bg-blue-50 text-blue-600'}`}>
+                                                    {totalStudents} / {capacity || '∞'} Students
+                                                </span>
+                                            )}
+                                        </div>
 
-                                                if (newStart < existEnd && newEnd > existStart) {
-                                                    const progs = w.programs || w.program_schedule?.map((ps: any) => ps.program) || [];
-                                                    progs.forEach((p: any) => busyProgramMap.set(p.program_id, w));
+                                        {isOverCapacity && (
+                                            <div className="mb-3 text-xs text-red-600 font-bold flex items-center bg-red-50 p-2 rounded border border-red-200 animate-pulse">
+                                                <AlertCircle size={14} className="mr-2" />
+                                                Capacity Exceeded! Room can't fit active students.
+                                            </div>
+                                        )}
+
+                                        <div className="border rounded-lg max-h-48 overflow-y-auto divide-y bg-gray-50/50">
+                                            {(() => {
+                                                const busyProgramMap = new Map<number, any>();
+                                                if (windows && formData.day_of_week && formData.start_time && formData.end_time) {
+                                                    const parseT = (t: string) => parseInt(t.replace(/:/g, '').substring(0, 4));
+
+                                                    const newStart = parseT(formData.start_time);
+                                                    const newEnd = parseT(formData.end_time);
+
+                                                    // eslint-disable-next-line array-callback-return
+                                                    windows.forEach((w: any) => {
+                                                        if (w.day_of_week !== formData.day_of_week) return;
+                                                        const existStart = parseT(w.start_time);
+                                                        const existEnd = parseT(w.end_time);
+
+                                                        if (newStart < existEnd && newEnd > existStart) {
+                                                            const progs = w.programs || w.program_schedule?.map((ps: any) => ps.program) || [];
+                                                            progs.forEach((p: any) => busyProgramMap.set(p.program_id, w));
+                                                        }
+                                                    });
                                                 }
-                                            });
-                                        }
 
-                                        return programs?.map((prog: any) => {
-                                            const conflictWindow = busyProgramMap.get(prog.program_id);
-                                            const isBusy = !!conflictWindow;
+                                                return programs?.map((prog: any) => {
+                                                    const conflictWindow = busyProgramMap.get(prog.program_id);
+                                                    const isBusy = !!conflictWindow;
+                                                    const isSelected = formData.program_ids.includes(prog.program_id);
 
-                                            return (
-                                                <div
-                                                    key={prog.program_id}
-                                                    onClick={() => !isBusy && toggleProgram(prog.program_id)}
-                                                    className={`px-3 py-2 text-sm flex justify-between items-center ${isBusy ? 'bg-gray-100 opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-gray-50'} ${formData.program_ids.includes(prog.program_id) ? 'bg-blue-50 text-blue-700 font-medium' : ''}`}
-                                                >
-                                                    <span>
-                                                        {prog.program_name} {prog.batch?.batch_name ? `(${prog.batch.batch_name})` : ''}
-                                                        {isBusy && <span className="ml-2 text-xs text-red-500 font-bold">(Busy in {conflictWindow?.room?.room_name || conflictWindow?.room_name || 'another room'})</span>}
-                                                    </span>
-                                                    {formData.program_ids.includes(prog.program_id) && <div className="w-2 h-2 rounded-full bg-blue-500" />}
-                                                </div>
-                                            );
-                                        });
-                                    })()}
-                                </div>
-                                <p className="text-xs text-gray-500 mt-1">Click to select multiple programs. Programs scheduled elsewhere at this time are disabled.</p>
-                            </div>
+                                                    return (
+                                                        <div
+                                                            key={prog.program_id}
+                                                            onClick={() => !isBusy && toggleProgram(prog.program_id)}
+                                                            className={`px-3 py-2.5 text-sm flex justify-between items-center transition-colors ${isBusy ? 'bg-gray-100 opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-white'} ${isSelected ? 'bg-blue-50 text-blue-800' : ''}`}
+                                                        >
+                                                            <div className="flex flex-col">
+                                                                <div className="flex items-center">
+                                                                    <span className="font-medium mr-1">{prog.program_name}</span>
+                                                                    {prog.batch?.batch_name && <span className="text-gray-500 text-xs">({prog.batch.batch_name})</span>}
+                                                                </div>
+                                                                <span className="text-[10px] text-gray-500">
+                                                                    {prog.student_count || 0} active students
+                                                                    {isBusy && <span className="text-red-500 font-bold ml-1"> (Busy in {conflictWindow?.room?.room_name || 'another room'})</span>}
+                                                                </span>
+                                                            </div>
+                                                            {isSelected && <div className="w-2 h-2 rounded-full bg-blue-600" />}
+                                                        </div>
+                                                    );
+                                                });
+                                            })()}
+                                        </div>
+                                        <p className="text-[10px] text-gray-400 mt-1">
+                                            Programs busy in other rooms are disabled.
+                                        </p>
 
-                            <button type="submit" className="w-full bg-blue-600 text-white py-2.5 rounded-lg font-bold hover:bg-blue-700 transition-colors">
-                                Create Time Slot
-                            </button>
+                                        <button
+                                            type="submit"
+                                            disabled={isOverCapacity || createMutation.isPending}
+                                            className="w-full mt-4 bg-blue-600 text-white py-2.5 rounded-lg font-bold hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+                                        >
+                                            {createMutation.isPending ? 'Creating...' : 'Create Time Slot'}
+                                        </button>
+                                    </div>
+                                );
+                            })()}
                         </form>
                     </div>
                 </div>

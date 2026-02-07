@@ -57,20 +57,21 @@ class ProgramRepository:
     # ==========================================
     
     def get_all_programs(self):
-        # FANCY SUPABASE TRICK: Relationship Joins + Counts
-        # We want to show a list of programs, but also which Batch they belong to, 
-        # and how many students are enrolled.
-        
-        # Query explained:
-        # "*" -> Select all columns from 'program' table
-        # "batch(*)" -> Join 'batch' table and fetch all its columns (nested object)
-        # "enrollment(count)" -> Join 'enrollment' table but ONLY count the rows.
-        #    This returns a field like "enrollment": [{"count": 5}] instead of fetching 500 student records.
-        
+        # Fetch status to filter Active counts only
         response = supabase.table(self.program_table)\
-            .select("*, batch(*), enrollment(count)")\
+            .select("*, batch(*), enrollment(status)")\
             .execute()
-        return response.data
+        
+        data = response.data
+        for p in data:
+            # Manual count of Active students
+            active_count = sum(1 for e in p.get('enrollment', []) if e.get('status') == 'Active')
+            p['student_count'] = active_count
+            # Remove the raw enrollment list to keep response clean
+            if 'enrollment' in p:
+                del p['enrollment']
+                
+        return data
 
     def get_program_by_id(self, program_id: int):
         # This is a "Heavy" query for the Details Page. We want EVERYTHING connected to this program.

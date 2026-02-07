@@ -144,6 +144,7 @@ const MasterSchedule: React.FC<{ rooms: Room[], windows: ScheduleWindow[] }> = (
     const queryClient = useQueryClient();
     const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
     const [isCreateOpen, setIsCreateOpen] = useState(false);
+    const [createError, setCreateError] = useState<string | null>(null);
 
     // FETCH DATA - Programs only (rooms/windows passed via props)
     const { data: programs } = useQuery({ queryKey: ['programs'], queryFn: ProgramRepository.getAllPrograms });
@@ -166,10 +167,11 @@ const MasterSchedule: React.FC<{ rooms: Room[], windows: ScheduleWindow[] }> = (
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['windows'] });
             setIsCreateOpen(false);
+            setCreateError(null);
             setFormData({ room_id: '', day_of_week: 'Saturday', start_time: '', end_time: '', window_name: '', program_ids: [] });
             alert("Time Slot Created!");
         },
-        onError: (err: any) => alert(err.message)
+        onError: (err: any) => setCreateError(err.message || 'Failed to create time slot.')
     });
 
     const deleteMutation = useMutation({
@@ -179,6 +181,7 @@ const MasterSchedule: React.FC<{ rooms: Room[], windows: ScheduleWindow[] }> = (
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+        setCreateError(null);
         createMutation.mutate(formData);
     };
 
@@ -392,9 +395,20 @@ const MasterSchedule: React.FC<{ rooms: Room[], windows: ScheduleWindow[] }> = (
                     <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in duration-200">
                         <div className="px-6 py-4 border-b bg-gray-50 flex justify-between items-center">
                             <h3 className="font-bold text-lg text-gray-800">Add New Time Slot</h3>
-                            <button onClick={() => setIsCreateOpen(false)} className="text-gray-400 hover:text-gray-600">&times;</button>
+                            <button onClick={() => { setIsCreateOpen(false); setCreateError(null); }} className="text-gray-400 hover:text-gray-600">&times;</button>
                         </div>
                         <form onSubmit={handleSubmit} className="p-6 space-y-4">
+                            {createError && (
+                                <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-r shadow-sm animate-pulse">
+                                    <div className="flex items-start">
+                                        <AlertCircle className="text-red-500 mr-2 mt-0.5 flex-shrink-0" size={18} />
+                                        <div>
+                                            <p className="text-sm text-red-700 font-bold">Validation Error</p>
+                                            <p className="text-xs text-red-600 mt-1">{createError}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
                             {/* Window Name */}
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Subject / Window Name <span className="text-gray-400 font-normal">(Optional)</span></label>

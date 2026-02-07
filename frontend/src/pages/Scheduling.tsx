@@ -8,7 +8,6 @@ import { ProgramRepository } from '../repositories/ProgramRepository';
 const DAYS = ['Saturday', 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
 
 const Scheduling: React.FC = () => {
-    const queryClient = useQueryClient();
     const [activeTab, setActiveTab] = useState<'rooms' | 'schedule'>('schedule');
 
     // --- QUERIES ---
@@ -339,41 +338,67 @@ const MasterSchedule: React.FC<{ rooms: Room[], windows: ScheduleWindow[] }> = (
                         </thead>
                         <tbody>
                             {timeSlots.map(hour => {
-                                const timeLabel = `${hour.toString().padStart(2, '0')}:00`;
+                                // 12-hour format label
+                                const suffix = hour >= 12 ? "PM" : "AM";
+                                const h12 = hour % 12 || 12; // 0 becomes 12
+                                const timeLabel = `${h12}:00 ${suffix}`;
+
                                 return (
                                     <tr key={hour}>
-                                        <th className="p-3 border bg-gray-50 text-xs font-mono text-gray-400">{timeLabel}</th>
+                                        <th className="p-3 border bg-gray-50 text-xs font-mono text-gray-500 whitespace-nowrap">{timeLabel}</th>
                                         {rooms?.map((r: any) => {
-                                            const slot = windows?.find((w: any) =>
-                                                w.room_id === r.room_id &&
-                                                w.day_of_week === gridDay &&
-                                                w.start_time.startsWith(timeLabel)
-                                            );
+                                            // Robust start time check using integer hour
+                                            const slot = windows?.find((w: any) => {
+                                                if (w.room_id !== r.room_id || w.day_of_week !== gridDay) return false;
+                                                const startH = parseInt(w.start_time.split(':')[0]);
+                                                return startH === hour;
+                                            });
 
+                                            // Check occupancy for background coloring
                                             const occupied = windows?.find((w: any) => {
                                                 if (w.room_id !== r.room_id || w.day_of_week !== gridDay) return false;
                                                 const startH = parseInt(w.start_time.split(':')[0]);
                                                 const endH = parseInt(w.end_time.split(':')[0]);
+                                                // If class is 8:30-9:30, it occupies 8 and 9 slots? 
+                                                // Simplified: If starts in this hour or runs through it.
+                                                // Current logic: occupies [startH, endH).
                                                 return hour >= startH && hour < endH;
                                             });
 
                                             return (
-                                                <td key={r.room_id} className={`border p-1 h-16 relative ${occupied ? 'bg-blue-50/50' : ''}`}>
+                                                <td key={r.room_id} className={`border p-1 h-20 relative align-top transition-colors ${occupied ? 'bg-blue-50/30' : 'hover:bg-gray-50'}`}>
                                                     {slot && (
-                                                        <div className="absolute inset-1 bg-blue-100 border-l-4 border-blue-500 rounded p-1 text-left overflow-hidden shadow-sm z-10 transition-all hover:z-20 hover:shadow-md">
-                                                            <div className="font-bold text-xs text-blue-900 truncate">
-                                                                {slot.window_name ? `${slot.window_name} ` : ''}
-                                                                <span className="font-mono opacity-75">
-                                                                    ({formatTime(slot.start_time)} - {formatTime(slot.end_time)})
-                                                                </span>
+                                                        <div className="absolute inset-x-1 top-1 bottom-1 bg-blue-100 border-l-4 border-blue-500 rounded p-1.5 text-left overflow-y-auto shadow-sm z-10 hover:shadow-md group">
+                                                            <div className="font-bold text-xs text-blue-900 mb-0.5 leading-tight">
+                                                                {slot.window_name || 'Class'}
                                                             </div>
-                                                            <div className="text-[10px] text-blue-700 truncate">
-                                                                {/* Handle flat programs vs legacy */}
-                                                                {(slot.programs || slot.program_schedule?.map((p: any) => p.program))?.map((p: any) => p.program_name).join(', ') || 'Unassigned'}
+                                                            <div className="text-[10px] text-blue-700 font-medium mb-1">
+                                                                {(() => {
+                                                                    // Format time range: 14:00:00 -> 2:00 PM
+                                                                    const format = (t: string) => {
+                                                                        const [h, m] = t.split(':');
+                                                                        const hi = parseInt(h);
+                                                                        const s = hi >= 12 ? 'PM' : 'AM';
+                                                                        const h12 = hi % 12 || 12;
+                                                                        return `${h12}:${m} ${s}`;
+                                                                    };
+                                                                    return `${format(slot.start_time)} - ${format(slot.end_time)}`;
+                                                                })()}
                                                             </div>
+                                                            <div className="text-[10px] text-blue-800 leading-tight">
+                                                                {/* Handle flat programs or nested */}
+                                                                {(() => {
+                                                                    const progs = slot.programs || slot.program_schedule?.map((ps: any) => ps.program) || [];
+                                                                    if (progs.length === 0) return <span className="text-gray-400 italic">Unassigned</span>;
+                                                                    return progs.map((p: any) => p.program_name).join(', ');
+                                                                })()}
+                                                            </div>
+                                                            {/* Student Count Badge */}
                                                             {slot.student_count !== undefined && (
-                                                                <div className="absolute bottom-1 right-1 text-[9px] bg-white/80 px-1 rounded text-blue-800 font-bold">
-                                                                    {slot.student_count} Students
+                                                                <div className="mt-1 flex justify-end">
+                                                                    <span className="text-[9px] bg-white/60 px-1.5 py-0.5 rounded text-blue-800 font-bold border border-blue-200">
+                                                                        {slot.student_count} 👥
+                                                                    </span>
                                                                 </div>
                                                             )}
                                                         </div>

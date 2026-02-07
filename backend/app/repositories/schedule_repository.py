@@ -78,10 +78,9 @@ class ScheduleRepository:
         # 2. Program Conflict Validation
         if window.program_ids:
             try:
-                # Fetch windows for these programs on the same day
-                # We need to join program_schedule -> schedule_window AND program_schedule -> program
+                # Fetch windows for these programs on the same day, JOINING ROOM to get the name
                 prog_conflicts = supabase.table('program_schedule')\
-                    .select('program_id, program(program_name), schedule_window!inner(start_time, end_time, day_of_week)')\
+                    .select('program_id, program(program_name), schedule_window!inner(start_time, end_time, day_of_week, room(room_name))')\
                     .in_('program_id', window.program_ids)\
                     .eq('schedule_window.day_of_week', window.day_of_week)\
                     .execute()
@@ -93,16 +92,12 @@ class ScheduleRepository:
                     
                     if new_start < exist_end and new_end > exist_start:
                         prog_name = row['program']['program_name'] if row.get('program') else f"Program {row['program_id']}"
-                        raise ValueError(f"Program Conflict: '{prog_name}' is already scheduled from {w['start_time']} to {w['end_time']} on {window.day_of_week}.")
+                        room_name = w['room']['room_name'] if w.get('room') else "another room"
+                        raise ValueError(f"Program Conflict: '{prog_name}' is already scheduled in '{room_name}' from {w['start_time']} to {w['end_time']} on {window.day_of_week}.")
             except ValueError as ve:
                 raise ve
             except Exception as e:
-                # If join fails or other issue, log but don't block? Or block?
-                # Better to fail safe.
                 print(f"Validation Error: {e}")
-                # We might proceed if it's just a query error, but for strict validation we should probably raise.
-                # However, if 'schedule_window!inner' fails because of missing relationship (unlikely), it might block everything.
-                # Assuming relationships are correct.
                 pass
 
         # 2. Insert Window
@@ -253,7 +248,7 @@ class ScheduleRepository:
             # Validation: Check if these programs are busy elsewhere (Exclude THIS window)
             if program_ids:
                  prog_conflicts = supabase.table('program_schedule')\
-                    .select('program_id, program(program_name), schedule_window!inner(window_id, start_time, end_time, day_of_week)')\
+                    .select('program_id, program(program_name), schedule_window!inner(window_id, start_time, end_time, day_of_week, room(room_name))')\
                     .in_('program_id', program_ids)\
                     .eq('schedule_window.day_of_week', day)\
                     .neq('window_id', window_id)\
@@ -269,7 +264,8 @@ class ScheduleRepository:
                     
                     if new_start_t < exist_end and new_end_t > exist_start:
                          prog_name = row['program']['program_name'] if row.get('program') else f"Program {row['program_id']}"
-                         raise ValueError(f"Program Conflict: '{prog_name}' is busy from {w['start_time']} to {w['end_time']}.")
+                         room_name = w['room']['room_name'] if w.get('room') else "another room"
+                         raise ValueError(f"Program Conflict: '{prog_name}' is already scheduled in '{room_name}' from {w['start_time']} to {w['end_time']} on {day}.")
 
             # If Valid, Sync
             # 1. Delete old

@@ -472,18 +472,46 @@ const MasterSchedule: React.FC<{ rooms: Room[], windows: ScheduleWindow[] }> = (
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-2">Assign Programs (Optional)</label>
                                 <div className="border rounded-lg max-h-40 overflow-y-auto divide-y">
-                                    {programs?.map((prog: any) => (
-                                        <div
-                                            key={prog.program_id}
-                                            onClick={() => toggleProgram(prog.program_id)}
-                                            className={`px-3 py-2 text-sm cursor-pointer flex justify-between items-center ${formData.program_ids.includes(prog.program_id) ? 'bg-blue-50 text-blue-700 font-medium' : 'hover:bg-gray-50'}`}
-                                        >
-                                            <span>{prog.program_name} {prog.batch?.batch_name ? `(${prog.batch.batch_name})` : ''}</span>
-                                            {formData.program_ids.includes(prog.program_id) && <div className="w-2 h-2 rounded-full bg-blue-500" />}
-                                        </div>
-                                    ))}
+                                    {(() => {
+                                        const busyProgramMap = new Map<number, any>();
+                                        if (windows && formData.day_of_week && formData.start_time && formData.end_time) {
+                                            const newStart = parseInt(formData.start_time.replace(':', ''));
+                                            const newEnd = parseInt(formData.end_time.replace(':', ''));
+
+                                            // eslint-disable-next-line array-callback-return
+                                            windows.forEach((w: any) => {
+                                                if (w.day_of_week !== formData.day_of_week) return;
+                                                const existStart = parseInt(w.start_time.replace(':', ''));
+                                                const existEnd = parseInt(w.end_time.replace(':', ''));
+
+                                                if (newStart < existEnd && newEnd > existStart) {
+                                                    const progs = w.programs || w.program_schedule?.map((ps: any) => ps.program) || [];
+                                                    progs.forEach((p: any) => busyProgramMap.set(p.program_id, w));
+                                                }
+                                            });
+                                        }
+
+                                        return programs?.map((prog: any) => {
+                                            const conflictWindow = busyProgramMap.get(prog.program_id);
+                                            const isBusy = !!conflictWindow;
+
+                                            return (
+                                                <div
+                                                    key={prog.program_id}
+                                                    onClick={() => !isBusy && toggleProgram(prog.program_id)}
+                                                    className={`px-3 py-2 text-sm flex justify-between items-center ${isBusy ? 'bg-gray-100 opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-gray-50'} ${formData.program_ids.includes(prog.program_id) ? 'bg-blue-50 text-blue-700 font-medium' : ''}`}
+                                                >
+                                                    <span>
+                                                        {prog.program_name} {prog.batch?.batch_name ? `(${prog.batch.batch_name})` : ''}
+                                                        {isBusy && <span className="ml-2 text-xs text-red-500 font-bold">(Busy in {conflictWindow?.room?.room_name || conflictWindow?.room_name || 'another room'})</span>}
+                                                    </span>
+                                                    {formData.program_ids.includes(prog.program_id) && <div className="w-2 h-2 rounded-full bg-blue-500" />}
+                                                </div>
+                                            );
+                                        });
+                                    })()}
                                 </div>
-                                <p className="text-xs text-gray-500 mt-1">Click to select multiple programs.</p>
+                                <p className="text-xs text-gray-500 mt-1">Click to select multiple programs. Programs scheduled elsewhere at this time are disabled.</p>
                             </div>
 
                             <button type="submit" className="w-full bg-blue-600 text-white py-2.5 rounded-lg font-bold hover:bg-blue-700 transition-colors">

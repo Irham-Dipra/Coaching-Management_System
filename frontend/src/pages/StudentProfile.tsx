@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { StudentRepository } from '../repositories/StudentRepository';
 import { ProgramRepository } from '../repositories/ProgramRepository';
 import StudentFinancialStatus from '../components/StudentFinancialStatus';
+import WithdrawalModal from '../components/WithdrawalModal';
 import { User, Calendar, BookOpen, CreditCard, Edit2, Save, Plus, Trash2 } from 'lucide-react';
 
 const StudentProfile: React.FC = () => {
@@ -13,6 +14,7 @@ const StudentProfile: React.FC = () => {
     const [editForm, setEditForm] = useState<any>({});
     const [showEnrollModal, setShowEnrollModal] = useState(false);
     const [selectedProgramId, setSelectedProgramId] = useState('');
+    const [withdrawEnrollment, setWithdrawEnrollment] = useState<any>(null);
 
     // 1. Fetch Student Details
     const { data: student, isLoading } = useQuery({
@@ -260,20 +262,16 @@ const StudentProfile: React.FC = () => {
                                         </div>
                                     </div>
                                     <button
-                                        onClick={() => {
-                                            if (confirm("Are you sure you want to remove this enrollment?")) {
-                                                deleteEnrollmentMutation.mutate(enroll.enrollment_id);
-                                            }
-                                        }}
+                                        onClick={() => setWithdrawEnrollment(enroll)}
                                         className="text-red-400 hover:text-red-600 p-2 opacity-0 group-hover:opacity-100 transition-opacity"
-                                        title="Delete Enrollment"
+                                        title="Withdraw / Delete Enrollment"
                                     >
                                         <Trash2 size={18} />
                                     </button>
                                 </div>
                             ))}
-                            {(!enrollments || enrollments.length === 0) && (
-                                <p className="text-center text-gray-400 py-4">Not enrolled in any programs yet.</p>
+                            {(!student.enrollment || student.enrollment.length === 0) && (
+                                <p className="text-gray-500 italic">No active enrollments.</p>
                             )}
                         </div>
                     </div>
@@ -282,6 +280,21 @@ const StudentProfile: React.FC = () => {
 
 
             </div>
+
+            {/* WITHDRAWAL MODAL */}
+            {withdrawEnrollment && (
+                <WithdrawalModal
+                    isOpen={!!withdrawEnrollment}
+                    onClose={() => setWithdrawEnrollment(null)}
+                    enrollment={withdrawEnrollment}
+                    studentId={id!}
+                    onSuccess={() => {
+                        setWithdrawEnrollment(null);
+                        queryClient.invalidateQueries({ queryKey: ['enrollments', id] });
+                        queryClient.invalidateQueries({ queryKey: ['student-financial-summary', id] });
+                    }}
+                />
+            )}
         </div>
     );
 };

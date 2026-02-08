@@ -139,6 +139,7 @@ class ResultRepository:
             candidate_entry = {
                 "enrollment_id": enroll['enrollment_id'],
                 "student": student,
+                "program_id": enroll.get('program_id'), # Add this
                 "program": enroll.get('program'),
                 "program_roll_no": enroll.get('roll_no'), # Specific to program
                 "result_id": res['result_id'] if res else None,

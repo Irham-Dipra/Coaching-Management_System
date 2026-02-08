@@ -78,10 +78,11 @@ const ExamDetails: React.FC = () => {
             const group = groupedMap.get(studentId);
 
             // Add enrollment details
+            // Add enrollment details
             group.enrollments.push({
                 program_name: c?.program?.program_name,
-                program_id: c?.program?.program_id,
-                roll_no: c?.program_roll_no, // Corrected field from backend
+                program_id: c?.program_id, // Corrected: fetch from top level
+                roll_no: c?.program_roll_no,
                 enrollment_id: c.enrollment_id
             });
 

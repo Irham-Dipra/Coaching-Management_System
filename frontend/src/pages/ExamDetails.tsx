@@ -135,18 +135,20 @@ const ExamDetails: React.FC = () => {
             let aValue: any;
             let bValue: any;
 
+            // FIX: When editing, do NOT sort by live edited values to prevent jumping rows.
+            // Use the original result or 0.
             if (sortConfig.key === 'student_id') {
                 aValue = a.sort_student_id;
                 bValue = b.sort_student_id;
             } else if (sortConfig.key === 'written') {
-                aValue = a.sort_written;
-                bValue = b.sort_written;
+                aValue = isEditing ? (a.result_written === '-' ? 0 : a.result_written) : a.sort_written;
+                bValue = isEditing ? (b.result_written === '-' ? 0 : b.result_written) : b.sort_written;
             } else if (sortConfig.key === 'mcq') {
-                aValue = a.sort_mcq;
-                bValue = b.sort_mcq;
+                aValue = isEditing ? (a.result_mcq === '-' ? 0 : a.result_mcq) : a.sort_mcq;
+                bValue = isEditing ? (b.result_mcq === '-' ? 0 : b.result_mcq) : b.sort_mcq;
             } else if (sortConfig.key === 'total') {
-                aValue = a.sort_total;
-                bValue = b.sort_total;
+                aValue = isEditing ? (a.result_total === '-' ? 0 : a.result_total) : a.sort_total;
+                bValue = isEditing ? (b.result_total === '-' ? 0 : b.result_total) : b.sort_total;
             }
 
             if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
@@ -199,11 +201,14 @@ const ExamDetails: React.FC = () => {
 
     // Parsers
     const handleMarkChange = (studentId: number, field: 'written' | 'mcq', value: string) => {
+        // Prevent negative numbers if needed, though type=number handles some.
+        // Also allow empty string.
         setEditedMarks((prev: any) => ({
             ...prev,
             [studentId]: {
                 ...prev[studentId] || { student_id: studentId },
-                [field]: value === '' ? 0 : Number(value)
+                // Store raw string if empty, otherwise number. 
+                [field]: value === '' ? '' : Number(value)
             }
         }));
     };
@@ -211,8 +216,8 @@ const ExamDetails: React.FC = () => {
     const handleSaveManual = () => {
         const resultsArray = Object.values(editedMarks).map((m: any) => ({
             student_id: m.student_id,
-            written_marks: m.written || 0,
-            mcq_marks: m.mcq || 0
+            written_marks: m.written === '' ? 0 : (m.written || 0),
+            mcq_marks: m.mcq === '' ? 0 : (m.mcq || 0)
         }));
 
         bulkUpdateMutation.mutate({
@@ -462,19 +467,21 @@ const ExamDetails: React.FC = () => {
                                             <td className="p-4 text-right">
                                                 <input
                                                     type="number"
-                                                    className="w-20 p-1 border rounded text-right bg-white border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500 font-bold"
+                                                    className="w-20 p-1 border rounded text-right bg-white border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500 font-bold [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                                     value={editData.written}
                                                     placeholder="0"
                                                     onChange={(e) => g.student?.student_id && handleMarkChange(g.student.student_id, 'written', e.target.value)}
+                                                    onWheel={(e) => e.currentTarget.blur()}
                                                 />
                                             </td>
                                             <td className="p-4 text-right">
                                                 <input
                                                     type="number"
-                                                    className="w-20 p-1 border rounded text-right bg-white border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500 font-bold"
+                                                    className="w-20 p-1 border rounded text-right bg-white border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500 font-bold [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                                                     value={editData.mcq}
                                                     placeholder="0"
                                                     onChange={(e) => g.student?.student_id && handleMarkChange(g.student.student_id, 'mcq', e.target.value)}
+                                                    onWheel={(e) => e.currentTarget.blur()}
                                                 />
                                             </td>
                                             <td className="p-4 text-right text-gray-400 text-sm">

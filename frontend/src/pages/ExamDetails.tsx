@@ -42,6 +42,62 @@ const ExamDetails: React.FC = () => {
         enabled: !!id
     });
 
+    // Sorting State
+    const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' }>({ key: 'student_id', direction: 'asc' });
+
+    const handleSort = (key: string) => {
+        let direction: 'asc' | 'desc' = 'asc';
+        if (sortConfig.key === key && sortConfig.direction === 'asc') {
+            direction = 'desc';
+        }
+        setSortConfig({ key, direction });
+    };
+
+    const sortedCandidates = React.useMemo(() => {
+        if (!candidates) return [];
+
+        // 1. Merge Data
+        const merged = candidates.map((c: any) => {
+            const result = meritList?.find((r: any) => r.enrollment_id === c.enrollment_id);
+            const editData = c?.enrollment_id ? (editedMarks[c.enrollment_id] || { written: result?.written_marks || 0, mcq: result?.mcq_marks || 0 }) : { written: 0, mcq: 0 };
+
+            return {
+                ...c,
+                result_written: result?.written_marks ?? '-',
+                result_mcq: result?.mcq_marks ?? '-',
+                result_total: result?.total_score ?? '-',
+                // Numeric values for sorting
+                sort_written: isEditing ? (Number(editData.written) || 0) : (result?.written_marks || 0),
+                sort_mcq: isEditing ? (Number(editData.mcq) || 0) : (result?.mcq_marks || 0),
+                sort_total: isEditing ? ((Number(editData.written) || 0) + (Number(editData.mcq) || 0)) : (result?.total_score || 0),
+                sort_student_id: c.student?.student_id || 0,
+                editData: editData
+            };
+        });
+
+        // 2. Sort
+        return merged.sort((a: any, b: any) => {
+            let aValue = a.sort_student_id;
+            let bValue = b.sort_student_id;
+
+            if (sortConfig.key === 'written') {
+                aValue = a.sort_written;
+                bValue = b.sort_written;
+            } else if (sortConfig.key === 'mcq') {
+                aValue = a.sort_mcq;
+                bValue = b.sort_mcq;
+            } else if (sortConfig.key === 'total') {
+                aValue = a.sort_total;
+                bValue = b.sort_total;
+            }
+
+            if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
+            if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
+            return 0;
+        });
+
+    }, [candidates, meritList, sortConfig, editedMarks, isEditing]);
+
     // Effect: Initialize marks
     useEffect(() => {
         if (isEditing && candidates) {
@@ -280,34 +336,45 @@ const ExamDetails: React.FC = () => {
 
             {/* TABLE */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                <div className="p-4 border-b border-gray-100 bg-gray-50 font-bold text-gray-700">
-                    Merit List (Ranked)
+                <div className="p-4 border-b border-gray-100 bg-gray-50 font-bold text-gray-700 flex justify-between items-center">
+                    <span>Student List</span>
+                    <span className="text-xs text-gray-400 font-normal">Click headers to sort</span>
                 </div>
                 <table className="w-full text-left border-collapse">
                     <thead className="bg-white text-gray-500 text-xs uppercase font-semibold border-b border-gray-200">
                         <tr>
-                            <th className="p-4">Rank</th>
-                            <th className="p-4">Student</th>
-                            <th className="p-4 text-right">Written</th>
-                            <th className="p-4 text-right">MCQ</th>
-                            <th className="p-4 text-right">Total Score</th>
+                            <th className="p-4 cursor-pointer hover:bg-gray-50" onClick={() => handleSort('student_id')}>
+                                <div className="flex items-center gap-1">
+                                    Student {sortConfig.key === 'student_id' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                                </div>
+                            </th>
+                            <th className="p-4 text-right cursor-pointer hover:bg-gray-50" onClick={() => handleSort('written')}>
+                                <div className="flex items-center justify-end gap-1">
+                                    Written {sortConfig.key === 'written' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                                </div>
+                            </th>
+                            <th className="p-4 text-right cursor-pointer hover:bg-gray-50" onClick={() => handleSort('mcq')}>
+                                <div className="flex items-center justify-end gap-1">
+                                    MCQ {sortConfig.key === 'mcq' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                                </div>
+                            </th>
+                            <th className="p-4 text-right cursor-pointer hover:bg-gray-50" onClick={() => handleSort('total')}>
+                                <div className="flex items-center justify-end gap-1">
+                                    Total Score {sortConfig.key === 'total' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                                </div>
+                            </th>
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-50">
-                        {candidates?.map((c: any, index: number) => {
-                            // Find result in merit list if exists
-                            const result = meritList?.find((r: any) => r.enrollment_id === c.enrollment_id);
-
-                            // Edit Data
-                            const editData = c?.enrollment_id ? (editedMarks[c.enrollment_id] || { written: result?.written_marks || 0, mcq: result?.mcq_marks || 0 }) : { written: 0, mcq: 0 };
+                        {sortedCandidates?.map((c: any, index: number) => {
+                            const editData = c.editData; // Pre-calculated in sortedCandidates
 
                             return (
-                                <tr key={c?.enrollment_id || index} className={isEditing ? "bg-blue-50/30" : "hover:bg-gray-50"}>
-                                    <td className="p-4 text-gray-500 font-mono">#{index + 1}</td>
+                                <tr key={c.enrollment_id || index} className={isEditing ? "bg-blue-50/30" : "hover:bg-gray-50"}>
                                     <td className="p-4 font-medium text-gray-900">
-                                        {c?.student?.name || 'Unknown'}
-                                        <span className="block text-xs text-gray-400">Roll: {c?.student?.roll_no || '-'}</span>
-                                        <span className="block text-xs text-gray-400">{c?.program?.program_name}</span>
+                                        {c.student?.name || 'Unknown'}
+                                        <span className="block text-xs text-gray-400">Roll: {c.student?.roll_no || '-'}</span>
+                                        <span className="block text-xs text-gray-400">{c.program?.program_name}</span>
                                     </td>
 
                                     {isEditing ? (
@@ -316,18 +383,18 @@ const ExamDetails: React.FC = () => {
                                                 <input
                                                     type="number"
                                                     className="w-20 p-1 border rounded text-right bg-white border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500 font-bold"
-                                                    value={editData.written || ''}
+                                                    value={editData.written}
                                                     placeholder="0"
-                                                    onChange={(e) => c?.enrollment_id && handleMarkChange(c.enrollment_id, 'written', e.target.value)}
+                                                    onChange={(e) => c.enrollment_id && handleMarkChange(c.enrollment_id, 'written', e.target.value)}
                                                 />
                                             </td>
                                             <td className="p-4 text-right">
                                                 <input
                                                     type="number"
                                                     className="w-20 p-1 border rounded text-right bg-white border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500 font-bold"
-                                                    value={editData.mcq || ''}
+                                                    value={editData.mcq}
                                                     placeholder="0"
-                                                    onChange={(e) => c?.enrollment_id && handleMarkChange(c.enrollment_id, 'mcq', e.target.value)}
+                                                    onChange={(e) => c.enrollment_id && handleMarkChange(c.enrollment_id, 'mcq', e.target.value)}
                                                 />
                                             </td>
                                             <td className="p-4 text-right text-gray-400 text-sm">
@@ -336,17 +403,17 @@ const ExamDetails: React.FC = () => {
                                         </>
                                     ) : (
                                         <>
-                                            <td className="p-4 text-right font-mono text-gray-600">{result?.written_marks ?? '-'}</td>
-                                            <td className="p-4 text-right font-mono text-gray-600">{result?.mcq_marks ?? '-'}</td>
-                                            <td className="p-4 text-right font-bold text-blue-600 text-lg">{result?.total_score ?? '-'}</td>
+                                            <td className="p-4 text-right font-mono text-gray-600">{c.result_written}</td>
+                                            <td className="p-4 text-right font-mono text-gray-600">{c.result_mcq}</td>
+                                            <td className="p-4 text-right font-bold text-blue-600 text-lg">{c.result_total}</td>
                                         </>
                                     )}
                                 </tr>
                             );
                         })}
 
-                        {!candidates || candidates.length === 0 && (
-                            <tr><td colSpan={5} className="p-8 text-center text-gray-400">No students enrolled or results published.</td></tr>
+                        {!sortedCandidates || sortedCandidates.length === 0 && (
+                            <tr><td colSpan={4} className="p-8 text-center text-gray-400">No students enrolled or results published.</td></tr>
                         )}
                     </tbody>
                 </table>

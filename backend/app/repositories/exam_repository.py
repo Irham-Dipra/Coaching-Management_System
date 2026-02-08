@@ -56,3 +56,30 @@ class ExamRepository:
     def delete_exam(self, exam_id: int):
         supabase.table(self.table).delete().eq("exam_id", exam_id).execute()
         return True
+
+    def update_exam(self, exam_id: int, exam: ExamCreate):
+        # 1. Prepare Exam Data
+        exam_data = jsonable_encoder(exam)
+        new_program_ids = set(exam_data.pop('program_ids', []))
+
+        # 2. Update Exam Details
+        supabase.table(self.table).update(exam_data).eq("exam_id", exam_id).execute()
+
+        # 3. Update Junction Rows (Program <-> Exam)
+        # Fetch existing links
+        current_links = supabase.table("program_exam").select("program_id").eq("exam_id", exam_id).execute().data
+        current_program_ids = set([link['program_id'] for link in current_links])
+
+        # Determine changes
+        to_add = new_program_ids - current_program_ids
+        to_remove = current_program_ids - new_program_ids
+
+        # Execute updates
+        if to_remove:
+            supabase.table("program_exam").delete().eq("exam_id", exam_id).in_("program_id", list(to_remove)).execute()
+        
+        if to_add:
+            junction_data = [{"exam_id": exam_id, "program_id": pid} for pid in to_add]
+            supabase.table("program_exam").insert(junction_data).execute()
+
+        return self.get_exam_by_id(exam_id)

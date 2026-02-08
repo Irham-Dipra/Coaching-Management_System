@@ -7,10 +7,12 @@ import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import UploadResultsModal from '../components/UploadResultsModal';
+import CreateExamModal from '../components/CreateExamModal';
 
 const ExamDetails: React.FC = () => {
     const { id } = useParams<{ id: string }>();
     const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
     const [editedMarks, setEditedMarks] = useState<any>({});
     const queryClient = useQueryClient();
@@ -37,7 +39,7 @@ const ExamDetails: React.FC = () => {
     const { data: candidates } = useQuery({
         queryKey: ['candidates', id],
         queryFn: () => ExamRepository.getCandidates(id!),
-        enabled: !!id && isEditing
+        enabled: !!id
     });
 
     // Effect: Initialize marks
@@ -151,15 +153,50 @@ const ExamDetails: React.FC = () => {
         <div className="space-y-6">
             {/* HEADER */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                <div className="flex justify-between items-center">
+                <div className="flex justify-between items-start">
                     <div>
-                        <span className="text-sm font-bold text-gray-400 uppercase tracking-wider">{exam?.exam_type}</span>
+                        <div className="flex items-center gap-2 mb-1">
+                            <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded uppercase tracking-wider">{exam?.exam_type}</span>
+                            {exam.program_exam && exam.program_exam.length > 0 && (
+                                <>
+                                    <span className="text-xs text-gray-400">|</span>
+                                    <span className="text-xs text-gray-500">
+                                        {exam.program_exam.map((pe: any) => pe.program?.program_name).join(', ')}
+                                    </span>
+                                </>
+                            )}
+                        </div>
                         <h1 className="text-3xl font-bold text-gray-900 mt-1">{exam?.exam_name}</h1>
-                        <p className="text-gray-500 mt-2">Held on: {exam?.exam_date || 'N/A'}</p>
+                        <p className="text-gray-500 mt-1 flex gap-4">
+                            <span>Held on: {exam?.exam_date || 'N/A'}</span>
+                            {exam.subject && <span>Subject: {exam.subject}</span>}
+                        </p>
+
+                        <div className="flex gap-4 mt-3">
+                            {exam.question_link && (
+                                <a href={exam.question_link} target="_blank" rel="noreferrer" className="text-sm text-blue-600 hover:underline flex items-center gap-1">
+                                    <Download size={14} /> Question Paper
+                                </a>
+                            )}
+                            {exam.solution_link && (
+                                <a href={exam.solution_link} target="_blank" rel="noreferrer" className="text-sm text-green-600 hover:underline flex items-center gap-1">
+                                    <Download size={14} /> Solution
+                                </a>
+                            )}
+                        </div>
+
                     </div>
-                    <div className="text-right">
-                        <p className="text-sm text-gray-500 uppercase">Total Marks</p>
-                        <p className="text-3xl font-bold text-blue-600">{exam?.total_marks}</p>
+                    <div className="text-right flex flex-col items-end gap-2">
+                        <div>
+                            <p className="text-sm text-gray-500 uppercase">Total Marks</p>
+                            <p className="text-3xl font-bold text-blue-600">{exam?.total_marks}</p>
+                        </div>
+                        <button
+                            onClick={() => setIsEditModalOpen(true)}
+                            className="text-sm text-gray-500 hover:text-blue-600 flex items-center gap-1 border px-2 py-1 rounded hover:bg-gray-50"
+                        >
+                            <Edit size={14} /> Edit Details
+                        </button>
                     </div>
                 </div>
 
@@ -305,9 +342,22 @@ const ExamDetails: React.FC = () => {
                                 </tr>
                             ))
                         )}
-                        {!isEditing && meritList?.length === 0 && (
-                            <tr><td colSpan={5} className="p-8 text-center text-gray-400">Results not published yet.</td></tr>
-                        )}
+                        {!isEditing && meritList?.length === 0 && candidates && candidates.length > 0 ? (
+                            candidates.map((c: any, index: number) => (
+                                <tr key={c?.enrollment_id || index} className="text-gray-500">
+                                    <td className="p-4 font-mono">#{index + 1}</td>
+                                    <td className="p-4 font-medium">
+                                        {c?.student?.name || 'Unknown'}
+                                        <span className="block text-xs text-gray-400">Roll: {c?.student?.roll_no || '-'}</span>
+                                    </td>
+                                    <td className="p-4 text-right">-</td>
+                                    <td className="p-4 text-right">-</td>
+                                    <td className="p-4 text-right">-</td>
+                                </tr>
+                            ))
+                        ) : !isEditing && meritList?.length === 0 ? (
+                            <tr><td colSpan={5} className="p-8 text-center text-gray-400">No students enrolled or results published.</td></tr>
+                        ) : null}
                     </tbody>
                 </table>
             </div>
@@ -316,6 +366,13 @@ const ExamDetails: React.FC = () => {
                 isOpen={isUploadModalOpen}
                 onClose={() => setIsUploadModalOpen(false)}
                 examId={id!}
+            />
+
+            {/* Edit Modal */}
+            <CreateExamModal
+                isOpen={isEditModalOpen}
+                onClose={() => setIsEditModalOpen(false)}
+                examData={exam}
             />
         </div>
     );

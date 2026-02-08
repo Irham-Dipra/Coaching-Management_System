@@ -16,6 +16,9 @@ const CreateExamModal: React.FC<CreateExamModalProps> = ({ isOpen, onClose, prog
     // Local state for Program Selection (Array now)
     const [selectedProgramIds, setSelectedProgramIds] = useState<string[]>([]);
 
+    // Local state for dropdown visibility
+    const [isProgramDropdownOpen, setIsProgramDropdownOpen] = useState(false);
+
     // Reset or Sync when modal opens/props change
     React.useEffect(() => {
         if (programId) {
@@ -95,9 +98,9 @@ const CreateExamModal: React.FC<CreateExamModalProps> = ({ isOpen, onClose, prog
     };
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 overflow-y-auto pt-10 pb-10">
-            <div className="bg-white rounded-lg shadow-xl w-full max-w-lg p-6 relative">
-                <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-lg p-6 relative max-h-[90vh] overflow-y-auto">
+                <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 z-10">
                     <X size={24} />
                 </button>
 
@@ -105,23 +108,40 @@ const CreateExamModal: React.FC<CreateExamModalProps> = ({ isOpen, onClose, prog
 
                 <form onSubmit={handleSubmit} className="space-y-4">
 
-                    {/* Program Selector (Multi-Select) - Show only if not pre-linked to a program */}
+                    {/* Program Selector (Collapsible Dropdown) */}
                     {!programId && (
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">Select Programs / Batches</label>
-                            <div className="border rounded-md max-h-40 overflow-y-auto p-2 bg-gray-50 grid grid-cols-1 gap-1">
-                                {programs?.map((p: any) => (
-                                    <label key={p.program_id} className="flex items-center gap-2 p-1.5 hover:bg-white rounded cursor-pointer">
-                                        <input
-                                            type="checkbox"
-                                            className="w-4 h-4 text-blue-600 rounded"
-                                            checked={selectedProgramIds.includes(String(p.program_id))}
-                                            onChange={() => toggleProgram(String(p.program_id))}
-                                        />
-                                        <span className="text-sm text-gray-700">{p.program_name} <span className="text-xs text-gray-500">({p.batch?.batch_name})</span></span>
-                                    </label>
-                                ))}
-                            </div>
+
+                            <button
+                                type="button"
+                                onClick={() => setIsProgramDropdownOpen(!isProgramDropdownOpen)}
+                                className="w-full flex justify-between items-center px-4 py-2 border rounded-md bg-white text-left text-sm text-gray-700 hover:bg-gray-50"
+                            >
+                                <span>
+                                    {selectedProgramIds.length === 0
+                                        ? "Select Programs..."
+                                        : `${selectedProgramIds.length} Program(s) Selected`}
+                                </span>
+                                <span className="text-xs text-gray-500">{isProgramDropdownOpen ? '▲' : '▼'}</span>
+                            </button>
+
+                            {isProgramDropdownOpen && (
+                                <div className="mt-2 border rounded-md max-h-60 overflow-y-auto p-2 bg-gray-50 grid grid-cols-1 gap-1 shadow-inner">
+                                    {programs?.map((p: any) => (
+                                        <label key={p.program_id} className="flex items-center gap-2 p-1.5 hover:bg-white rounded cursor-pointer">
+                                            <input
+                                                type="checkbox"
+                                                className="w-4 h-4 text-blue-600 rounded"
+                                                checked={selectedProgramIds.includes(String(p.program_id))}
+                                                onChange={() => toggleProgram(String(p.program_id))}
+                                            />
+                                            <span className="text-sm text-gray-700">{p.program_name} <span className="text-xs text-gray-500">({p.batch?.batch_name})</span></span>
+                                        </label>
+                                    ))}
+                                </div>
+                            )}
+
                             {selectedProgramIds.length === 0 && <p className="text-xs text-red-500 mt-1">Required*</p>}
                         </div>
                     )}

@@ -33,6 +33,17 @@ export const ExamRepository = {
         return await response.json();
     },
 
+    // 3b. Update Exam
+    async updateExam(examId: string, examData: any) {
+        const response = await fetch(`${API_BASE_URL}/exams/${examId}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(examData),
+        });
+        if (!response.ok) throw new Error("Failed to update exam");
+        return await response.json();
+    },
+
     // 4. Get Analytics
     async getAnalytics(examId: string) {
         const response = await fetch(`${API_BASE_URL}/exams/${examId}/analytics`);

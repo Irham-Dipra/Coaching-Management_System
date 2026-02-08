@@ -32,6 +32,10 @@ def get_exam_details(exam_id: int):
 def delete_exam(exam_id: int):
     return exam_repo.delete_exam(exam_id)
 
+@router.put("/exams/{exam_id}")
+def update_exam(exam_id: int, exam: ExamCreate):
+    return exam_repo.update_exam(exam_id, exam)
+
 # ==========================
 # RESULTS (BULK & STATS)
 # ==========================
@@ -46,7 +50,11 @@ def get_exam_merit_list(exam_id: int):
 
 @router.get("/exams/{exam_id}/analytics")
 def get_exam_analytics(exam_id: int):
-    return result_repo.get_exam_analytics(exam_id)
+    try:
+        return result_repo.get_exam_analytics(exam_id)
+    except Exception as e:
+        print(f"ERROR in get_exam_analytics: {e}")
+        raise e
 
 @router.get("/exams/{exam_id}/candidates")
 def get_exam_candidates(exam_id: int):

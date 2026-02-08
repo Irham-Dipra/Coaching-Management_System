@@ -7,34 +7,51 @@ class ExamRepository:
         self.table = "exam"
 
     def get_exams_by_program(self, program_id: int):
-        # Ordered by date descending
-        response = supabase.table(self.table)\
-            .select("*")\
+        # Fetch exams linked to this program via junction table
+        # We query program_exam table and select the nested exam data
+        response = supabase.table("program_exam")\
+            .select("exam(*)")\
             .eq("program_id", program_id)\
-            .order("exam_date", desc=True)\
             .execute()
-        return response.data
+        
+        # Flatten structure: [ {exam: {...}}, ... ] -> [ {...}, ... ]
+        exams = [item['exam'] for item in response.data if item.get('exam')]
+        # Sort manually since we can't easily order by nested field in this query type easily without rpc
+        exams.sort(key=lambda x: x['exam_date'] or '', reverse=True)
+        return exams
 
     def get_all_exams(self):
-        # Fetch all exams with program and batch info
-        # program(program_name, batch(batch_name))
+        # Fetch all exams and their linked programs
+        # program_exam(program(...))
         response = supabase.table(self.table)\
-            .select("*, program(program_name, batch(batch_name))")\
+            .select("*, program_exam(program(program_id, program_name, batch(batch_name)))")\
             .order("exam_date", desc=True)\
             .execute()
         return response.data
 
     def get_exam_by_id(self, exam_id: int):
         response = supabase.table(self.table)\
-            .select("*")\
+            .select("*, program_exam(program(program_id, program_name))")\
             .eq("exam_id", exam_id)\
             .execute()
         return response.data[0] if response.data else None
 
     def create_exam(self, exam: ExamCreate):
-        data = jsonable_encoder(exam)
-        response = supabase.table(self.table).insert(data).execute()
-        return response.data[0]
+        # 1. Prepare Exam Data (exclude program_ids)
+        exam_data = jsonable_encoder(exam)
+        program_ids = exam_data.pop('program_ids', [])
+        
+        # 2. Insert Exam
+        response = supabase.table(self.table).insert(exam_data).execute()
+        new_exam = response.data[0]
+        new_exam_id = new_exam['exam_id']
+        
+        # 3. Insert Junction Rows (Program <-> Exam)
+        if program_ids:
+            junction_data = [{"exam_id": new_exam_id, "program_id": pid} for pid in program_ids]
+            supabase.table("program_exam").insert(junction_data).execute()
+            
+        return new_exam
 
     def delete_exam(self, exam_id: int):
         supabase.table(self.table).delete().eq("exam_id", exam_id).execute()

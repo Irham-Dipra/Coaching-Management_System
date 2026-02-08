@@ -13,19 +13,23 @@ interface CreateExamModalProps {
 const CreateExamModal: React.FC<CreateExamModalProps> = ({ isOpen, onClose, programId }) => {
     const queryClient = useQueryClient();
 
-    // Local state for Program Selection if programId is not passed
-    const [selectedProgramId, setSelectedProgramId] = useState(programId || '');
+    // Local state for Program Selection (Array now)
+    const [selectedProgramIds, setSelectedProgramIds] = useState<string[]>([]);
 
     // Reset or Sync when modal opens/props change
     React.useEffect(() => {
-        if (programId) setSelectedProgramId(programId);
+        if (programId) {
+            setSelectedProgramIds([programId]);
+        } else {
+            setSelectedProgramIds([]);
+        }
     }, [programId, isOpen]);
 
-    // Fetch Programs only if we need to select one
+    // Fetch Programs only if we need to select one (i.e. we are NOT on a specific program page)
     const { data: programs } = useQuery({
         queryKey: ['programs'],
         queryFn: ProgramRepository.getAllPrograms,
-        enabled: !programId && isOpen // Only fetch if no programId provided
+        enabled: !programId && isOpen
     });
 
     const [formData, setFormData] = useState({
@@ -33,25 +37,27 @@ const CreateExamModal: React.FC<CreateExamModalProps> = ({ isOpen, onClose, prog
         exam_date: '',
         exam_type: 'Weekly',
         subject: '',
-        total_marks: 50
+        total_marks: 50,
+        question_link: '',
+        solution_link: ''
     });
 
     const createMutation = useMutation({
         mutationFn: (data: any) => ExamRepository.createExam(data),
         onSuccess: () => {
-            // Invalidate specific program if we know it, otherwise specific one we selected
-            if (programId) {
-                queryClient.invalidateQueries({ queryKey: ['program', programId] });
-            }
-            if (selectedProgramId) {
-                queryClient.invalidateQueries({ queryKey: ['program', selectedProgramId] });
-            }
-            // Also invalidate all-exams list for the directory page
+            // Invalidate all related programs
+            selectedProgramIds.forEach(pid => {
+                queryClient.invalidateQueries({ queryKey: ['program', pid] });
+            });
             queryClient.invalidateQueries({ queryKey: ['all-exams'] });
 
             onClose();
-            setFormData({ exam_name: '', exam_date: '', exam_type: 'Weekly', subject: '', total_marks: 50 });
-            if (!programId) setSelectedProgramId('');
+            setFormData({
+                exam_name: '', exam_date: '', exam_type: 'Weekly',
+                subject: '', total_marks: 50,
+                question_link: '', solution_link: ''
+            });
+            if (!programId) setSelectedProgramIds([]);
         },
         onError: (err) => {
             alert("Failed to create exam: " + err);
@@ -63,14 +69,14 @@ const CreateExamModal: React.FC<CreateExamModalProps> = ({ isOpen, onClose, prog
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
 
-        if (!selectedProgramId) {
-            alert("Please select a program.");
+        if (selectedProgramIds.length === 0) {
+            alert("Please select at least one program.");
             return;
         }
 
         createMutation.mutate({
             ...formData,
-            program_id: parseInt(selectedProgramId),
+            program_ids: selectedProgramIds.map(id => parseInt(id)),
             total_marks: Number(formData.total_marks),
             exam_date: formData.exam_date || null
         });
@@ -80,9 +86,17 @@ const CreateExamModal: React.FC<CreateExamModalProps> = ({ isOpen, onClose, prog
         setFormData({ ...formData, [e.target.name]: e.target.value });
     };
 
+    const toggleProgram = (pid: string) => {
+        setSelectedProgramIds(prev =>
+            prev.includes(pid)
+                ? prev.filter(id => id !== pid)
+                : [...prev, pid]
+        );
+    };
+
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6 relative">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 overflow-y-auto pt-10 pb-10">
+            <div className="bg-white rounded-lg shadow-xl w-full max-w-lg p-6 relative">
                 <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
                     <X size={24} />
                 </button>
@@ -91,23 +105,24 @@ const CreateExamModal: React.FC<CreateExamModalProps> = ({ isOpen, onClose, prog
 
                 <form onSubmit={handleSubmit} className="space-y-4">
 
-                    {/* Program Selector (Only if programId missing) */}
+                    {/* Program Selector (Multi-Select) - Show only if not pre-linked to a program */}
                     {!programId && (
                         <div>
-                            <label className="block text-sm font-medium text-gray-700">Program / Batch</label>
-                            <select
-                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border text-gray-900 bg-white"
-                                value={selectedProgramId}
-                                onChange={(e) => setSelectedProgramId(e.target.value)}
-                                required
-                            >
-                                <option value="">-- Select Program --</option>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">Select Programs / Batches</label>
+                            <div className="border rounded-md max-h-40 overflow-y-auto p-2 bg-gray-50 grid grid-cols-1 gap-1">
                                 {programs?.map((p: any) => (
-                                    <option key={p.program_id} value={p.program_id}>
-                                        {p.program_name}
-                                    </option>
+                                    <label key={p.program_id} className="flex items-center gap-2 p-1.5 hover:bg-white rounded cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            className="w-4 h-4 text-blue-600 rounded"
+                                            checked={selectedProgramIds.includes(String(p.program_id))}
+                                            onChange={() => toggleProgram(String(p.program_id))}
+                                        />
+                                        <span className="text-sm text-gray-700">{p.program_name} <span className="text-xs text-gray-500">({p.batch?.batch_name})</span></span>
+                                    </label>
                                 ))}
-                            </select>
+                            </div>
+                            {selectedProgramIds.length === 0 && <p className="text-xs text-red-500 mt-1">Required*</p>}
                         </div>
                     )}
 
@@ -160,6 +175,28 @@ const CreateExamModal: React.FC<CreateExamModalProps> = ({ isOpen, onClose, prog
                             className="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border text-gray-900 bg-white"
                             value={formData.subject} onChange={handleChange}
                         />
+                    </div>
+
+                    {/* Link Fields */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">Question Paper Link</label>
+                            <input
+                                name="question_link" type="text"
+                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border text-gray-900 bg-white text-sm"
+                                placeholder="https://drive.google.com/..."
+                                value={formData.question_link} onChange={handleChange}
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">Solution/Solve Link</label>
+                            <input
+                                name="solution_link" type="text"
+                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border text-gray-900 bg-white text-sm"
+                                placeholder="https://..."
+                                value={formData.solution_link} onChange={handleChange}
+                            />
+                        </div>
                     </div>
 
                     <div className="flex justify-end pt-4">

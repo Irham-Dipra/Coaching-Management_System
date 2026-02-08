@@ -87,7 +87,9 @@ class ProgramRepository:
                 student(*),                
                 payment(*)                 
             ),
-            exam(*),                       
+            program_exam(
+                exam(*)
+            ),
             teacher_program_enrollment(    
                 teacher(*)                 
             )

@@ -258,12 +258,7 @@ const ProgramDetails: React.FC = () => {
                     {activeTab === 'exams' && (
                         <div>
                             <div className="flex justify-end mb-4">
-                                <button
-                                    onClick={() => setIsExamModalOpen(true)}
-                                    className="bg-blue-600 text-white px-3 py-1.5 rounded text-sm hover:bg-blue-700"
-                                >
-                                    + Schedule Exam
-                                </button>
+                                {/* Button Removed as per request */}
                             </div>
                             {totalExams === 0 ? (
                                 <div className="text-center py-8 text-gray-400 border border-dashed rounded-lg">
@@ -271,19 +266,24 @@ const ProgramDetails: React.FC = () => {
                                 </div>
                             ) : (
                                 <ul className="space-y-2">
-                                    {program.exam?.map((exam: any) => (
-                                        <li key={exam.exam_id} className="border p-4 rounded-lg flex justify-between items-center hover:bg-gray-50 transition-colors">
-                                            <Link to={`/exams/${exam.exam_id}`} className="block flex-1">
-                                                <div>
-                                                    <p className="font-bold text-blue-600 hover:underline">{exam.exam_name}</p>
-                                                    <p className="text-xs text-gray-500">{exam.exam_date} • {exam.exam_type}</p>
+                                    {program.program_exam?.map((pe: any) => {
+                                        const exam = pe.exam; // Extract nested exam
+                                        if (!exam) return null;
+
+                                        return (
+                                            <li key={exam.exam_id} className="border p-4 rounded-lg flex justify-between items-center hover:bg-gray-50 transition-colors">
+                                                <Link to={`/exams/${exam.exam_id}`} className="block flex-1">
+                                                    <div>
+                                                        <p className="font-bold text-blue-600 hover:underline">{exam.exam_name}</p>
+                                                        <p className="text-xs text-gray-500">{exam.exam_date} • {exam.exam_type}</p>
+                                                    </div>
+                                                </Link>
+                                                <div className="text-right">
+                                                    <p className="text-sm font-bold text-gray-700">Total Marks: {exam.total_marks}</p>
                                                 </div>
-                                            </Link>
-                                            <div className="text-right">
-                                                <p className="text-sm font-bold text-gray-700">Total Marks: {exam.total_marks}</p>
-                                            </div>
-                                        </li>
-                                    ))}
+                                            </li>
+                                        )
+                                    })}
                                 </ul>
                             )}
 

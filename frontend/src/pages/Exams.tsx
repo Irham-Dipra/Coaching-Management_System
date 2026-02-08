@@ -27,10 +27,16 @@ const Exams: React.FC = () => {
 
     // Filter Logic
     const filteredExams = exams?.filter((exam: any) => {
-        const matchesSearch = exam.exam_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            exam.program?.program_name.toLowerCase().includes(searchQuery.toLowerCase());
+        // Extract program names from the nested structure for searching
+        const programNames = exam.program_exam?.map((pe: any) => pe.program?.program_name).join(' ').toLowerCase() || '';
 
-        const matchesProgram = selectedProgram ? exam.program_id === parseInt(selectedProgram) : true;
+        const matchesSearch = exam.exam_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            programNames.includes(searchQuery.toLowerCase());
+
+        // Check if any of the linked programs match the selection
+        const matchesProgram = selectedProgram
+            ? exam.program_exam?.some((pe: any) => pe.program?.program_id === parseInt(selectedProgram))
+            : true;
 
         return matchesSearch && matchesProgram;
     });
@@ -99,10 +105,17 @@ const Exams: React.FC = () => {
                         </h3>
 
                         <div className="mt-4 space-y-2 text-sm text-gray-600">
-                            <div className="flex items-center gap-2">
-                                <FileText size={16} className="text-gray-400" />
-                                <span>{exam.program?.program_name}</span>
+                            {/* Programs Tags */}
+                            <div className="flex flex-wrap gap-1">
+                                <FileText size={16} className="text-gray-400 shrink-0 mt-0.5" />
+                                {exam.program_exam?.map((pe: any) => (
+                                    <span key={pe.program?.program_id} className="bg-gray-100 text-gray-600 px-1.5 py-0.5 rounded text-xs">
+                                        {pe.program?.program_name}
+                                    </span>
+                                ))}
+                                {(!exam.program_exam || exam.program_exam.length === 0) && <span className="text-gray-400 italic">No Program Linked</span>}
                             </div>
+
                             <div className="flex items-center gap-2">
                                 <Calendar size={16} className="text-gray-400" />
                                 <span>{exam.exam_date || 'No Date Set'}</span>

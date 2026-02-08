@@ -5,9 +5,13 @@ import { ExamRepository } from '../repositories/ExamRepository';
 import { ProgramRepository } from '../repositories/ProgramRepository';
 import { Search, Filter, FileText, Calendar } from 'lucide-react';
 
+import CreateExamModal from '../components/CreateExamModal';
+import { Plus } from 'lucide-react';
+
 const Exams: React.FC = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedProgram, setSelectedProgram] = useState('');
+    const [isCreateOpen, setIsCreateOpen] = useState(false);
 
     const { data: exams, isLoading: isExamsLoading } = useQuery({
         queryKey: ['all-exams'],
@@ -36,7 +40,12 @@ const Exams: React.FC = () => {
             <div className="flex justify-between items-center">
                 <h1 className="text-2xl font-bold text-gray-900">Exam Directory</h1>
                 <div className="flex gap-2">
-                    {/* Placeholder for future advanced filters */}
+                    <button
+                        onClick={() => setIsCreateOpen(true)}
+                        className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2 font-medium"
+                    >
+                        <Plus size={18} /> Schedule Exam
+                    </button>
                 </div>
             </div>
 
@@ -113,6 +122,12 @@ const Exams: React.FC = () => {
                     </div>
                 )}
             </div>
+
+            {/* Create Modal Reused */}
+            <CreateExamModal
+                isOpen={isCreateOpen}
+                onClose={() => setIsCreateOpen(false)}
+            />
         </div>
     );
 };

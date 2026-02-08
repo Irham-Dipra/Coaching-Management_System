@@ -1,16 +1,33 @@
 import React, { useState } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ExamRepository } from '../repositories/ExamRepository';
+import { ProgramRepository } from '../repositories/ProgramRepository';
 import { X, Loader2 } from 'lucide-react';
 
 interface CreateExamModalProps {
     isOpen: boolean;
     onClose: () => void;
-    programId: string; // Exams are always linked to a Program
+    programId?: string; // Made Optional
 }
 
 const CreateExamModal: React.FC<CreateExamModalProps> = ({ isOpen, onClose, programId }) => {
     const queryClient = useQueryClient();
+
+    // Local state for Program Selection if programId is not passed
+    const [selectedProgramId, setSelectedProgramId] = useState(programId || '');
+
+    // Reset or Sync when modal opens/props change
+    React.useEffect(() => {
+        if (programId) setSelectedProgramId(programId);
+    }, [programId, isOpen]);
+
+    // Fetch Programs only if we need to select one
+    const { data: programs } = useQuery({
+        queryKey: ['programs'],
+        queryFn: ProgramRepository.getAllPrograms,
+        enabled: !programId && isOpen // Only fetch if no programId provided
+    });
+
     const [formData, setFormData] = useState({
         exam_name: '',
         exam_date: '',
@@ -22,9 +39,19 @@ const CreateExamModal: React.FC<CreateExamModalProps> = ({ isOpen, onClose, prog
     const createMutation = useMutation({
         mutationFn: (data: any) => ExamRepository.createExam(data),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['program', programId] }); // Refresh Program Details to show new exam
+            // Invalidate specific program if we know it, otherwise specific one we selected
+            if (programId) {
+                queryClient.invalidateQueries({ queryKey: ['program', programId] });
+            }
+            if (selectedProgramId) {
+                queryClient.invalidateQueries({ queryKey: ['program', selectedProgramId] });
+            }
+            // Also invalidate all-exams list for the directory page
+            queryClient.invalidateQueries({ queryKey: ['all-exams'] });
+
             onClose();
             setFormData({ exam_name: '', exam_date: '', exam_type: 'Weekly', subject: '', total_marks: 50 });
+            if (!programId) setSelectedProgramId('');
         },
         onError: (err) => {
             alert("Failed to create exam: " + err);
@@ -35,9 +62,15 @@ const CreateExamModal: React.FC<CreateExamModalProps> = ({ isOpen, onClose, prog
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
+
+        if (!selectedProgramId) {
+            alert("Please select a program.");
+            return;
+        }
+
         createMutation.mutate({
             ...formData,
-            program_id: parseInt(programId),
+            program_id: parseInt(selectedProgramId),
             total_marks: Number(formData.total_marks),
             exam_date: formData.exam_date || null
         });
@@ -57,6 +90,26 @@ const CreateExamModal: React.FC<CreateExamModalProps> = ({ isOpen, onClose, prog
                 <h2 className="text-xl font-bold mb-4">Schedule New Exam</h2>
 
                 <form onSubmit={handleSubmit} className="space-y-4">
+
+                    {/* Program Selector (Only if programId missing) */}
+                    {!programId && (
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700">Program / Batch</label>
+                            <select
+                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border text-gray-900 bg-white"
+                                value={selectedProgramId}
+                                onChange={(e) => setSelectedProgramId(e.target.value)}
+                                required
+                            >
+                                <option value="">-- Select Program --</option>
+                                {programs?.map((p: any) => (
+                                    <option key={p.program_id} value={p.program_id}>
+                                        {p.program_name}
+                                    </option>
+                                ))}
+                            </select>
+                        </div>
+                    )}
 
                     <div>
                         <label className="block text-sm font-medium text-gray-700">Exam Title</label>

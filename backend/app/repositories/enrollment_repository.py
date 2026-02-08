@@ -25,17 +25,32 @@ class EnrollmentRepository:
             if not data.get('enrollment_date'):
                 data['enrollment_date'] = date.today().isoformat()
             
-            # 0. CHECK FOR DUPLICATES
+            # 0. CHECK FOR EXISTING ENROLLMENT
             existing = supabase.table(self.table)\
-                .select("enrollment_id")\
+                .select("*")\
                 .eq("student_id", data['student_id'])\
                 .eq("program_id", data['program_id'])\
                 .execute()
             
             if existing.data:
-                raise Exception("Student is already enrolled in this program")
+                record = existing.data[0]
+                if record['status'] == 'Active':
+                    raise Exception("Student is already actively enrolled in this program")
+                else:
+                    # RE-ENROLLMENT PATH
+                    # Update status to Active and set enrollment_date to today for fresh billing
+                    print(f"Re-enrolling student {data['student_id']} in program {data['program_id']}")
+                    updated_record = supabase.table(self.table).update({
+                        "status": "Active",
+                        "enrollment_date": date.today().isoformat()
+                        # Keep original roll_no or other history
+                    }).eq("enrollment_id", record['enrollment_id']).execute()
+                    
+                    result = updated_record.data[0]
+                    result['is_reenrollment'] = True
+                    return result
 
-            # 1. AUTO-GENERATE ROLL NUMBER (Per Program)
+            # 1. NEW ENROLLMENT (Generate Roll Number)
             # Fetch the current highest roll_no for this program
             last_enrollment = supabase.table(self.table)\
                 .select('roll_no')\
@@ -54,7 +69,9 @@ class EnrollmentRepository:
 
             # 2. Insert
             response = supabase.table(self.table).insert(data).execute()
-            return response.data[0]
+            result = response.data[0]
+            result['is_reenrollment'] = False
+            return result
         except Exception as e:
             print(f"ERROR in enroll_student: {e}")
             raise e

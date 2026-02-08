@@ -5,7 +5,7 @@ import { StudentRepository } from '../repositories/StudentRepository';
 import { ProgramRepository } from '../repositories/ProgramRepository';
 import StudentFinancialStatus from '../components/StudentFinancialStatus';
 import WithdrawalModal from '../components/WithdrawalModal';
-import { User, Calendar, BookOpen, CreditCard, Edit2, Save, Plus, Trash2 } from 'lucide-react';
+import { User, BookOpen, CreditCard, Edit2, Save, Trash2 } from 'lucide-react';
 
 const StudentProfile: React.FC = () => {
     const { id } = useParams<{ id: string }>();
@@ -56,9 +56,14 @@ const StudentProfile: React.FC = () => {
             student_id: parseInt(id!),
             program_id: programId
         }),
-        onSuccess: () => {
+        onSuccess: (data: any) => {
             setShowEnrollModal(false);
             queryClient.invalidateQueries({ queryKey: ['enrollments', id] });
+            if (data.is_reenrollment) {
+                alert("Student re-enrolled successfully. Enrollment date has been updated to today.");
+            } else {
+                alert("Student enrolled successfully.");
+            }
         },
         onError: (err) => {
             alert(err.message);

@@ -113,7 +113,7 @@ class ResultRepository:
 
         # 2. Get active enrollments for these programs
         enrollments = supabase.table(self.enrollment_table)\
-            .select("*, student(*)")\
+            .select("*, student(*), program(program_name)")\
             .in_("program_id", program_ids)\
             .eq("status", "Active")\
             .execute().data
@@ -127,41 +127,28 @@ class ResultRepository:
         result_map = {r['enrollment_id']: r for r in results}
 
         # 4. Deduplicate Students & Map Results
-        candidates_map = {} 
+        # 4. Map Results (No Deduplication - Frontend handles grouping)
+        candidates = []
         
         for enroll in enrollments:
             student = enroll.get('student')
             if not student: continue
             
-            student_id = student['student_id']
             res = result_map.get(enroll['enrollment_id'])
             
             candidate_entry = {
                 "enrollment_id": enroll['enrollment_id'],
                 "student": student,
+                "program": enroll.get('program'),
+                "program_roll_no": enroll.get('roll_no'), # Specific to program
                 "result_id": res['result_id'] if res else None,
                 "written_marks": res['written_marks'] if res else 0,
                 "mcq_marks": res['mcq_marks'] if res else 0,
                 "total_score": res['total_score'] if res else 0,
                 "has_attended": True if res else False
             }
-            
-            # De-duplication Logic:
-            # If student already in map, prefer the one with Has Attended = True
-            if student_id not in candidates_map:
-                candidates_map[student_id] = candidate_entry
-            else:
-                if not candidates_map[student_id]['has_attended'] and candidate_entry['has_attended']:
-                    candidates_map[student_id] = candidate_entry
-        
-        candidates = list(candidates_map.values())
+            candidates.append(candidate_entry)
 
-        # Sort by Roll No
-        def get_roll(x):
-            try:
-                return int(x.get('student', {}).get('roll_no') or 999999)
-            except:
-                return 999999
-        
-        candidates.sort(key=get_roll)
+        # Sort by Student Name for easier reading, or Roll No
+        candidates.sort(key=lambda x: x['student']['name'] or "")
         return candidates

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ExamRepository } from '../repositories/ExamRepository';
 import { FileText, Trophy, AlignLeft, Download, Upload, Edit, Save, X } from 'lucide-react';
@@ -56,13 +56,62 @@ const ExamDetails: React.FC = () => {
     const sortedCandidates = React.useMemo(() => {
         if (!candidates) return [];
 
-        // 1. Merge Data
-        const merged = candidates.map((c: any) => {
+        // 1. Group by Student ID
+        const groupedMap = new Map();
+
+        candidates.forEach((c: any) => {
+            const studentId = c?.student?.student_id;
+            if (!studentId) return;
+
+            if (!groupedMap.has(studentId)) {
+                // Initialize group
+                groupedMap.set(studentId, {
+                    student: c.student,
+                    enrollments: [],
+                    // We will aggregate results from all enrollments. 
+                    // Typically a student takes exam once, so we look for the first valid result.
+                    result: null,
+                    editData: { written: 0, mcq: 0 }
+                });
+            }
+
+            const group = groupedMap.get(studentId);
+
+            // Add enrollment details
+            group.enrollments.push({
+                program_name: c?.program?.program_name,
+                program_id: c?.program?.program_id,
+                roll_no: c?.program_roll_no, // Corrected field from backend
+                enrollment_id: c.enrollment_id
+            });
+
+            // Find result for this enrollment
             const result = meritList?.find((r: any) => r.enrollment_id === c.enrollment_id);
-            const editData = c?.enrollment_id ? (editedMarks[c.enrollment_id] || { written: result?.written_marks || 0, mcq: result?.mcq_marks || 0 }) : { written: 0, mcq: 0 };
+
+            // If this enrollment has a result, or if we haven't found a result yet, use it.
+            // Priority: Result with marks > Empty Result > Null
+            if (result && (!group.result || (result.total_score > (group.result.total_score || 0)))) {
+                group.result = result;
+            }
+
+            // Consolidate Edit Data (Use the first enrollment for editing if not specific logic exists)
+            // Or better: If *any* enrollment has edit data in local state, use it.
+            if (editedMarks[c.enrollment_id]) {
+                group.editData = editedMarks[c.enrollment_id];
+                group.primaryEnrollmentId = c.enrollment_id; // Mark which enrollment is being edited
+            } else if (!group.primaryEnrollmentId) {
+                group.primaryEnrollmentId = c.enrollment_id; // Default to first
+            }
+        });
+
+        const merged = Array.from(groupedMap.values()).map((g: any) => {
+            const result = g.result;
+            // If we have local edits, use them. Otherwise fallback to DB result.
+            const editData = g.editData.written || g.editData.mcq ? g.editData :
+                { written: result?.written_marks || 0, mcq: result?.mcq_marks || 0 };
 
             return {
-                ...c,
+                ...g,
                 result_written: result?.written_marks ?? '-',
                 result_mcq: result?.mcq_marks ?? '-',
                 result_total: result?.total_score ?? '-',
@@ -70,8 +119,9 @@ const ExamDetails: React.FC = () => {
                 sort_written: isEditing ? (Number(editData.written) || 0) : (result?.written_marks || 0),
                 sort_mcq: isEditing ? (Number(editData.mcq) || 0) : (result?.mcq_marks || 0),
                 sort_total: isEditing ? ((Number(editData.written) || 0) + (Number(editData.mcq) || 0)) : (result?.total_score || 0),
-                sort_student_id: c.student?.student_id || 0,
-                editData: editData
+                sort_student_id: g.student?.student_id || 0,
+                editData: editData,
+                // program_list_display moved to JSX for clickable links
             };
         });
 
@@ -99,21 +149,25 @@ const ExamDetails: React.FC = () => {
     }, [candidates, meritList, sortConfig, editedMarks, isEditing]);
 
     // Effect: Initialize marks
+    // We need to be careful here. If we group, we still need to initialize `editedMarks` keyed by enrollment_id.
+    // For simplicity, we can just init all available enrollments.
     useEffect(() => {
         if (isEditing && candidates) {
             const initialMarks: any = {};
             candidates.forEach((c: any) => {
                 if (c?.enrollment_id) {
+                    // Check existing merit
+                    const result = meritList?.find((r: any) => r.enrollment_id === c.enrollment_id);
                     initialMarks[c.enrollment_id] = {
                         student_id: c?.student?.student_id,
-                        written: c?.written_marks || 0,
-                        mcq: c?.mcq_marks || 0
+                        written: result?.written_marks || 0,
+                        mcq: result?.mcq_marks || 0
                     };
                 }
             });
             setEditedMarks(initialMarks);
         }
-    }, [isEditing, candidates]);
+    }, [isEditing, candidates, meritList]);
 
     // Mutation
     const bulkUpdateMutation = useMutation({
@@ -348,6 +402,7 @@ const ExamDetails: React.FC = () => {
                                     Student {sortConfig.key === 'student_id' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
                                 </div>
                             </th>
+                            <th className="p-4">Programs</th>
                             <th className="p-4 text-right cursor-pointer hover:bg-gray-50" onClick={() => handleSort('written')}>
                                 <div className="flex items-center justify-end gap-1">
                                     Written {sortConfig.key === 'written' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
@@ -366,15 +421,27 @@ const ExamDetails: React.FC = () => {
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-50">
-                        {sortedCandidates?.map((c: any, index: number) => {
-                            const editData = c.editData; // Pre-calculated in sortedCandidates
+                        {sortedCandidates?.map((g: any, index: number) => {
+                            const editData = g.editData;
+                            // For editing, we update the primaryEnrollmentId. 
+                            // (Ideally we'd update all, but let's stick to primary for now or map input to primary)
 
                             return (
-                                <tr key={c.enrollment_id || index} className={isEditing ? "bg-blue-50/30" : "hover:bg-gray-50"}>
+                                <tr key={g.student?.student_id || index} className={isEditing ? "bg-blue-50/30" : "hover:bg-gray-50"}>
                                     <td className="p-4 font-medium text-gray-900">
-                                        {c.student?.name || 'Unknown'}
-                                        <span className="block text-xs text-gray-400">Roll: {c.student?.roll_no || '-'}</span>
-                                        <span className="block text-xs text-gray-400">{c.program?.program_name}</span>
+                                        <Link to={`/students/${g.student?.student_id}`} className="hover:text-blue-600 hover:underline">
+                                            {g.student?.name || 'Unknown'}
+                                        </Link>
+                                    </td>
+                                    <td className="p-4 text-xs text-gray-600 max-w-xs">
+                                        {g.enrollments.map((e: any, i: number) => (
+                                            <div key={i} className="mb-1 last:mb-0">
+                                                <Link to={`/programs/${e.program_id}`} className="hover:text-blue-600 hover:underline font-medium">
+                                                    {e.program_name}
+                                                </Link>
+                                                <span className="text-gray-500 ml-1">(Roll: {e.roll_no || '-'})</span>
+                                            </div>
+                                        ))}
                                     </td>
 
                                     {isEditing ? (
@@ -385,7 +452,7 @@ const ExamDetails: React.FC = () => {
                                                     className="w-20 p-1 border rounded text-right bg-white border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500 font-bold"
                                                     value={editData.written}
                                                     placeholder="0"
-                                                    onChange={(e) => c.enrollment_id && handleMarkChange(c.enrollment_id, 'written', e.target.value)}
+                                                    onChange={(e) => g.primaryEnrollmentId && handleMarkChange(g.primaryEnrollmentId, 'written', e.target.value)}
                                                 />
                                             </td>
                                             <td className="p-4 text-right">
@@ -394,7 +461,7 @@ const ExamDetails: React.FC = () => {
                                                     className="w-20 p-1 border rounded text-right bg-white border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500 font-bold"
                                                     value={editData.mcq}
                                                     placeholder="0"
-                                                    onChange={(e) => c.enrollment_id && handleMarkChange(c.enrollment_id, 'mcq', e.target.value)}
+                                                    onChange={(e) => g.primaryEnrollmentId && handleMarkChange(g.primaryEnrollmentId, 'mcq', e.target.value)}
                                                 />
                                             </td>
                                             <td className="p-4 text-right text-gray-400 text-sm">
@@ -403,9 +470,9 @@ const ExamDetails: React.FC = () => {
                                         </>
                                     ) : (
                                         <>
-                                            <td className="p-4 text-right font-mono text-gray-600">{c.result_written}</td>
-                                            <td className="p-4 text-right font-mono text-gray-600">{c.result_mcq}</td>
-                                            <td className="p-4 text-right font-bold text-blue-600 text-lg">{c.result_total}</td>
+                                            <td className="p-4 text-right font-mono text-gray-600">{g.result_written}</td>
+                                            <td className="p-4 text-right font-mono text-gray-600">{g.result_mcq}</td>
+                                            <td className="p-4 text-right font-bold text-blue-600 text-lg">{g.result_total}</td>
                                         </>
                                     )}
                                 </tr>
@@ -413,7 +480,7 @@ const ExamDetails: React.FC = () => {
                         })}
 
                         {!sortedCandidates || sortedCandidates.length === 0 && (
-                            <tr><td colSpan={4} className="p-8 text-center text-gray-400">No students enrolled or results published.</td></tr>
+                            <tr><td colSpan={5} className="p-8 text-center text-gray-400">No students enrolled or results published.</td></tr>
                         )}
                     </tbody>
                 </table>

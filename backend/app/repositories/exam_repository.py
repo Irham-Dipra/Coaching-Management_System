@@ -76,7 +76,32 @@ class ExamRepository:
 
         # Execute updates
         if to_remove:
+            # Clean up junction
             supabase.table("program_exam").delete().eq("exam_id", exam_id).in_("program_id", list(to_remove)).execute()
+            
+            # Clean up results for students who are purely in the removed programs
+            # Logic: Find enrollments in removed programs and delete their results for this exam
+            # Note: If a student is in BOTH a removed program AND a kept program, they should theoretically stay if we deduplicate.
+            # But results are tied to *Enrollment ID*. 
+            # If we remove Program A, the Enrollment in Program A becomes irrelevant for this exam.
+            # So we should delete results linked to enrollments of Program A.
+            
+            removed_program_ids = list(to_remove)
+            
+            # Find enrollments in these programs
+            enrollments_to_clean = supabase.table("enrollment")\
+                .select("enrollment_id")\
+                .in_("program_id", removed_program_ids)\
+                .execute().data
+                
+            enrollment_ids = [e['enrollment_id'] for e in enrollments_to_clean]
+            
+            if enrollment_ids:
+                supabase.table("student_individual_result")\
+                    .delete()\
+                    .eq("exam_id", exam_id)\
+                    .in_("enrollment_id", enrollment_ids)\
+                    .execute()
         
         if to_add:
             junction_data = [{"exam_id": exam_id, "program_id": pid} for pid in to_add]

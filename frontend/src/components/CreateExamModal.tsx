@@ -2,16 +2,18 @@ import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ExamRepository } from '../repositories/ExamRepository';
 import { ProgramRepository } from '../repositories/ProgramRepository';
-import { X, Loader2 } from 'lucide-react';
+import { X } from 'lucide-react';
 
 interface CreateExamModalProps {
     isOpen: boolean;
     onClose: () => void;
-    programId?: string; // Made Optional
+    programId?: string;
+    examData?: any; // For editing
 }
 
-const CreateExamModal: React.FC<CreateExamModalProps> = ({ isOpen, onClose, programId }) => {
+const CreateExamModal: React.FC<CreateExamModalProps> = ({ isOpen, onClose, programId, examData }) => {
     const queryClient = useQueryClient();
+    const isEditing = !!examData;
 
     // Local state for Program Selection (Array now)
     const [selectedProgramIds, setSelectedProgramIds] = useState<string[]>([]);
@@ -19,23 +21,8 @@ const CreateExamModal: React.FC<CreateExamModalProps> = ({ isOpen, onClose, prog
     // Local state for dropdown visibility
     const [isProgramDropdownOpen, setIsProgramDropdownOpen] = useState(false);
 
-    // Reset or Sync when modal opens/props change
-    React.useEffect(() => {
-        if (programId) {
-            setSelectedProgramIds([programId]);
-        } else {
-            setSelectedProgramIds([]);
-        }
-    }, [programId, isOpen]);
-
-    // Fetch Programs only if we need to select one (i.e. we are NOT on a specific program page)
-    const { data: programs } = useQuery({
-        queryKey: ['programs'],
-        queryFn: ProgramRepository.getAllPrograms,
-        enabled: !programId && isOpen
-    });
-
-    const [formData, setFormData] = useState({
+    // Initial Form State
+    const initialFormState = {
         exam_name: '',
         exam_date: '',
         exam_type: 'Weekly',
@@ -43,29 +30,87 @@ const CreateExamModal: React.FC<CreateExamModalProps> = ({ isOpen, onClose, prog
         total_marks: 50,
         question_link: '',
         solution_link: ''
+    };
+
+    const [formData, setFormData] = useState(initialFormState);
+
+    // Reset or Sync when modal opens/props change
+    React.useEffect(() => {
+        if (isOpen) {
+            if (isEditing && examData) {
+                // Pre-fill for Edit Mode
+                setFormData({
+                    exam_name: examData.exam_name || '',
+                    exam_date: examData.exam_date || '',
+                    exam_type: examData.exam_type || 'Weekly',
+                    subject: examData.subject || '',
+                    total_marks: examData.total_marks || 50,
+                    question_link: examData.question_link || '',
+                    solution_link: examData.solution_link || ''
+                });
+
+                // Extract linked program IDs
+                // Structure: examData.program_exam = [{ program: { program_id: 1, ... } }, ...]
+                if (examData.program_exam) {
+                    const linkedIds = examData.program_exam.map((pe: any) =>
+                        String(pe.program_id || pe.program?.program_id)
+                    ).filter((id: string) => id && id !== 'undefined');
+                    setSelectedProgramIds(linkedIds);
+                } else {
+                    setSelectedProgramIds([]);
+                }
+
+            } else {
+                // Reset for Create Mode
+                setFormData(initialFormState);
+                if (programId) {
+                    setSelectedProgramIds([programId]);
+                } else {
+                    setSelectedProgramIds([]);
+                }
+            }
+        }
+    }, [programId, isOpen, examData]);
+
+    // Fetch Programs only if we need to select one (i.e. we are NOT on a specific program page)
+    const { data: programs } = useQuery({
+        queryKey: ['programs'],
+        queryFn: ProgramRepository.getAllPrograms,
+        enabled: isOpen // Always fetch to allow editing programs
     });
 
     const createMutation = useMutation({
         mutationFn: (data: any) => ExamRepository.createExam(data),
         onSuccess: () => {
-            // Invalidate all related programs
-            selectedProgramIds.forEach(pid => {
-                queryClient.invalidateQueries({ queryKey: ['program', pid] });
-            });
-            queryClient.invalidateQueries({ queryKey: ['all-exams'] });
-
-            onClose();
-            setFormData({
-                exam_name: '', exam_date: '', exam_type: 'Weekly',
-                subject: '', total_marks: 50,
-                question_link: '', solution_link: ''
-            });
-            if (!programId) setSelectedProgramIds([]);
+            handleSuccess("Exam created successfully!");
         },
-        onError: (err) => {
-            alert("Failed to create exam: " + err);
-        }
+        onError: (err) => alert("Failed to create exam: " + err)
     });
+
+    const updateMutation = useMutation({
+        mutationFn: (data: any) => ExamRepository.updateExam(examData?.exam_id, data),
+        onSuccess: () => {
+            handleSuccess("Exam updated successfully!");
+        },
+        onError: (err) => alert("Failed to update exam: " + err)
+    });
+
+    const handleSuccess = (msg: string) => {
+        // Invalidate all related programs
+        selectedProgramIds.forEach(pid => {
+            queryClient.invalidateQueries({ queryKey: ['program', pid] });
+        });
+        queryClient.invalidateQueries({ queryKey: ['all-exams'] });
+
+        // Also invalidate specific exam details AND candidates
+        if (isEditing && examData?.exam_id) {
+            queryClient.invalidateQueries({ queryKey: ['exam', String(examData.exam_id)] });
+            queryClient.invalidateQueries({ queryKey: ['candidates', String(examData.exam_id)] });
+        }
+
+        onClose();
+        alert(msg);
+    };
 
     if (!isOpen) return null;
 
@@ -77,12 +122,18 @@ const CreateExamModal: React.FC<CreateExamModalProps> = ({ isOpen, onClose, prog
             return;
         }
 
-        createMutation.mutate({
+        const payload = {
             ...formData,
             program_ids: selectedProgramIds.map(id => parseInt(id)),
             total_marks: Number(formData.total_marks),
             exam_date: formData.exam_date || null
-        });
+        };
+
+        if (isEditing) {
+            updateMutation.mutate(payload);
+        } else {
+            createMutation.mutate(payload);
+        }
     };
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -104,47 +155,47 @@ const CreateExamModal: React.FC<CreateExamModalProps> = ({ isOpen, onClose, prog
                     <X size={24} />
                 </button>
 
-                <h2 className="text-xl font-bold mb-4">Schedule New Exam</h2>
+                <h2 className="text-xl font-bold mb-4">
+                    {isEditing ? 'Edit Exam Details' : 'Schedule New Exam'}
+                </h2>
 
                 <form onSubmit={handleSubmit} className="space-y-4">
 
-                    {/* Program Selector (Collapsible Dropdown) */}
-                    {!programId && (
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-2">Select Programs / Batches</label>
+                    {/* Program Selector (Collapsible Dropdown) - Always show now to allow editing */}
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-2">Select Programs / Batches</label>
 
-                            <button
-                                type="button"
-                                onClick={() => setIsProgramDropdownOpen(!isProgramDropdownOpen)}
-                                className="w-full flex justify-between items-center px-4 py-2 border rounded-md bg-white text-left text-sm text-gray-700 hover:bg-gray-50"
-                            >
-                                <span>
-                                    {selectedProgramIds.length === 0
-                                        ? "Select Programs..."
-                                        : `${selectedProgramIds.length} Program(s) Selected`}
-                                </span>
-                                <span className="text-xs text-gray-500">{isProgramDropdownOpen ? '▲' : '▼'}</span>
-                            </button>
+                        <button
+                            type="button"
+                            onClick={() => setIsProgramDropdownOpen(!isProgramDropdownOpen)}
+                            className="w-full flex justify-between items-center px-4 py-2 border rounded-md bg-white text-left text-sm text-gray-700 hover:bg-gray-50"
+                        >
+                            <span>
+                                {selectedProgramIds.length === 0
+                                    ? "Select Programs..."
+                                    : `${selectedProgramIds.length} Program(s) Selected`}
+                            </span>
+                            <span className="text-xs text-gray-500">{isProgramDropdownOpen ? '▲' : '▼'}</span>
+                        </button>
 
-                            {isProgramDropdownOpen && (
-                                <div className="mt-2 border rounded-md max-h-60 overflow-y-auto p-2 bg-gray-50 grid grid-cols-1 gap-1 shadow-inner">
-                                    {programs?.map((p: any) => (
-                                        <label key={p.program_id} className="flex items-center gap-2 p-1.5 hover:bg-white rounded cursor-pointer">
-                                            <input
-                                                type="checkbox"
-                                                className="w-4 h-4 text-blue-600 rounded"
-                                                checked={selectedProgramIds.includes(String(p.program_id))}
-                                                onChange={() => toggleProgram(String(p.program_id))}
-                                            />
-                                            <span className="text-sm text-gray-700">{p.program_name} <span className="text-xs text-gray-500">({p.batch?.batch_name})</span></span>
-                                        </label>
-                                    ))}
-                                </div>
-                            )}
+                        {isProgramDropdownOpen && (
+                            <div className="mt-2 border rounded-md max-h-60 overflow-y-auto p-2 bg-gray-50 grid grid-cols-1 gap-1 shadow-inner">
+                                {programs?.map((p: any) => (
+                                    <label key={p.program_id} className="flex items-center gap-2 p-1.5 hover:bg-white rounded cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            className="w-4 h-4 text-blue-600 rounded"
+                                            checked={selectedProgramIds.some(id => String(id) === String(p.program_id))}
+                                            onChange={() => toggleProgram(String(p.program_id))}
+                                        />
+                                        <span className="text-sm text-gray-700">{p.program_name} <span className="text-xs text-gray-500">({p.batch?.batch_name})</span></span>
+                                    </label>
+                                ))}
+                            </div>
+                        )}
 
-                            {selectedProgramIds.length === 0 && <p className="text-xs text-red-500 mt-1">Required*</p>}
-                        </div>
-                    )}
+                        {selectedProgramIds.length === 0 && <p className="text-xs text-red-500 mt-1">Required*</p>}
+                    </div>
 
                     <div>
                         <label className="block text-sm font-medium text-gray-700">Exam Title</label>
@@ -198,37 +249,32 @@ const CreateExamModal: React.FC<CreateExamModalProps> = ({ isOpen, onClose, prog
                     </div>
 
                     {/* Link Fields */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700">Question Paper Link</label>
-                            <input
-                                name="question_link" type="text"
-                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border text-gray-900 bg-white text-sm"
-                                placeholder="https://drive.google.com/..."
-                                value={formData.question_link} onChange={handleChange}
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700">Solution/Solve Link</label>
-                            <input
-                                name="solution_link" type="text"
-                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border text-gray-900 bg-white text-sm"
-                                placeholder="https://..."
-                                value={formData.solution_link} onChange={handleChange}
-                            />
-                        </div>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700">Question Paper Link (Google Drive)</label>
+                        <input
+                            name="question_link" type="url"
+                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border text-gray-900 bg-white"
+                            placeholder="https://..."
+                            value={formData.question_link} onChange={handleChange}
+                        />
                     </div>
 
-                    <div className="flex justify-end pt-4">
-                        <button type="button" onClick={onClose} className="mr-3 px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-md">
-                            Cancel
-                        </button>
-                        <button type="submit" disabled={createMutation.isPending} className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center">
-                            {createMutation.isPending && <Loader2 className="animate-spin mr-2" size={16} />}
-                            Create Exam
-                        </button>
+                    <div>
+                        <label className="block text-sm font-medium text-gray-700">Solution Link (Google Drive)</label>
+                        <input
+                            name="solution_link" type="url"
+                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border text-gray-900 bg-white"
+                            placeholder="https://..."
+                            value={formData.solution_link} onChange={handleChange}
+                        />
                     </div>
 
+                    <button
+                        type="submit"
+                        className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 shadow-sm font-medium"
+                    >
+                        {isEditing ? 'Update Exam' : 'Schedule Exam'}
+                    </button>
                 </form>
             </div>
         </div>

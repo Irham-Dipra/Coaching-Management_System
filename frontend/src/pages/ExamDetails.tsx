@@ -294,70 +294,60 @@ const ExamDetails: React.FC = () => {
                         </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-50">
-                        {isEditing ? (
-                            candidates?.map((c: any, index: number) => {
-                                const editData = c?.enrollment_id ? (editedMarks[c.enrollment_id] || { written: 0, mcq: 0 }) : { written: 0, mcq: 0 };
-                                return (
-                                    <tr key={c?.enrollment_id || index} className="bg-blue-50/30">
-                                        <td className="p-4 text-gray-500 font-mono">#{index + 1}</td>
-                                        <td className="p-4 font-medium text-gray-900">
-                                            {c?.student?.name || 'Unknown'}
-                                            <span className="block text-xs text-gray-400">Roll: {c?.student?.roll_no || '-'}</span>
-                                        </td>
-                                        <td className="p-4 text-right">
-                                            <input
-                                                type="number"
-                                                className="w-20 p-1 border rounded text-right bg-white border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500 font-bold"
-                                                value={editData.written || ''}
-                                                placeholder="0"
-                                                onChange={(e) => c?.enrollment_id && handleMarkChange(c.enrollment_id, 'written', e.target.value)}
-                                            />
-                                        </td>
-                                        <td className="p-4 text-right">
-                                            <input
-                                                type="number"
-                                                className="w-20 p-1 border rounded text-right bg-white border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500 font-bold"
-                                                value={editData.mcq || ''}
-                                                placeholder="0"
-                                                onChange={(e) => c?.enrollment_id && handleMarkChange(c.enrollment_id, 'mcq', e.target.value)}
-                                            />
-                                        </td>
-                                        <td className="p-4 text-right text-gray-400 text-sm">
-                                            {(Number(editData.written) || 0) + (Number(editData.mcq) || 0)}
-                                        </td>
-                                    </tr>
-                                );
-                            })
-                        ) : (
-                            meritList?.map((r: any, index: number) => (
-                                <tr key={r?.result_id || index} className="hover:bg-gray-50">
+                        {candidates?.map((c: any, index: number) => {
+                            // Find result in merit list if exists
+                            const result = meritList?.find((r: any) => r.enrollment_id === c.enrollment_id);
+
+                            // Edit Data
+                            const editData = c?.enrollment_id ? (editedMarks[c.enrollment_id] || { written: result?.written_marks || 0, mcq: result?.mcq_marks || 0 }) : { written: 0, mcq: 0 };
+
+                            return (
+                                <tr key={c?.enrollment_id || index} className={isEditing ? "bg-blue-50/30" : "hover:bg-gray-50"}>
                                     <td className="p-4 text-gray-500 font-mono">#{index + 1}</td>
                                     <td className="p-4 font-medium text-gray-900">
-                                        {r?.enrollment?.student?.name || 'Unknown'}
-                                        <span className="block text-xs text-gray-400">Roll: {r?.enrollment?.student?.roll_no || '-'}</span>
-                                    </td>
-                                    <td className="p-4 text-right font-mono text-gray-600">{r?.written_marks}</td>
-                                    <td className="p-4 text-right font-mono text-gray-600">{r?.mcq_marks}</td>
-                                    <td className="p-4 text-right font-bold text-blue-600 text-lg">{r?.total_score}</td>
-                                </tr>
-                            ))
-                        )}
-                        {!isEditing && meritList?.length === 0 && candidates && candidates.length > 0 ? (
-                            candidates.map((c: any, index: number) => (
-                                <tr key={c?.enrollment_id || index} className="text-gray-500">
-                                    <td className="p-4 font-mono">#{index + 1}</td>
-                                    <td className="p-4 font-medium">
                                         {c?.student?.name || 'Unknown'}
                                         <span className="block text-xs text-gray-400">Roll: {c?.student?.roll_no || '-'}</span>
+                                        <span className="block text-xs text-gray-400">{c?.program?.program_name}</span>
                                     </td>
-                                    <td className="p-4 text-right">-</td>
-                                    <td className="p-4 text-right">-</td>
-                                    <td className="p-4 text-right">-</td>
+
+                                    {isEditing ? (
+                                        <>
+                                            <td className="p-4 text-right">
+                                                <input
+                                                    type="number"
+                                                    className="w-20 p-1 border rounded text-right bg-white border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500 font-bold"
+                                                    value={editData.written || ''}
+                                                    placeholder="0"
+                                                    onChange={(e) => c?.enrollment_id && handleMarkChange(c.enrollment_id, 'written', e.target.value)}
+                                                />
+                                            </td>
+                                            <td className="p-4 text-right">
+                                                <input
+                                                    type="number"
+                                                    className="w-20 p-1 border rounded text-right bg-white border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500 font-bold"
+                                                    value={editData.mcq || ''}
+                                                    placeholder="0"
+                                                    onChange={(e) => c?.enrollment_id && handleMarkChange(c.enrollment_id, 'mcq', e.target.value)}
+                                                />
+                                            </td>
+                                            <td className="p-4 text-right text-gray-400 text-sm">
+                                                {(Number(editData.written) || 0) + (Number(editData.mcq) || 0)}
+                                            </td>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <td className="p-4 text-right font-mono text-gray-600">{result?.written_marks ?? '-'}</td>
+                                            <td className="p-4 text-right font-mono text-gray-600">{result?.mcq_marks ?? '-'}</td>
+                                            <td className="p-4 text-right font-bold text-blue-600 text-lg">{result?.total_score ?? '-'}</td>
+                                        </>
+                                    )}
                                 </tr>
-                            ))
-                        ) : !isEditing && meritList?.length === 0 ? (
+                            );
+                        })}
+
+                        {!candidates || candidates.length === 0 && (
                             <tr><td colSpan={5} className="p-8 text-center text-gray-400">No students enrolled or results published.</td></tr>
-                        ) : null}
+                        )}
                     </tbody>
                 </table>
             </div>

@@ -14,11 +14,12 @@ const ExamDetails: React.FC = () => {
     const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
+    const [viewDoc, setViewDoc] = useState<{ url: string, title: string } | null>(null);
     const [editedMarks, setEditedMarks] = useState<any>({});
     const queryClient = useQueryClient();
 
     // Queries
-    const { data: exam, isError: isExamError } = useQuery({
+    const { data: exam, isError: isExamError, refetch: refetchExam } = useQuery({
         queryKey: ['exam', id],
         queryFn: () => ExamRepository.getExamById(id!),
         enabled: !!id
@@ -196,6 +197,15 @@ const ExamDetails: React.FC = () => {
         onError: (err) => alert("Failed to update marks: " + err)
     });
 
+    const getEmbedLink = (url: string) => {
+        if (!url) return '';
+        // Convert Google Drive view link to preview link
+        if (url.includes('drive.google.com') && url.includes('/view')) {
+            return url.replace(/\/view.*/, '/preview');
+        }
+        return url;
+    };
+
     if (isExamError) return <div className="p-8 text-red-500">Error loading exam details.</div>;
     if (!exam) return <div className="p-8">Loading exam...</div>;
 
@@ -304,14 +314,30 @@ const ExamDetails: React.FC = () => {
 
                         <div className="flex gap-4 mt-3">
                             {exam.question_link && (
-                                <a href={exam.question_link} target="_blank" rel="noreferrer" className="text-sm text-blue-600 hover:underline flex items-center gap-1">
-                                    <Download size={14} /> Question Paper
-                                </a>
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        onClick={() => setViewDoc({ url: getEmbedLink(exam.question_link), title: "Question Paper" })}
+                                        className="text-sm text-blue-600 hover:underline flex items-center gap-1 bg-blue-50 px-2 py-1 rounded"
+                                    >
+                                        <FileText size={14} /> View Question
+                                    </button>
+                                    <a href={exam.question_link} target="_blank" rel="noreferrer" className="text-gray-400 hover:text-blue-600">
+                                        <Download size={14} />
+                                    </a>
+                                </div>
                             )}
                             {exam.solution_link && (
-                                <a href={exam.solution_link} target="_blank" rel="noreferrer" className="text-sm text-green-600 hover:underline flex items-center gap-1">
-                                    <Download size={14} /> Solution
-                                </a>
+                                <div className="flex items-center gap-2">
+                                    <button
+                                        onClick={() => setViewDoc({ url: getEmbedLink(exam.solution_link), title: "Solution" })}
+                                        className="text-sm text-green-600 hover:underline flex items-center gap-1 bg-green-50 px-2 py-1 rounded"
+                                    >
+                                        <FileText size={14} /> View Solution
+                                    </button>
+                                    <a href={exam.solution_link} target="_blank" rel="noreferrer" className="text-gray-400 hover:text-green-600">
+                                        <Download size={14} />
+                                    </a>
+                                </div>
                             )}
                         </div>
 
@@ -505,6 +531,27 @@ const ExamDetails: React.FC = () => {
                     </tbody>
                 </table>
             </div>
+
+            {/* Document Viewer Modal using simple overlay for now */}
+            {viewDoc && (
+                <div className="fixed inset-0 bg-black bg-opacity-80 z-50 flex flex-col items-center justify-center p-4">
+                    <div className="bg-white w-full h-full max-w-5xl rounded-lg shadow-2xl flex flex-col overflow-hidden">
+                        <div className="flex justify-between items-center p-4 border-b">
+                            <h3 className="font-bold text-lg">{viewDoc.title}</h3>
+                            <button onClick={() => setViewDoc(null)} className="text-gray-500 hover:text-black">
+                                <X size={24} />
+                            </button>
+                        </div>
+                        <div className="flex-1 bg-gray-100 p-2 relative">
+                            <iframe
+                                src={viewDoc.url}
+                                className="w-full h-full border-none rounded"
+                                title="Document Viewer"
+                            />
+                        </div>
+                    </div>
+                </div>
+            )}
 
             <UploadResultsModal
                 isOpen={isUploadModalOpen}

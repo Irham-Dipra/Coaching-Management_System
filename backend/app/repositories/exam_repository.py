@@ -79,41 +79,8 @@ class ExamRepository:
             # Clean up junction
             supabase.table("program_exam").delete().eq("exam_id", exam_id).in_("program_id", list(to_remove)).execute()
             
-            # Clean up results for students who are purely in the removed programs
-            # Logic: 
-            # 1. Get students in removed programs
-            # 2. Get students in remaining programs (all programs linked to exam after update)
-            # 3. Intersection = students to keep. Difference = students to remove.
-            
-            removed_program_ids = list(to_remove)
-            remaining_program_ids = list(new_program_ids)
-            
-            # Get students in removed programs
-            removed_students = supabase.table("enrollment")\
-                .select("student_id")\
-                .in_("program_id", removed_program_ids)\
-                .execute().data
-            removed_student_ids = set([s['student_id'] for s in removed_students])
-
-            # Get students in remaining programs
-            if remaining_program_ids:
-                remaining_students = supabase.table("enrollment")\
-                    .select("student_id")\
-                    .in_("program_id", remaining_program_ids)\
-                    .execute().data
-                remaining_student_ids = set([s['student_id'] for s in remaining_students])
-            else:
-                remaining_student_ids = set()
-
-            # Students to remove = Removed - Remaining
-            students_to_remove_results = removed_student_ids - remaining_student_ids
-            
-            if students_to_remove_results:
-                supabase.table("student_individual_result")\
-                    .delete()\
-                    .eq("exam_id", exam_id)\
-                    .in_("student_id", list(students_to_remove_results))\
-                    .execute()
+            # User requested to KEEP results even if program is removed.
+            # No result cleanup here.
         
         if to_add:
             junction_data = [{"exam_id": exam_id, "program_id": pid} for pid in to_add]

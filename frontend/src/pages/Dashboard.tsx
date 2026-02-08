@@ -96,11 +96,39 @@ const Dashboard: React.FC = () => {
 
             {/* Stats Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                {statCards.map((card, index) => (
+                <Link
+                    to="/students"
+                    className={`relative overflow-hidden rounded-2xl p-6 border backdrop-blur-md bg-gradient-to-br ${statCards[0].bg} ${statCards[0].border} shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 animate-slide-up text-left block`}
+                    style={{ animationDelay: '0ms' }}
+                >
+                    <div className="flex justify-between items-start">
+                        <div>
+                            <p className="text-slate-400 text-xs font-medium uppercase tracking-wider mb-2">{statCards[0].title}</p>
+                            <h3 className={`text-2xl font-bold ${statCards[0].text}`}>{statCards[0].value}</h3>
+                        </div>
+                        <div className="p-2 bg-white/5 rounded-lg border border-white/10">{statCards[0].icon}</div>
+                    </div>
+                </Link>
+
+                <Link
+                    to="/programs"
+                    className={`relative overflow-hidden rounded-2xl p-6 border backdrop-blur-md bg-gradient-to-br ${statCards[1].bg} ${statCards[1].border} shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 animate-slide-up text-left block`}
+                    style={{ animationDelay: '100ms' }}
+                >
+                    <div className="flex justify-between items-start">
+                        <div>
+                            <p className="text-slate-400 text-xs font-medium uppercase tracking-wider mb-2">{statCards[1].title}</p>
+                            <h3 className={`text-2xl font-bold ${statCards[1].text}`}>{statCards[1].value}</h3>
+                        </div>
+                        <div className="p-2 bg-white/5 rounded-lg border border-white/10">{statCards[1].icon}</div>
+                    </div>
+                </Link>
+
+                {statCards.slice(2).map((card, index) => (
                     <div
-                        key={index}
+                        key={index + 2}
                         className={`relative overflow-hidden rounded-2xl p-6 border backdrop-blur-md bg-gradient-to-br ${card.bg} ${card.border} shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 animate-slide-up`}
-                        style={{ animationDelay: `${index * 100}ms` }}
+                        style={{ animationDelay: `${(index + 2) * 100}ms` }}
                     >
                         <div className="flex justify-between items-start">
                             <div>
@@ -142,15 +170,15 @@ const Dashboard: React.FC = () => {
                             </thead>
                             <tbody className="divide-y divide-slate-700/50">
                                 {recentPayments?.slice(0, 5).map((pay: any) => (
-                                    <tr key={pay.payment_id} className="hover:bg-slate-700/30 transition-colors">
+                                    <tr key={pay.sort_id || pay.payment_ids?.[0] || Math.random()} className="hover:bg-slate-700/30 transition-colors">
                                         <td className="p-4 font-medium text-slate-200">
-                                            {pay.enrollment?.student?.name || 'Unknown Student'}
+                                            {pay.student_name || 'Unknown Student'}
                                         </td>
                                         <td className="p-4 text-emerald-400 font-bold">
-                                            +৳{pay.paid_amount}
+                                            +৳{pay.total_amount?.toLocaleString()}
                                         </td>
                                         <td className="p-4 text-slate-400">
-                                            {pay.enrollment?.program?.program_name} ({pay.month}/{pay.year})
+                                            {pay.program_name} <span className="text-xs text-slate-500">({pay.date_display})</span>
                                         </td>
                                         <td className="p-4 text-slate-500">
                                             {new Date(pay.payment_date).toLocaleDateString()}
@@ -175,17 +203,17 @@ const Dashboard: React.FC = () => {
                     </h2>
 
                     <div className="grid grid-cols-1 gap-3">
-                        <Link to="/students" className="group p-4 bg-slate-800/50 border border-slate-700 rounded-xl hover:bg-blue-600/20 hover:border-blue-500/50 transition-all duration-300 flex items-center gap-4">
+                        <Link to="/students?action=new" className="group p-4 bg-slate-800/50 border border-slate-700 rounded-xl hover:bg-blue-600/20 hover:border-blue-500/50 transition-all duration-300 flex items-center gap-4">
                             <div className="p-3 bg-blue-500/20 rounded-lg text-blue-400 group-hover:text-blue-300 group-hover:scale-110 transition-transform">
                                 <Plus size={20} />
                             </div>
                             <div>
-                                <h4 className="font-semibold text-slate-200 group-hover:text-white">New Enrollment</h4>
+                                <h4 className="font-semibold text-slate-200 group-hover:text-white">New Student</h4>
                                 <p className="text-xs text-slate-400 group-hover:text-slate-300">Register a new student</p>
                             </div>
                         </Link>
 
-                        <button onClick={() => alert("Navigate to Student list to create payment")} className="group p-4 bg-slate-800/50 border border-slate-700 rounded-xl hover:bg-emerald-600/20 hover:border-emerald-500/50 transition-all duration-300 flex items-center gap-4">
+                        <Link to="/finance?action=payment" className="group p-4 bg-slate-800/50 border border-slate-700 rounded-xl hover:bg-emerald-600/20 hover:border-emerald-500/50 transition-all duration-300 flex items-center gap-4">
                             <div className="p-3 bg-emerald-500/20 rounded-lg text-emerald-400 group-hover:text-emerald-300 group-hover:scale-110 transition-transform">
                                 <CreditCard size={20} />
                             </div>
@@ -193,9 +221,9 @@ const Dashboard: React.FC = () => {
                                 <h4 className="font-semibold text-slate-200 group-hover:text-white">Record Payment</h4>
                                 <p className="text-xs text-slate-400 group-hover:text-slate-300">Add fee collection</p>
                             </div>
-                        </button>
+                        </Link>
 
-                        <Link to="/scheduling" className="group p-4 bg-slate-800/50 border border-slate-700 rounded-xl hover:bg-purple-600/20 hover:border-purple-500/50 transition-all duration-300 flex items-center gap-4">
+                        <Link to="/scheduling?action=schedule" className="group p-4 bg-slate-800/50 border border-slate-700 rounded-xl hover:bg-purple-600/20 hover:border-purple-500/50 transition-all duration-300 flex items-center gap-4">
                             <div className="p-3 bg-purple-500/20 rounded-lg text-purple-400 group-hover:text-purple-300 group-hover:scale-110 transition-transform">
                                 <Calendar size={20} />
                             </div>

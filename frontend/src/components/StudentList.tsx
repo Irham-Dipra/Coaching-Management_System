@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { ProgramRepository } from '../repositories/ProgramRepository';
 import { StudentRepository } from '../repositories/StudentRepository';
 import { Search, Filter, Plus, ChevronRight, Download, Upload } from 'lucide-react';
@@ -26,6 +26,22 @@ const StudentList: React.FC = () => {
     const [programFilter, setProgramFilter] = useState(''); // New
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isImportModalOpen, setIsImportModalOpen] = useState(false); // New
+
+    // Auto-Action Logic
+    const [searchParams, setSearchParams] = useSearchParams();
+
+    React.useEffect(() => {
+        if (searchParams.get('action') === 'new') {
+            setIsModalOpen(true);
+            // Clear param to prevent reopening on refresh? 
+            // Or keep it? Standard UX: usually consume it.
+            // But setSearchParams might re-trigger render.
+            setSearchParams(params => {
+                params.delete('action');
+                return params;
+            });
+        }
+    }, [searchParams, setSearchParams]);
 
     // Fetch Students
     const { data: students, isLoading, error } = useQuery({

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { PaymentRepository } from '../repositories/PaymentRepository';
 import { StudentRepository } from '../repositories/StudentRepository';
@@ -15,6 +16,19 @@ const Finance: React.FC = () => {
     const [breakdownType, setBreakdownType] = useState<'revenue' | 'due' | null>(null);
     const [sortDesc, setSortDesc] = useState(true); // Default Descending
     const queryClient = useQueryClient();
+
+    // Auto-Action Logic
+    const [searchParams, setSearchParams] = useSearchParams();
+
+    useEffect(() => {
+        if (searchParams.get('action') === 'payment') {
+            setIsModalOpen(true);
+            setSearchParams(params => {
+                params.delete('action');
+                return params;
+            });
+        }
+    }, [searchParams, setSearchParams]);
 
     // Fetch Recent Payments
     // We sort client-side for the 'Recent' list toggle

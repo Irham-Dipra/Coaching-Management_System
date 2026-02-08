@@ -1017,31 +1017,11 @@ class PaymentRepository:
             current_month = today.month
             current_year = today.year
 
-            # 1. Total Active Students
-            # Count distinct students with at least one Active enrollment
-            # (Or just count active enrollments? Prompt says "Total Students with an Active enrollment")
-            # We'll count unique student_IDs from active enrollments to be precise.
-            active_enrollments = supabase.table(self.enrollment_table)\
-                .select("student_id", count="exact", head=True)\
-                .eq("status", "Active")\
-                .execute()
-            # Note: head=True with count='exact' returns count in .count, data is null/empty.
-            # But Supabase 'distinct' is harder with just head. 
-            # Simplification: Count Active Enrollments. If a student is in 2 programs, they count as 2 "Student-Programs".
-            # For a "Coaching Center", usually "Active Students" implies unique bodies.
-            # Let's try to get unique count if possible, or just active enrollments.
-            # Given the constraints, let's fetch active enrollment student_ids and python-set them.
-            # It might be heavy if thousands.
-            # Alternative: .select('student_id').eq('status', 'Active').execute() -> len(set(...))
-            
-            active_res = supabase.table(self.enrollment_table)\
-                .select("student_id")\
-                .eq("status", "Active")\
-                .execute()
-            
-            unique_students = len(set(item['student_id'] for item in active_res.data)) if active_res.data else 0
+            # 1. Total Students (All Registered Students)
+            student_res = supabase.table("student").select("*", count="exact", head=True).execute()
+            unique_students = student_res.count if student_res.count else 0 # Fixed: Count ALL students, not just active enrollments.
 
-            # 2. Total Programs
+            # 2. Total Programs (All Programs)
             prog_res = supabase.table("program").select("*", count="exact", head=True).execute()
             total_programs = prog_res.count if prog_res.count else 0
 
@@ -1148,30 +1128,56 @@ class PaymentRepository:
                 
                 # 3. Calculate Due
                 total_due = 0
+                due_this_month = 0
+                
+                # Fetch payments specifically for THIS month (for "Due This Month" stat)
+                # We need to filter payments where month=current & year=current
+                # Note: 'payment' table has 'month' and 'year' columns.
+                current_month_payments = supabase.table(self.table)\
+                    .select("enrollment_id, paid_amount")\
+                    .eq("month", current_month)\
+                    .eq("year", current_year)\
+                    .execute().data
+                
+                # Map of paid-this-month by enrollment
+                paid_this_month_map = {}
+                for p in current_month_payments:
+                    paid_this_month_map[p['enrollment_id']] = paid_this_month_map.get(p['enrollment_id'], 0) + p['paid_amount']
+
                 for eid, data in edu_map.items():
-                    # Calculate Expected
-                    # Months elapsed = (Today.year - Start.year) * 12 + (Today.month - Start.month) + 1 (Current Month incl?)
-                    # "Due up to current month" usually includes current month.
+                    fee = data['fee']
                     
-                    # Logic from PaymentRepository.get_student_financial_summary?
-                    # Let's reuse standard logic:
-                    # months_active = (today.year - start.year) * 12 + today.month - start.month + 1
-                    # If start day > today day? No, usually based on month presence.
-                    
+                    # A. Total Due Calculation
+                    # Months active (inclusive of start month and current month)
                     months_active = (today.year - data['start'].year) * 12 + (today.month - data['start'].month) + 1
-                    if months_active < 1: months_active = 1 # At least 1 if enrolled this month
+                    months_active = max(0, months_active) # Align with get_due_breakdown_list logic
                     
-                    expected = months_active * data['fee']
+                    expected = months_active * fee
                     due = expected - data['paid']
-                    if due < 0: due = 0 # No negative due (advance) for "Total Due" metric? 
-                    # "Total Due Overall" usually sums positives.
+                    if due < 0: due = 0
                     total_due += due
+                    
+                    # B. Due This Month Calculation
+                    # Expected This Month = Fee (if active)
+                    # Paid This Month = Look up from map
+                    # This implies "Unpaid fees for the current month"
+                    
+                    # Only if started before or during this month
+                    if data['start'] <= today:
+                        paid_now = paid_this_month_map.get(eid, 0)
+                        month_due = fee - paid_now
+                        if month_due < 0: month_due = 0
+                        due_this_month += month_due
 
             return {
                 "total_students": unique_students,
                 "total_programs": total_programs,
                 "revenue_this_month": revenue_this_month,
-                "total_due": total_due
+                "total_due": total_due,
+                
+                # Aliases for Finance Page capability
+                "due_total": total_due,
+                "due_this_month": due_this_month
             }
         except Exception as e:
             print(f"Error fetching finance stats: {e}")

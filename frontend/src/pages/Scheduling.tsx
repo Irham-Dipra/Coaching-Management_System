@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ScheduleRepository, type Room, type ScheduleWindow } from '../repositories/ScheduleRepository';
 import { Trash2, Plus, Calendar, MapPin, AlertCircle, Clock } from 'lucide-react';
@@ -144,6 +144,19 @@ const MasterSchedule: React.FC<{ rooms: Room[], windows: ScheduleWindow[] }> = (
     const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
     const [isCreateOpen, setIsCreateOpen] = useState(false);
     const [createError, setCreateError] = useState<string | null>(null);
+
+    // Auto-Action Logic
+    const [searchParams, setSearchParams] = useSearchParams();
+
+    useEffect(() => {
+        if (searchParams.get('action') === 'schedule') {
+            setIsCreateOpen(true);
+            setSearchParams(params => {
+                params.delete('action');
+                return params;
+            });
+        }
+    }, [searchParams, setSearchParams]);
 
     // FETCH DATA - Programs only (rooms/windows passed via props)
     const { data: programs } = useQuery({ queryKey: ['programs'], queryFn: ProgramRepository.getAllPrograms });

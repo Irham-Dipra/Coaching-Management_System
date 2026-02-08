@@ -155,7 +155,7 @@ const Dashboard: React.FC = () => {
                             <Activity size={20} className="text-blue-400" />
                             Recent Activity
                         </h2>
-                        <Link to="/reports" className="text-sm text-blue-400 hover:text-blue-300 transition-colors">View All Reports &rarr;</Link>
+                        <Link to="/finance" className="text-sm text-blue-400 hover:text-blue-300 transition-colors">View All Reports &rarr;</Link>
                     </div>
 
                     <div className="bg-slate-800/50 border border-slate-700 rounded-2xl backdrop-blur-sm overflow-hidden">
@@ -220,16 +220,6 @@ const Dashboard: React.FC = () => {
                             <div>
                                 <h4 className="font-semibold text-slate-200 group-hover:text-white">Record Payment</h4>
                                 <p className="text-xs text-slate-400 group-hover:text-slate-300">Add fee collection</p>
-                            </div>
-                        </Link>
-
-                        <Link to="/scheduling?action=schedule" className="group p-4 bg-slate-800/50 border border-slate-700 rounded-xl hover:bg-purple-600/20 hover:border-purple-500/50 transition-all duration-300 flex items-center gap-4">
-                            <div className="p-3 bg-purple-500/20 rounded-lg text-purple-400 group-hover:text-purple-300 group-hover:scale-110 transition-transform">
-                                <Calendar size={20} />
-                            </div>
-                            <div>
-                                <h4 className="font-semibold text-slate-200 group-hover:text-white">Create Schedule</h4>
-                                <p className="text-xs text-slate-400 group-hover:text-slate-300">Manage time slots</p>
                             </div>
                         </Link>
                     </div>

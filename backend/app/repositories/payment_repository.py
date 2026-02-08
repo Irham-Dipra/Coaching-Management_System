@@ -389,9 +389,10 @@ class PaymentRepository:
         
         # Let's proceed with Grouping first.
         
+        # 3. Aggregation Loop
         grouped_map = {} # Key: transaction_group_id (or "single_ID") -> Object
         group_order = [] # To maintain sort order
-        
+
         for r in raw_rows:
             # Identifier: Use group_id if present, else valid unique string "single_{id}"
             gid = r.get('transaction_group_id')
@@ -407,27 +408,38 @@ class PaymentRepository:
                     "sort_id": r['payment_id'], # Keep highest ID for sorting
                     "payment_ids": [],
                     "student_id": student.get("student_id"),
-                    "student_name": student.get("name"),
-                    "class": student.get("class"),       # New
-                    "batch_id": student.get("batch_id"), # New
-                    "roll_no": enroll.get("roll_no"),    # New
-                    "program_name": program.get("program_name"),
-                    "program_id": program.get("program_id"), # New for filtering
+                    "student_name": student.get("name") or "Unknown",
+                    "class": student.get("class"),       
+                    "batch_id": student.get("batch_id"), 
+                    "roll_no": enroll.get("roll_no"),    
+                    "program_name": program.get("program_name") or "Unknown Program",
+                    "program_id": program.get("program_id"), 
                     "total_amount": 0.0,
                     "months": [],
-                    "payment_date": r['payment_date'], # Use latest
-                    "payment_method": r['payment_method'],
-                    "type": "Single", # Will update
+                    "payment_date": r.get('payment_date'), 
+                    "payment_method": r.get('payment_method'),
+                    "type": "Single", 
                     "remarks": r.get('remarks') or "",
-                    "is_editable": False, # Default safe
-                    "raw_group_id": r.get('transaction_group_id') # For reference
+                    "is_editable": False, 
+                    "raw_group_id": r.get('transaction_group_id') 
                 }
                 group_order.append(gid)
             
             # Aggregate
             group = grouped_map[gid]
-            group['total_amount'] += float(r['paid_amount'])
-            group['months'].append( (r['year'], r['month']) )
+            
+            # Safe float conversion
+            amt = r.get('paid_amount')
+            if amt is not None:
+                group['total_amount'] += float(amt)
+                
+            # Safe month/year collection
+            y = r.get('year')
+            m = r.get('month')
+            if y and m:
+                # Store as tuple
+                group['months'].append( (y, m) )
+                
             group['payment_ids'].append(r['payment_id'])
             
             # Update Type
@@ -442,51 +454,42 @@ class PaymentRepository:
             g = grouped_map[gid]
             
             # Format Months: "Jan 2026", "Jan-Mar 2026"
-            g['months'].sort() # Sorts by (Year, Month) tuple
-            start_y, start_m = g['months'][0]
-            end_y, end_m = g['months'][-1]
-            
-            start_name = date(start_y, start_m, 1).strftime("%b %Y")
-            end_name = date(end_y, end_m, 1).strftime("%b %Y")
-            
-            if len(g['months']) > 1:
-                if start_y == end_y:
-                     # Same Year: "Jan - Mar 2026"
-                     start_name = date(start_y, start_m, 1).strftime("%b")
-                     g['date_display'] = f"{start_name} - {end_name}"
-                else:
-                     g['date_display'] = f"{start_name} - {end_name}"
+            if g['months']:
+                try:
+                    g['months'].sort() # Sorts by (Year, Month) tuple
+                    start_y, start_m = g['months'][0]
+                    end_y, end_m = g['months'][-1]
+                    
+                    start_name = date(start_y, start_m, 1).strftime("%b %Y")
+                    end_name = date(end_y, end_m, 1).strftime("%b %Y")
+                    
+                    if len(g['months']) > 1:
+                        if start_y == end_y:
+                             # Same Year: "Jan - Mar 2026"
+                             start_month_name = date(start_y, start_m, 1).strftime("%b")
+                             g['date_display'] = f"{start_month_name} - {end_name}"
+                        else:
+                             g['date_display'] = f"{start_name} - {end_name}"
+                    else:
+                        g['date_display'] = start_name
+                except Exception:
+                    g['date_display'] = "Invalid Date"
             else:
-                g['date_display'] = start_name
+                g['date_display'] = "-"
                 
-            # Integrity Check Logic (Simplified for List View):
-            # We flag 'is_editable' as TRUE for all rows here blindly? 
-            # NO. The user wants "Last-In" restriction.
-            # Real enforcement happens on UPDATE (Backend). 
-            # For UI, let's just enable all and let backend reject?
-            # User requirement: "Hide or disable...".
-            # OK, we need to know the MAX ID for each student.
-            # I will query `rpc/get_max_payment_ids`? No RPC available.
-            # I will iterate results. 
-            # Assuming `raw_rows` is sorted DESC by ID (Global).
-            # The FIRST time we see a `student_id` in `group_order`, that IS their latest payment (globally, assuming list is fresh).
-            # Limitation: If the latest payment is NOT in the fetched 100 rows (e.g. filtered?), we might be wrong.
-            # But `get_recent_payments` is the "Latest Activity" feed. It is by definition the top.
-            
             results.append(g)
             
         # Post-Processing for "Latest" Flag
-        # Iterate top-down. Track seen students.
         seen_students = set()
         for res in results:
-            sid = res['student_id']
-            if sid not in seen_students:
+            sid = res.get('student_id')
+            if sid and sid not in seen_students:
                 res['is_editable'] = True
                 seen_students.add(sid)
             else:
                 res['is_editable'] = False
                 
-        return results[:limit] # Return requested limit
+        return results[:limit]
 
     def get_student_payments(self, student_id: int):
         """

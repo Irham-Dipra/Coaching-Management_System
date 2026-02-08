@@ -80,27 +80,39 @@ class ExamRepository:
             supabase.table("program_exam").delete().eq("exam_id", exam_id).in_("program_id", list(to_remove)).execute()
             
             # Clean up results for students who are purely in the removed programs
-            # Logic: Find enrollments in removed programs and delete their results for this exam
-            # Note: If a student is in BOTH a removed program AND a kept program, they should theoretically stay if we deduplicate.
-            # But results are tied to *Enrollment ID*. 
-            # If we remove Program A, the Enrollment in Program A becomes irrelevant for this exam.
-            # So we should delete results linked to enrollments of Program A.
+            # Logic: 
+            # 1. Get students in removed programs
+            # 2. Get students in remaining programs (all programs linked to exam after update)
+            # 3. Intersection = students to keep. Difference = students to remove.
             
             removed_program_ids = list(to_remove)
+            remaining_program_ids = list(new_program_ids)
             
-            # Find enrollments in these programs
-            enrollments_to_clean = supabase.table("enrollment")\
-                .select("enrollment_id")\
+            # Get students in removed programs
+            removed_students = supabase.table("enrollment")\
+                .select("student_id")\
                 .in_("program_id", removed_program_ids)\
                 .execute().data
-                
-            enrollment_ids = [e['enrollment_id'] for e in enrollments_to_clean]
+            removed_student_ids = set([s['student_id'] for s in removed_students])
+
+            # Get students in remaining programs
+            if remaining_program_ids:
+                remaining_students = supabase.table("enrollment")\
+                    .select("student_id")\
+                    .in_("program_id", remaining_program_ids)\
+                    .execute().data
+                remaining_student_ids = set([s['student_id'] for s in remaining_students])
+            else:
+                remaining_student_ids = set()
+
+            # Students to remove = Removed - Remaining
+            students_to_remove_results = removed_student_ids - remaining_student_ids
             
-            if enrollment_ids:
+            if students_to_remove_results:
                 supabase.table("student_individual_result")\
                     .delete()\
                     .eq("exam_id", exam_id)\
-                    .in_("enrollment_id", enrollment_ids)\
+                    .in_("student_id", list(students_to_remove_results))\
                     .execute()
         
         if to_add:

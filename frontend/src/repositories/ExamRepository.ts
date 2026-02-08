@@ -52,10 +52,26 @@ export const ExamRepository = {
     },
 
     // 5. Get Merit List (Results)
-    async getMeritList(examId: string) {
-        const response = await fetch(`${API_BASE_URL}/exams/${examId}/results`);
-        if (!response.ok) throw new Error("Failed to fetch merit list");
-        return await response.json();
+    async getMeritList(examId: string): Promise<any[]> {
+        // Updated to link directly to student since enrollment_id was removed/deprecated in result table
+        const { data, error } = await supabase
+            .from('student_individual_result')
+            .select(`
+                *,
+                student (
+                    student_id,
+                    name,
+                    roll_no
+                )
+            `)
+            .eq('exam_id', examId);
+
+        if (error) {
+            console.error("Error fetching merit list:", error);
+            throw error;
+        }
+
+        return data || [];
     },
 
     // 5b. Get All Candidates (For Manual Entry)

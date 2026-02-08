@@ -11,53 +11,44 @@ class ResultRepository:
     def submit_bulk_results(self, bulk_data: BulkResultRequest):
         exam_id = bulk_data.exam_id
         
-        # 1. Get Linked Programs
-        linked_programs = supabase.table("program_exam").select("program_id").eq("exam_id", exam_id).execute().data
-        program_ids = [p['program_id'] for p in linked_programs]
-        
-        if not program_ids:
-             raise Exception("No programs linked to this exam")
-
-        # 2. Fetch all enrollments for these programs
-        # We fetch active enrollments to be safe, but results might exist for inactive ones too?
-        # Let's fetch all for now to ensure we can map if a student is found.
-        enrollments = supabase.table(self.enrollment_table)\
-            .select("enrollment_id, student_id")\
-            .in_("program_id", program_ids)\
-            .execute().data
-        
-        # Create a lookup map: { student_id: enrollment_id }
-        # If student has multiple enrollments, we pick one (arbitrarily the last one encountered, or logic?)
-        # Ideally we pick the one that matches the program they are 'most' active in, but simpler is unique student_id.
-        student_to_enrollment = {e['student_id']: e['enrollment_id'] for e in enrollments}
-
         # 3. Prepare the data for upsert
+        # We now link result directly to student_id and exam_id
         upsert_list = []
         for item in bulk_data.results:
-            enrollment_id = student_to_enrollment.get(item.student_id)
-            if enrollment_id:
-                upsert_list.append({
-                    "enrollment_id": enrollment_id,
-                    "exam_id": exam_id,
-                    "written_marks": item.written_marks,
-                    "mcq_marks": item.mcq_marks,
-                })
+            upsert_list.append({
+                "student_id": item.student_id,
+                "exam_id": exam_id,
+                "written_marks": item.written_marks,
+                "mcq_marks": item.mcq_marks,
+            })
 
         if not upsert_list:
-            return {"message": "No valid enrollments found for provided students"}
+            return {"message": "No data to upsert"}
 
         # 4. Perform Bulk Upsert
-        response = supabase.table(self.result_table).upsert(upsert_list, on_conflict="enrollment_id, exam_id").execute()
+        response = supabase.table(self.result_table).upsert(upsert_list, on_conflict="student_id, exam_id").execute()
         return response.data
 
     def get_exam_results(self, exam_id: int):
         # Fetch results with student details for the Merit List
-        # roll_no is in enrollment table, not student table
+        # Now linked via student_id directly
         response = supabase.table(self.result_table)\
-            .select("*, enrollment(roll_no, student(student_id, name))")\
+            .select("*, student(student_id, name, roll_no)")\
             .eq("exam_id", exam_id)\
             .order("total_score", desc=True)\
             .execute()
+        
+        # Note: Roll No in student table might be obsolete if we moved it to enrollment.
+        # But for Merit List, we might want the Program Roll No? 
+        # The user said "remove enrollment_id". 
+        # If we need Program Roll No, we have to join Enrollment back? 
+        # Or we rely on the fact that we can get one of the active enrollments?
+        # Let's check get_exam_candidates which constructs the view. 
+        # get_exam_results is for "Merit List" export purely? 
+        
+        # If we need roll_no specific to the program, we might need to fetch it separately or join enrollment.
+        # Since student_id is unique per exam in result table, we can join any valid enrollment for this student in this exam's programs?
+        # For now, let's just return what we have. Frontend 'candidates' query handles the display with roll nos.
         return response.data
 
     def get_exam_analytics(self, exam_id: int):
@@ -118,15 +109,16 @@ class ResultRepository:
             .eq("status", "Active")\
             .execute().data
         
+        
         # 3. Get Existing Results for this Exam
         results = supabase.table(self.result_table)\
             .select("*")\
             .eq("exam_id", exam_id)\
             .execute().data
         
-        result_map = {r['enrollment_id']: r for r in results}
+        # Map by student_id
+        result_map = {r['student_id']: r for r in results}
 
-        # 4. Deduplicate Students & Map Results
         # 4. Map Results (No Deduplication - Frontend handles grouping)
         candidates = []
         
@@ -134,14 +126,15 @@ class ResultRepository:
             student = enroll.get('student')
             if not student: continue
             
-            res = result_map.get(enroll['enrollment_id'])
+            student_id = student['student_id']
+            res = result_map.get(student_id)
             
             candidate_entry = {
                 "enrollment_id": enroll['enrollment_id'],
                 "student": student,
-                "program_id": enroll.get('program_id'), # Add this
+                "program_id": enroll.get('program_id'), 
                 "program": enroll.get('program'),
-                "program_roll_no": enroll.get('roll_no'), # Specific to program
+                "program_roll_no": enroll.get('roll_no'), 
                 "result_id": res['result_id'] if res else None,
                 "written_marks": res['written_marks'] if res else 0,
                 "mcq_marks": res['mcq_marks'] if res else 0,

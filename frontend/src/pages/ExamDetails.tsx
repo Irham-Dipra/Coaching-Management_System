@@ -65,19 +65,25 @@ const ExamDetails: React.FC = () => {
 
             if (!groupedMap.has(studentId)) {
                 // Initialize group
+                // Use result data from candidate if available (fallback/primary if meritList join fails)
+                const candidateResult = c.result_id ? {
+                    result_id: c.result_id,
+                    written_marks: c.written_marks,
+                    mcq_marks: c.mcq_marks,
+                    total_score: c.total_score,
+                    student: c.student // Keep student ref if needed
+                } : null;
+
                 groupedMap.set(studentId, {
                     student: c.student,
                     enrollments: [],
-                    // We will aggregate results from all enrollments. 
-                    // Typically a student takes exam once, so we look for the first valid result.
-                    result: null,
+                    result: candidateResult,
                     editData: { written: 0, mcq: 0 }
                 });
             }
 
             const group = groupedMap.get(studentId);
 
-            // Add enrollment details
             // Add enrollment details
             group.enrollments.push({
                 program_name: c?.program?.program_name,
@@ -86,22 +92,20 @@ const ExamDetails: React.FC = () => {
                 enrollment_id: c.enrollment_id
             });
 
-            // Find result for this enrollment
-            const result = meritList?.find((r: any) => r.enrollment_id === c.enrollment_id);
+            // Find result for this student (meritList should now be keyed/findable by student_id or contain student info)
+            // meritList comes from getExamResults which returns student object in result.
+            // This is still useful if meritList has fresher data or extra fields, but candidateResult is a good baseline.
+            const result = meritList?.find((r: any) => r.student?.student_id === studentId);
 
-            // If this enrollment has a result, or if we haven't found a result yet, use it.
-            // Priority: Result with marks > Empty Result > Null
-            if (result && (!group.result || (result.total_score > (group.result.total_score || 0)))) {
+            // If found, assign it. Since we group by student, we don't need to check "better" result anymore 
+            // as there is only one result per student per exam now.
+            if (result) {
                 group.result = result;
             }
 
-            // Consolidate Edit Data (Use the first enrollment for editing if not specific logic exists)
-            // Or better: If *any* enrollment has edit data in local state, use it.
-            if (editedMarks[c.enrollment_id]) {
-                group.editData = editedMarks[c.enrollment_id];
-                group.primaryEnrollmentId = c.enrollment_id; // Mark which enrollment is being edited
-            } else if (!group.primaryEnrollmentId) {
-                group.primaryEnrollmentId = c.enrollment_id; // Default to first
+            // Consolidate Edit Data 
+            if (editedMarks[studentId]) {
+                group.editData = editedMarks[studentId];
             }
         });
 
@@ -122,16 +126,19 @@ const ExamDetails: React.FC = () => {
                 sort_total: isEditing ? ((Number(editData.written) || 0) + (Number(editData.mcq) || 0)) : (result?.total_score || 0),
                 sort_student_id: g.student?.student_id || 0,
                 editData: editData,
-                // program_list_display moved to JSX for clickable links
+                // program_list_display moved to JSX
             };
         });
 
         // 2. Sort
         return merged.sort((a: any, b: any) => {
-            let aValue = a.sort_student_id;
-            let bValue = b.sort_student_id;
+            let aValue: any;
+            let bValue: any;
 
-            if (sortConfig.key === 'written') {
+            if (sortConfig.key === 'student_id') {
+                aValue = a.sort_student_id;
+                bValue = b.sort_student_id;
+            } else if (sortConfig.key === 'written') {
                 aValue = a.sort_written;
                 bValue = b.sort_written;
             } else if (sortConfig.key === 'mcq') {
@@ -150,19 +157,22 @@ const ExamDetails: React.FC = () => {
     }, [candidates, meritList, sortConfig, editedMarks, isEditing]);
 
     // Effect: Initialize marks
-    // We need to be careful here. If we group, we still need to initialize `editedMarks` keyed by enrollment_id.
-    // For simplicity, we can just init all available enrollments.
     useEffect(() => {
         if (isEditing && candidates) {
             const initialMarks: any = {};
             candidates.forEach((c: any) => {
-                if (c?.enrollment_id) {
-                    // Check existing merit
-                    const result = meritList?.find((r: any) => r.enrollment_id === c.enrollment_id);
-                    initialMarks[c.enrollment_id] = {
-                        student_id: c?.student?.student_id,
-                        written: result?.written_marks || 0,
-                        mcq: result?.mcq_marks || 0
+                const sId = c?.student?.student_id;
+                if (sId) {
+                    // Check existing merit from meritList OR candidate data itself
+                    const fromMerit = meritList?.find((r: any) => r.student?.student_id === sId);
+
+                    const written = fromMerit?.written_marks ?? c.written_marks ?? 0;
+                    const mcq = fromMerit?.mcq_marks ?? c.mcq_marks ?? 0;
+
+                    initialMarks[sId] = {
+                        student_id: sId,
+                        written: written,
+                        mcq: mcq
                     };
                 }
             });
@@ -176,6 +186,7 @@ const ExamDetails: React.FC = () => {
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['analytics', id] });
             queryClient.invalidateQueries({ queryKey: ['merit', id] });
+            queryClient.invalidateQueries({ queryKey: ['candidates', id] });
             setIsEditing(false);
             setEditedMarks({});
             alert("Marks updated successfully!");
@@ -187,11 +198,11 @@ const ExamDetails: React.FC = () => {
     if (!exam) return <div className="p-8">Loading exam...</div>;
 
     // Parsers
-    const handleMarkChange = (enrollmentId: number, field: 'written' | 'mcq', value: string) => {
+    const handleMarkChange = (studentId: number, field: 'written' | 'mcq', value: string) => {
         setEditedMarks((prev: any) => ({
             ...prev,
-            [enrollmentId]: {
-                ...prev[enrollmentId] || {},
+            [studentId]: {
+                ...prev[studentId] || { student_id: studentId },
                 [field]: value === '' ? 0 : Number(value)
             }
         }));
@@ -210,14 +221,17 @@ const ExamDetails: React.FC = () => {
         });
     };
 
+    // ... existing export functions ...
     const exportCSV = () => {
         if (!meritList) return;
         // Ensure strictly sorted by Total Score
         const sortedList = [...meritList].sort((a: any, b: any) => (b.total_score || 0) - (a.total_score || 0));
 
         const ws = XLSX.utils.json_to_sheet(sortedList.map((r: any) => ({
-            Name: r?.enrollment?.student?.name || 'Unknown',
-            Roll: r?.enrollment?.student?.roll_no || '-',
+            Name: r?.student?.name || 'Unknown',
+            // Roll: r?.student?.roll_no || '-', // Removed roll from student table?
+            // We might want Program Roll here, but merit list might not have it easily if we removed enrollment link.
+            // For now, Name is enough or we rely on what's available.
             Written: r.written_marks,
             MCQ: r.mcq_marks,
             Total: r.total_score
@@ -244,15 +258,15 @@ const ExamDetails: React.FC = () => {
         // Table Data
         const tableData = sortedList.map((r: any, index: number) => [
             index + 1,
-            r?.enrollment?.student?.name || 'Unknown',
-            r?.enrollment?.student?.roll_no || '-',
+            r?.student?.name || 'Unknown',
+            // r?.student?.roll_no || '-',
             r.written_marks,
             r.mcq_marks,
             r.total_score
         ]);
 
         autoTable(doc, {
-            head: [['Rank', 'Student Name', 'Roll No', 'Written', 'MCQ', 'Total']],
+            head: [['Rank', 'Student Name', 'Written', 'MCQ', 'Total']],
             body: tableData,
             startY: 44,
         });
@@ -424,8 +438,6 @@ const ExamDetails: React.FC = () => {
                     <tbody className="divide-y divide-gray-50">
                         {sortedCandidates?.map((g: any, index: number) => {
                             const editData = g.editData;
-                            // For editing, we update the primaryEnrollmentId. 
-                            // (Ideally we'd update all, but let's stick to primary for now or map input to primary)
 
                             return (
                                 <tr key={g.student?.student_id || index} className={isEditing ? "bg-blue-50/30" : "hover:bg-gray-50"}>
@@ -453,7 +465,7 @@ const ExamDetails: React.FC = () => {
                                                     className="w-20 p-1 border rounded text-right bg-white border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500 font-bold"
                                                     value={editData.written}
                                                     placeholder="0"
-                                                    onChange={(e) => g.primaryEnrollmentId && handleMarkChange(g.primaryEnrollmentId, 'written', e.target.value)}
+                                                    onChange={(e) => g.student?.student_id && handleMarkChange(g.student.student_id, 'written', e.target.value)}
                                                 />
                                             </td>
                                             <td className="p-4 text-right">
@@ -462,7 +474,7 @@ const ExamDetails: React.FC = () => {
                                                     className="w-20 p-1 border rounded text-right bg-white border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500 font-bold"
                                                     value={editData.mcq}
                                                     placeholder="0"
-                                                    onChange={(e) => g.primaryEnrollmentId && handleMarkChange(g.primaryEnrollmentId, 'mcq', e.target.value)}
+                                                    onChange={(e) => g.student?.student_id && handleMarkChange(g.student.student_id, 'mcq', e.target.value)}
                                                 />
                                             </td>
                                             <td className="p-4 text-right text-gray-400 text-sm">

@@ -1,20 +1,20 @@
 import React, { useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ProgramRepository } from '../repositories/ProgramRepository';
-import { Users, FileText, DollarSign, Calendar, GraduationCap, Clock } from 'lucide-react';
+import { Users, FileText, DollarSign, Calendar, GraduationCap, Clock, Plus, X, Trash2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import CreateExamModal from '../components/CreateExamModal';
 import { AttendanceRepository } from '../repositories/AttendanceRepository';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { ScheduleRepository } from '../repositories/ScheduleRepository';
-import { StudentRepository } from '../repositories/StudentRepository'; // Added
-import { Plus, X, Trash2 } from 'lucide-react';
+import { StudentRepository } from '../repositories/StudentRepository';
+import BatchPaymentModal from '../components/BatchPaymentModal';
 
 const ProgramDetails: React.FC = () => {
     const { id } = useParams<{ id: string }>();
     const [activeTab, setActiveTab] = useState<'students' | 'exams' | 'attendance' | 'schedule'>('students');
     const [isExamModalOpen, setIsExamModalOpen] = useState(false);
+    const [isBatchModalOpen, setIsBatchModalOpen] = useState(false); // New State
     const [attendanceDate, setAttendanceDate] = useState(new Date().toISOString().split('T')[0]);
     const [attendanceData, setAttendanceData] = useState<any[]>([]);
     const queryClient = useQueryClient();
@@ -98,6 +98,45 @@ const ProgramDetails: React.FC = () => {
     return (
         <div className="space-y-6">
             {/* HEADER */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                    <div className="flex items-center gap-2 mb-1">
+                        <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded uppercase tracking-wider">Program</span>
+                        {program.batch && (
+                            <span className="text-xs text-gray-500 font-medium px-2 py-0.5 border rounded">
+                                {program.batch.batch_name}
+                            </span>
+                        )}
+                    </div>
+                    <h1 className="text-3xl font-bold text-gray-900">{program.program_name}</h1>
+                </div>
+                <div className="flex gap-3">
+                    <button
+                        onClick={() => setIsBatchModalOpen(true)}
+                        className="bg-blue-600 text-white px-4 py-2 rounded shadow-sm hover:bg-blue-700 flex items-center gap-2 font-medium"
+                    >
+                        <Users size={18} /> Record Batch Payment
+                    </button>
+                    <button
+                        onClick={() => setIsExamModalOpen(true)}
+                        className="bg-white text-gray-700 border border-gray-300 px-4 py-2 rounded shadow-sm hover:bg-gray-50 flex items-center gap-2 font-medium"
+                    >
+                        <Plus size={18} /> Schedule Exam
+                    </button>
+                </div>
+            </div>
+
+            {/* ... stats ... */}
+
+            {/* Batch Payment Modal */}
+            <BatchPaymentModal
+                isOpen={isBatchModalOpen}
+                onClose={() => setIsBatchModalOpen(false)}
+                initialProgramId={id}
+            />
+
+            {/* ... rest of component ... */}
+
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
                     <div>

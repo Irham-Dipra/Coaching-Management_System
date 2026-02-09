@@ -1190,3 +1190,78 @@ class PaymentRepository:
                 "revenue_this_month": 0,
                 "total_due": 0
             }
+
+    def get_program_payment_status(self, program_id: int, month: int, year: int):
+        """
+        Fetches payment status for ALL active students in a program for a specific month.
+        Returns a list of dicts with student details and payment status (Paid, Unpaid, Partial).
+        """
+        # 1. Get all ACTIVE enrollments for this program
+        # We need student details (name, student_id, roll_no) and enrollment_id
+        enrollments = supabase.table(self.enrollment_table)\
+            .select("enrollment_id, roll_no, student(student_id, name), program(program_id, monthly_fee)")\
+            .eq("program_id", program_id)\
+            .eq("status", "Active")\
+            .execute().data
+            
+        if not enrollments:
+            return []
+            
+        results = []
+        
+        # 2. For each enrollment, check payment status for the month
+        # Optimization: We could do a bulk fetch of payments for this program/month/year?
+        # But for now, let's trust the loop or do a single query if performance is key.
+        # Single Query Optimization: Fetch all payments for this program+month+year.
+        
+        # Get all payments for this program in this month/year
+        # We need to filter payments by enrollment_ids in this list. 
+        # Supabase 'in' query: .in_('enrollment_id', [list])
+        enrollment_ids = [e['enrollment_id'] for e in enrollments]
+        
+        if not enrollment_ids:
+            return []
+
+        payments = supabase.table(self.table)\
+            .select("enrollment_id, paid_amount")\
+            .in_("enrollment_id", enrollment_ids)\
+            .eq("month", month)\
+            .eq("year", year)\
+            .execute().data
+            
+        # Map payments by enrollment_id
+        payment_map = {}
+        for p in payments:
+            eid = p['enrollment_id']
+            payment_map[eid] = payment_map.get(eid, 0) + p['paid_amount']
+            
+        # 3. Build Result
+        for enroll in enrollments:
+            student = enroll.get('student') or {} # Handle potential missing join
+            program = enroll.get('program') or {}
+            
+            eid = enroll['enrollment_id']
+            monthly_fee = program.get('monthly_fee', 0)
+            paid = payment_map.get(eid, 0)
+            due = monthly_fee - paid
+            
+            status = 'Unpaid'
+            if paid >= monthly_fee:
+                status = 'Paid'
+                due = 0 # No negative due
+            elif paid > 0:
+                status = 'Partial'
+            
+            results.append({
+                "student_id": student.get('student_id'),
+                "name": student.get('name'),
+                "roll_no": enroll.get('roll_no') or student.get('roll_no'), # Prioritize enrollment roll
+                # Use student roll for now as per current schema viewing.
+                "enrollment_id": eid,
+                "monthly_fee": monthly_fee,
+                "paid_amount": paid,
+                "due_amount": due,
+                "status": status
+            })
+            
+        return results

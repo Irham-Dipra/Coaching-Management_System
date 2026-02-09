@@ -3,15 +3,18 @@ import { useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { PaymentRepository } from '../repositories/PaymentRepository';
 import { StudentRepository } from '../repositories/StudentRepository';
-import { ProgramRepository } from '../repositories/ProgramRepository'; // Keep for now if needed, but we rely on student enrollments
-import { DollarSign, Search, Plus, FileText, Download, X, Calendar, User, ArrowUpDown, Edit, Filter } from 'lucide-react';
+import { ProgramRepository } from '../repositories/ProgramRepository';
+import { DollarSign, Search, Plus, FileText, Download, X, Calendar, User, ArrowUpDown, Edit, Filter, Users } from 'lucide-react';
 import jsPDF from 'jspdf';
 import FinanceBreakdownModal from '../components/FinanceBreakdownModal';
 import { generatePaymentSlip } from '../utils/pdfGenerator';
 
+import BatchPaymentModal from '../components/BatchPaymentModal';
+
 const Finance: React.FC = () => {
 
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isBatchModalOpen, setIsBatchModalOpen] = useState(false);
     const [editPayment, setEditPayment] = useState<any>(null); // For edit modal
     const [breakdownType, setBreakdownType] = useState<'revenue' | 'due' | null>(null);
     const [sortDesc, setSortDesc] = useState(true); // Default Descending
@@ -51,7 +54,7 @@ const Finance: React.FC = () => {
     const [classFilter, setClassFilter] = useState('');
     const [programFilter, setProgramFilter] = useState('');
 
-    // Fetch Batches & Programs for Filters (Reuse existing hooks from StudentList logic ideally, or fetch here)
+    // Fetch Batches & Programs for Filters
     const { data: batches } = useQuery({ queryKey: ['batches'], queryFn: ProgramRepository.getAllBatches });
     const { data: allPrograms } = useQuery({ queryKey: ['programs'], queryFn: ProgramRepository.getAllPrograms });
 
@@ -79,22 +82,46 @@ const Finance: React.FC = () => {
             // 3. Filters
             const matchesClass = classFilter ? p.class?.toString() === classFilter : true;
             const matchesBatch = batchFilter ? p.batch_id?.toString() === batchFilter : true;
-            // Use p.program_id (backend updated to send it) or match name loosely? Backend sort of sends it now.
-            // If backend result has program_id, perfect. If not, filtered by name?
-            // "program_id" added in backend update.
             const matchesProgram = programFilter ? p.program_id?.toString() === programFilter : true;
 
             return matchesMain && matchesRoll && matchesClass && matchesBatch && matchesProgram;
         });
     }, [recentPayments, searchTerm, rollSearch, batchFilter, classFilter, programFilter]);
 
-
-
     return (
         <div className="space-y-6">
-            <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-                <DollarSign className="text-green-600" /> Finance & Accounts
-            </h1>
+            <div className="flex justify-between items-center">
+                <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
+                    <DollarSign className="text-green-600" /> Finance & Accounts
+                </h1>
+                <div className="flex gap-3">
+                    <button
+                        onClick={() => setIsBatchModalOpen(true)}
+                        className="bg-blue-600 text-white px-4 py-2 rounded-lg shadow-sm hover:bg-blue-700 flex items-center gap-2 font-medium"
+                    >
+                        <Users size={18} /> Record Batch Payment
+                    </button>
+                    <button
+                        onClick={() => { setEditPayment(null); setIsModalOpen(true); }}
+                        className="bg-green-600 text-white px-4 py-2 rounded-lg shadow-sm hover:bg-green-700 flex items-center gap-2 font-medium"
+                    >
+                        <Plus size={18} /> Record Single Payment
+                    </button>
+                </div>
+            </div>
+
+            {/* ... stats ... */}
+
+            {/* Modals */}
+
+
+            <BatchPaymentModal
+                isOpen={isBatchModalOpen}
+                onClose={() => setIsBatchModalOpen(false)}
+            />
+
+            {/* ... rest of the component ... */}
+
 
             {/* STATS */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

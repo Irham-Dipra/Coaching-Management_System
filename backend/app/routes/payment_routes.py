@@ -65,3 +65,10 @@ def get_revenue_breakdown(month: int = None, year: int = None):
 @router.get("/finance/due-breakdown")
 def get_due_breakdown():
     return payment_repo.get_due_breakdown_list()
+
+@router.get("/programs/{program_id}/payment-status")
+def get_program_payment_status(program_id: int, month: int, year: int):
+    try:
+        return payment_repo.get_program_payment_status(program_id, month, year)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))

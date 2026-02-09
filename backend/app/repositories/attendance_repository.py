@@ -7,8 +7,10 @@ class AttendanceRepository:
 
     def get_daily_attendance(self, program_id: int, date_str: str):
         # 1. Get all enrollments for the program to list ALL students
+        # 1. Get all enrollments for the program to list ALL students
+        # roll_no is in enrollment table, not student table
         enrollments = supabase.table(self.enrollment_table)\
-            .select("enrollment_id, student(student_id, name, roll_no)")\
+            .select("enrollment_id, roll_no, student(student_id, name)")\
             .eq("program_id", program_id)\
             .execute().data
 
@@ -38,7 +40,7 @@ class AttendanceRepository:
                 "enrollment_id": e['enrollment_id'],
                 "student_id": student.get('student_id'),
                 "name": student.get('name'),
-                "roll_no": student.get('roll_no'),
+                "roll_no": e.get('roll_no'), # roll_no is in enrollment
                 # Existing attendance data
                 "attendance_id": att_record.get("attendance_id"),
                 "status": att_record.get("status"), # None means not marked yet (default to Present in UI?)

@@ -61,6 +61,22 @@ export const ScheduleRepository = {
         if (!response.ok) throw new Error('Failed to delete room');
     },
 
+    getRoomById: async (room_id: string): Promise<Room> => {
+        const response = await fetch(`${API_URL}/rooms/${room_id}`);
+        if (!response.ok) throw new Error('Failed to fetch room details');
+        return response.json();
+    },
+
+    updateRoom: async (room_id: string, data: any): Promise<Room> => {
+        const response = await fetch(`${API_URL}/rooms/${room_id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        if (!response.ok) throw new Error('Failed to update room');
+        return response.json();
+    },
+
     // WINDOWS
     getAllWindows: async (): Promise<ScheduleWindow[]> => {
         const response = await fetch(`${API_URL}/schedule-windows`);

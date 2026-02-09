@@ -18,7 +18,16 @@ class ScheduleRepository:
     @staticmethod
     def delete_room(room_id: int):
         res = supabase.table('room').delete().eq('room_id', room_id).execute()
+    @staticmethod
+    def get_room_by_id(room_id: int):
+        # Fetch room details
+        res = supabase.table('room').select('*').eq('room_id', room_id).single().execute()
         return res.data
+
+    @staticmethod
+    def update_room(room_id: int, updates: Dict[str, Any]):
+        res = supabase.table('room').update(updates).eq('room_id', room_id).execute()
+        return res.data[0] if res.data else None
 
     # --- SCHEDULE WINDOWS ---
     @staticmethod

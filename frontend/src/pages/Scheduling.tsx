@@ -110,19 +110,22 @@ const RoomManager: React.FC<{ rooms: Room[] }> = ({ rooms }) => {
             {/* LIST */}
             <div className="grid gap-3">
                 {rooms.map(room => (
-                    <div key={room.room_id} className="flex justify-between items-center p-4 border rounded hover:bg-gray-50 bg-white">
-                        <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center">
+                    <div key={room.room_id} className="flex justify-between items-center p-4 border rounded hover:bg-gray-50 bg-white group">
+                        <Link to={`/admin/scheduling/rooms/${room.room_id}`} className="flex items-center gap-3 flex-1">
+                            <div className="w-10 h-10 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center group-hover:bg-blue-200 transition-colors">
                                 <MapPin size={20} />
                             </div>
                             <div>
-                                <p className="font-bold text-gray-800">{room.room_name}</p>
+                                <p className="font-bold text-gray-800 group-hover:text-blue-700 transition-colors">{room.room_name}</p>
                                 {room.capacity && <p className="text-xs text-gray-500">Capacity: {room.capacity} students</p>}
                             </div>
-                        </div>
+                        </Link>
                         <button
-                            onClick={() => { if (confirm('Delete room?')) deleteMutation.mutate(room.room_id) }}
-                            className="text-red-500 hover:bg-red-50 p-2 rounded"
+                            onClick={(e) => {
+                                e.preventDefault(); // Prevent navigation
+                                if (confirm('Delete room?')) deleteMutation.mutate(room.room_id)
+                            }}
+                            className="text-gray-400 hover:text-red-500 hover:bg-red-50 p-2 rounded transition-colors"
                         >
                             <Trash2 size={18} />
                         </button>

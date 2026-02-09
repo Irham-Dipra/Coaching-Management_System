@@ -22,6 +22,23 @@ def create_room(room: RoomCreate):
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
+@router.get("/rooms/{room_id}", response_model=RoomResponse)
+def get_room_details(room_id: int):
+    data = ScheduleRepository.get_room_by_id(room_id)
+    if not data:
+        raise HTTPException(status_code=404, detail="Room not found")
+    return data
+
+@router.put("/rooms/{room_id}", response_model=RoomResponse)
+def update_room(room_id: int, payload: dict):
+    try:
+        data = ScheduleRepository.update_room(room_id, payload)
+        if not data:
+             raise HTTPException(status_code=404, detail="Room not found")
+        return data
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
 @router.delete("/rooms/{room_id}")
 def delete_room(room_id: int):
     try:

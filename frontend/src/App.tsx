@@ -13,6 +13,7 @@ import Attendance from './pages/Attendance';
 import Finance from './pages/Finance';
 import Scheduling from './pages/Scheduling';
 import ScheduleDetails from './pages/ScheduleDetails';
+import RoomDetails from './pages/RoomDetails';
 import Login from './pages/Login';
 import Signup from './pages/Signup';
 import Unauthorized from './pages/Unauthorized';
@@ -67,6 +68,7 @@ function App() {
               <Route path="/finance" element={<Finance />} />
               <Route path="/admin/scheduling" element={<Scheduling />} />
               <Route path="/admin/scheduling/:id" element={<ScheduleDetails />} />
+              <Route path="/admin/scheduling/rooms/:id" element={<RoomDetails />} />
 
               <Route path="/students" element={<StudentList />} />
               <Route path="/students/:id" element={<StudentProfile />} />

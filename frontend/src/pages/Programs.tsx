@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { ProgramRepository } from '../repositories/ProgramRepository';
 import CreateProgramModal from '../components/CreateProgramModal';
 import { Plus, Users, BookOpen } from 'lucide-react';
@@ -14,11 +14,10 @@ interface Program {
     batch: {
         batch_name: string;
     };
-    enrollment?: { count: number }[]; // From Backend Count
+    student_count?: number; // Added from Backend
 }
 
 const Programs: React.FC = () => {
-    const queryClient = useQueryClient();
     const [isModalOpen, setIsModalOpen] = useState(false);
 
     // 1. Fetch Programs
@@ -68,8 +67,8 @@ const Programs: React.FC = () => {
                             <div className="flex items-center text-gray-500 text-sm">
                                 <Users size={16} className="mr-2" />
                                 <span className="font-medium">
-                                    {program.enrollment && program.enrollment[0]?.count
-                                        ? `${program.enrollment[0].count} Students Enrolled`
+                                    {program.student_count && program.student_count > 0
+                                        ? `${program.student_count} Students Enrolled`
                                         : 'No Students Enrolled'}
                                 </span>
                             </div>

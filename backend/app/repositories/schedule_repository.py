@@ -194,7 +194,14 @@ class ScheduleRepository:
 
     @staticmethod
     def search_windows(room_id: int = None, day: str = None, program_id: int = None):
-        query = supabase.table('schedule_window').select('*, room(room_name), program_schedule!inner(program_id, program(program_name))')
+        # Default: Left join so we see windows even without programs
+        select_str = '*, room(room_name), program_schedule(program_id, program(program_name))'
+        
+        # If filtering by program, we need inner join on program_schedule
+        if program_id:
+             select_str = '*, room(room_name), program_schedule!inner(program_id, program(program_name))'
+        
+        query = supabase.table('schedule_window').select(select_str)
         
         if room_id:
             query = query.eq('room_id', room_id)

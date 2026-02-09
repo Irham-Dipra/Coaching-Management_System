@@ -6,6 +6,22 @@ import { ArrowLeft, Edit, Save, Calendar, MapPin, Grid, List as ListIcon, Users 
 
 const DAYS = ['Saturday', 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
 
+// Helper for 12-hour format
+const formatTime = (timeStr: string) => {
+    if (!timeStr) return '';
+    try {
+        // Handle HH:MM:SS or HH:MM
+        const parts = timeStr.split(':');
+        const hours = parseInt(parts[0]);
+        const minutes = parts[1];
+        const ampm = hours >= 12 ? 'PM' : 'AM';
+        const formattedHour = hours % 12 || 12;
+        return `${formattedHour}:${minutes} ${ampm}`;
+    } catch (e) {
+        return timeStr;
+    }
+};
+
 const RoomDetails: React.FC = () => {
     const { id } = useParams<{ id: string }>();
     const queryClient = useQueryClient();
@@ -128,7 +144,7 @@ const RoomDetails: React.FC = () => {
                 <div className="flex justify-between items-center mb-4">
                     <h2 className="text-lg font-bold text-gray-800 flex items-center gap-2">
                         <Calendar size={20} className="text-gray-400" />
-                        Room Schedule
+                        Room Schedule ({schedules?.length || 0})
                     </h2>
 
                     {/* View Toggle */}
@@ -160,40 +176,45 @@ const RoomDetails: React.FC = () => {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-gray-100">
-                                {schedules?.sort((a: any, b: any) => {
-                                    const dayDiff = DAYS.indexOf(a.day_of_week) - DAYS.indexOf(b.day_of_week);
-                                    if (dayDiff !== 0) return dayDiff;
-                                    return a.start_time.localeCompare(b.start_time);
-                                }).map((win: ScheduleWindow) => (
-                                    <tr key={win.window_id} className="hover:bg-gray-50 group">
-                                        <td className="p-4 font-medium text-gray-900">{win.day_of_week}</td>
-                                        <td className="p-4 text-gray-600 font-mono text-sm">
-                                            {win.start_time} - {win.end_time}
-                                        </td>
-                                        <td className="p-4">
-                                            <div className="flex flex-wrap gap-1">
-                                                {/* Try legacy 'program_schedule' or new 'programs' */}
-                                                {(win.programs || win.program_schedule?.map((ps: any) => ps.program))?.map((p: any) => (
-                                                    <span key={p.program_id} className="bg-blue-50 text-blue-700 px-2 py-1 rounded text-xs font-semibold">
-                                                        {p.program_name}
-                                                    </span>
-                                                ))}
-                                                {/* Fallback */}
-                                                {(!win.programs && !win.program_schedule?.length) && (
-                                                    <span className="text-gray-400 text-xs italic">No programs assigned</span>
-                                                )}
-                                            </div>
-                                        </td>
-                                        <td className="p-4 text-right">
-                                            <Link
-                                                to={`/admin/scheduling/${win.window_id}`}
-                                                className="text-blue-600 hover:text-blue-800 text-sm font-medium hover:underline"
-                                            >
-                                                View Details
-                                            </Link>
-                                        </td>
-                                    </tr>
-                                ))}
+                                {DAYS.map(day => {
+                                    const daySchedules = schedules?.filter((s: any) => s.day_of_week === day)
+                                        .sort((a: any, b: any) => a.start_time.localeCompare(b.start_time));
+
+                                    if (!daySchedules || daySchedules.length === 0) return null;
+
+                                    return daySchedules.map((win: ScheduleWindow, index: number) => (
+                                        <tr key={win.window_id} className="hover:bg-gray-50 group">
+                                            {index === 0 && (
+                                                <td className="p-4 font-medium text-gray-900 align-top border-r border-gray-100 bg-gray-50/30" rowSpan={daySchedules.length}>
+                                                    {day}
+                                                </td>
+                                            )}
+                                            <td className="p-4 text-gray-600 font-mono text-sm border-b border-gray-100">
+                                                {formatTime(win.start_time)} - {formatTime(win.end_time)}
+                                            </td>
+                                            <td className="p-4 border-b border-gray-100">
+                                                <div className="flex flex-wrap gap-1">
+                                                    {(win.programs || win.program_schedule?.map((ps: any) => ps.program))?.map((p: any) => (
+                                                        <span key={p.program_id} className="bg-blue-50 text-blue-700 px-2 py-1 rounded text-xs font-semibold">
+                                                            {p.program_name}
+                                                        </span>
+                                                    ))}
+                                                    {(!win.programs && !win.program_schedule?.length) && (
+                                                        <span className="text-gray-400 text-xs italic">No programs assigned</span>
+                                                    )}
+                                                </div>
+                                            </td>
+                                            <td className="p-4 text-right border-b border-gray-100">
+                                                <Link
+                                                    to={`/admin/scheduling/${win.window_id}`}
+                                                    className="text-blue-600 hover:text-blue-800 text-sm font-medium hover:underline"
+                                                >
+                                                    View Details
+                                                </Link>
+                                            </td>
+                                        </tr>
+                                    ));
+                                })}
 
                                 {(!schedules || schedules.length === 0) && (
                                     <tr>
@@ -221,14 +242,14 @@ const RoomDetails: React.FC = () => {
                                     <div className="p-4 font-bold text-gray-700 border-r border-gray-100 bg-gray-50/50 flex items-center justify-center">
                                         {day.substring(0, 3)}
                                     </div>
-                                    <div className="col-span-7 p-2 relative flex items-center gap-2 overflow-x-auto">
+                                    <div className="col-span-7 p-2 relative flex items-center gap-2 flex-wrap">
                                         {daySchedules?.map((win: ScheduleWindow) => (
                                             <Link
                                                 key={win.window_id}
                                                 to={`/admin/scheduling/${win.window_id}`}
                                                 className="flex-shrink-0 bg-blue-100 border border-blue-200 text-blue-800 p-2 rounded-lg text-xs hover:shadow-md hover:bg-blue-200 transition-all cursor-pointer min-w-[120px]"
                                             >
-                                                <div className="font-bold mb-1">{win.start_time.substring(0, 5)} - {win.end_time.substring(0, 5)}</div>
+                                                <div className="font-bold mb-1">{formatTime(win.start_time)} - {formatTime(win.end_time)}</div>
                                                 <div className="truncate opacity-80">
                                                     {(win.programs || win.program_schedule?.map((ps: any) => ps.program))?.map((p: any) => p.program_name).join(', ') || 'Empty Slot'}
                                                 </div>
@@ -244,7 +265,6 @@ const RoomDetails: React.FC = () => {
                     </div>
                 )}
             </div>
-
         </div>
     );
 };

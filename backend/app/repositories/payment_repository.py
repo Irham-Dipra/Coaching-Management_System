@@ -1197,6 +1197,7 @@ class PaymentRepository:
         Returns a list of dicts with student details and payment status (Paid, Unpaid, Partial).
         """
         # 1. Get all ACTIVE enrollments for this program
+
         # We need student details (name, student_id, roll_no) and enrollment_id
         enrollments = supabase.table(self.enrollment_table)\
             .select("enrollment_id, roll_no, student(student_id, name), program(program_id, monthly_fee)")\

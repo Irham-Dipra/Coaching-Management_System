@@ -71,5 +71,12 @@ export const PaymentRepository = {
         const response = await fetch(`${API_BASE_URL}/finance/programs`);
         if (!response.ok) throw new Error("Failed to fetch program stats");
         return await response.json();
+    },
+
+    // New: Get Batch Payment Status
+    async getProgramPaymentStatus(programId: number, month: number, year: number) {
+        const response = await fetch(`${API_BASE_URL}/programs/${programId}/payment-status?month=${month}&year=${year}`);
+        if (!response.ok) throw new Error("Failed to fetch program payment status");
+        return await response.json();
     }
 };

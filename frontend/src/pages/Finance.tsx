@@ -148,7 +148,7 @@ const Finance: React.FC = () => {
 
                 {/* 2. DUE THIS MONTH */}
                 <div
-                    onClick={() => navigate('/admin/finance/breakdown/due')}
+                    onClick={() => navigate('/admin/finance/breakdown/due_monthly')}
                     className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 cursor-pointer hover:shadow-md transition-all group"
                 >
                     <div className="flex justify-between items-start mb-4">
@@ -169,7 +169,7 @@ const Finance: React.FC = () => {
 
                 {/* 3. TOTAL ARREARS */}
                 <div
-                    onClick={() => navigate('/admin/finance/breakdown/due')}
+                    onClick={() => navigate('/admin/finance/breakdown/due_overall')}
                     className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 cursor-pointer hover:shadow-md transition-all group"
                 >
                     <div className="flex justify-between items-start mb-4">

@@ -5,25 +5,27 @@ import { ArrowLeft, DollarSign, AlertCircle, Download } from 'lucide-react';
 import { generatePaymentSlip } from '../utils/pdfGenerator';
 
 const FinanceBreakdown: React.FC = () => {
-    const { type } = useParams<{ type: string }>(); // 'revenue' or 'due'
+    const { type } = useParams<{ type: string }>(); // 'revenue', 'due_monthly', 'due_overall'
     const navigate = useNavigate();
 
     const isRevenue = type === 'revenue';
-    const title = isRevenue ? 'Revenue Breakdown (This Month)' : 'Due Payments Breakdown';
-    const endpoint = isRevenue ? 'revenue-breakdown' : 'due-breakdown';
+    const isDueMonthly = type === 'due_monthly';
+    const isDueOverall = type === 'due_overall';
 
-    // We can use the Repository directly if we exposed these methods, 
-    // or fetch directly if the Repo doesn't have them typed out yet.
-    // Based on previous checks, PaymentRepository has getRevenueBreakdown/getDueBreakdownList?
-    // Let's check PaymentRepository.ts or just use fetch for now to match the modal logic, 
-    // BUT better to use the Repo if possible.
-    // The Modal used: fetch(`${API_BASE_URL}${endpoint}`)
-    // Let's try to use the Repo if we can find it, otherwise fetch.
-    // For safety/speed, I'll stick to the Modal's fetch logic but wrapped in useQuery properly.
+    // Determine Titles and Endpoints
+    let title = '';
+    let endpoint = '';
 
-    // Actually, I should use the repository if possible. 
-    // I recall checking payment_repository.py (backend), not the frontend TS repo.
-    // Let's assume standard fetch for now to match the modal exactly.
+    if (isRevenue) {
+        title = 'Revenue Breakdown (This Month)';
+        endpoint = 'revenue-breakdown';
+    } else if (isDueMonthly) {
+        title = 'Due Payments (This Month)';
+        endpoint = 'due-breakdown/monthly';
+    } else if (isDueOverall) {
+        title = 'Total Arrears (Overall)';
+        endpoint = 'due-breakdown';
+    }
 
     const API_BASE_URL = "http://localhost:8000";
 
@@ -34,10 +36,10 @@ const FinanceBreakdown: React.FC = () => {
             if (!res.ok) throw new Error("Failed to load data");
             return res.json();
         },
-        enabled: !!type
+        enabled: !!type && (isRevenue || isDueMonthly || isDueOverall)
     });
 
-    if (!type || (type !== 'revenue' && type !== 'due')) {
+    if (!type || (!isRevenue && !isDueMonthly && !isDueOverall)) {
         return <div className="p-8 text-center text-red-500">Invalid Breakdown Type</div>;
     }
 
@@ -60,7 +62,11 @@ const FinanceBreakdown: React.FC = () => {
                         <p className="text-sm text-gray-500">Showing data for {data.month}</p>
                     )}
                     {!isRevenue && (
-                        <p className="text-sm text-gray-500">List of active students with outstanding balances.</p>
+                        <p className="text-sm text-gray-500">
+                            {isDueMonthly
+                                ? "List of students with unpaid fees for the current month."
+                                : "List of students with total accumulated arrears."}
+                        </p>
                     )}
                 </div>
             </div>
@@ -77,7 +83,7 @@ const FinanceBreakdown: React.FC = () => {
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                             {data?.program_summary?.map((prog: any, idx: number) => (
                                 <Link
-                                    to={`/admin/finance/program/${prog.program_id}?view=${isRevenue ? 'revenue' : 'due'}`}
+                                    to={`/admin/finance/program/${prog.program_id}?view=${type}`}
                                     key={idx}
                                     className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm flex justify-between items-center hover:shadow-md hover:border-blue-200 transition-all cursor-pointer group"
                                 >

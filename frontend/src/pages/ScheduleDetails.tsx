@@ -3,7 +3,8 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ScheduleRepository } from '../repositories/ScheduleRepository';
 import { ProgramRepository } from '../repositories/ProgramRepository';
-import { Clock, MapPin, Users, Edit, Save, ArrowLeft, Trash2, AlertCircle, X } from 'lucide-react';
+import { Clock, MapPin, Users, Edit, Save, ArrowLeft, Trash2, AlertCircle, X, DollarSign } from 'lucide-react';
+import BatchPaymentModal from '../components/BatchPaymentModal';
 
 const DAYS = ['Saturday', 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
 
@@ -12,6 +13,7 @@ const ScheduleDetails: React.FC = () => {
     const navigate = useNavigate();
     const queryClient = useQueryClient();
     const [isEditing, setIsEditing] = useState(false);
+    const [showPaymentModal, setShowPaymentModal] = useState(false);
 
     // FETCH DATA
     const { data: window, isLoading } = useQuery({
@@ -97,6 +99,12 @@ const ScheduleDetails: React.FC = () => {
                     <div className="flex gap-2">
                         {!isEditing ? (
                             <>
+                                <button
+                                    onClick={() => setShowPaymentModal(true)}
+                                    className="flex items-center gap-2 px-4 py-2 bg-green-50 border border-green-100 rounded-lg hover:bg-green-100 font-medium text-green-700"
+                                >
+                                    <DollarSign size={16} /> Record Payment
+                                </button>
                                 <button onClick={() => setIsEditing(true)} className="flex items-center gap-2 px-4 py-2 bg-white border rounded-lg hover:bg-gray-50 font-medium text-gray-700">
                                     <Edit size={16} /> Edit Details
                                 </button>
@@ -386,6 +394,15 @@ const ScheduleDetails: React.FC = () => {
                     </div>
                 </div>
             </div>
+
+            {/* Batch Payment Modal */}
+            {window && (
+                <BatchPaymentModal
+                    isOpen={showPaymentModal}
+                    onClose={() => setShowPaymentModal(false)}
+                    allowedProgramIds={window.program_schedule?.map((ps: any) => ps.program.program_id) || []}
+                />
+            )}
         </div>
     );
 };

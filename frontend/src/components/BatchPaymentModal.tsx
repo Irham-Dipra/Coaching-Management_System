@@ -8,9 +8,10 @@ interface BatchPaymentModalProps {
     isOpen: boolean;
     onClose: () => void;
     initialProgramId?: string; // Optional pre-select
+    allowedProgramIds?: number[]; // Optional: Restrict to specific programs
 }
 
-const BatchPaymentModal: React.FC<BatchPaymentModalProps> = ({ isOpen, onClose, initialProgramId }) => {
+const BatchPaymentModal: React.FC<BatchPaymentModalProps> = ({ isOpen, onClose, initialProgramId, allowedProgramIds }) => {
     const queryClient = useQueryClient();
 
     // States
@@ -29,10 +30,20 @@ const BatchPaymentModal: React.FC<BatchPaymentModalProps> = ({ isOpen, onClose, 
     const [customAmounts, setCustomAmounts] = useState<{ [key: number]: number }>({});
 
     // Fetch Programs
-    const { data: programs } = useQuery({
+    const { data: allPrograms } = useQuery({
         queryKey: ['programs'],
         queryFn: ProgramRepository.getAllPrograms
     });
+
+    // Filter Programs if allowedProgramIds is provided
+    const programs = useMemo(() => {
+        if (!allPrograms) return [];
+        // If allowedProgramIds is provided (even if empty), STRICTLY filter by it.
+        if (allowedProgramIds) {
+            return allPrograms.filter((p: any) => allowedProgramIds.includes(p.program_id));
+        }
+        return allPrograms;
+    }, [allPrograms, allowedProgramIds]);
 
     // Auto-Set Date Logic
     useEffect(() => {
@@ -54,7 +65,7 @@ const BatchPaymentModal: React.FC<BatchPaymentModalProps> = ({ isOpen, onClose, 
     }, [selectedProgramId, programs, year, month]);
 
     // Fetch Status
-    const { data: statusData, isLoading, isError } = useQuery({
+    const { data: statusData, isLoading } = useQuery({
         queryKey: ['batch-status', selectedProgramId, month, year],
         queryFn: () => PaymentRepository.getProgramPaymentStatus(Number(selectedProgramId), month, year),
         enabled: !!selectedProgramId
@@ -120,7 +131,6 @@ const BatchPaymentModal: React.FC<BatchPaymentModalProps> = ({ isOpen, onClose, 
             // Reset selection
             setSelectedFullIds([]);
             setSelectedPartialIds([]);
-            setPartialAmounts({});
             setIsFullClearAll(false);
             setIsPartialClearAll(false);
             setCustomAmounts({});

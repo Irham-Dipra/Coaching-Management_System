@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ProgramRepository } from '../repositories/ProgramRepository';
-import { Users, FileText, DollarSign, Calendar, GraduationCap, Clock, Plus, X, Trash2 } from 'lucide-react';
+import { Users, FileText, DollarSign, Calendar, GraduationCap, Clock, Plus, X, Trash2, AlertCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import CreateExamModal from '../components/CreateExamModal';
 import { AttendanceRepository } from '../repositories/AttendanceRepository';
@@ -117,12 +117,24 @@ const ProgramDetails: React.FC = () => {
                     >
                         <Users size={18} /> Record Batch Payment
                     </button>
-                    <button
-                        onClick={() => setIsExamModalOpen(true)}
-                        className="bg-white text-gray-700 border border-gray-300 px-4 py-2 rounded shadow-sm hover:bg-gray-50 flex items-center gap-2 font-medium"
+                    <Link
+                        to={`/admin/finance/program/${id}?view=revenue`}
+                        className="bg-white text-green-600 border border-green-200 px-3 py-2 rounded shadow-sm hover:bg-green-50 flex items-center gap-2 font-medium text-sm"
                     >
-                        <Plus size={18} /> Schedule Exam
-                    </button>
+                        <DollarSign size={16} /> Revenue
+                    </Link>
+                    <Link
+                        to={`/admin/finance/program/${id}?view=due_monthly`}
+                        className="bg-white text-amber-600 border border-amber-200 px-3 py-2 rounded shadow-sm hover:bg-amber-50 flex items-center gap-2 font-medium text-sm"
+                    >
+                        <FileText size={16} /> Due (Mo)
+                    </Link>
+                    <Link
+                        to={`/admin/finance/program/${id}?view=due_overall`}
+                        className="bg-white text-red-600 border border-red-200 px-3 py-2 rounded shadow-sm hover:bg-red-50 flex items-center gap-2 font-medium text-sm"
+                    >
+                        <AlertCircle size={16} /> Due (All)
+                    </Link>
                 </div>
             </div>
 

@@ -20,6 +20,22 @@ export const ProgramRepository = {
         return await response.json();
     },
 
+    async getBatchById(id: string) {
+        const response = await fetch(`${API_BASE_URL}/batches/${id}`);
+        if (!response.ok) throw new Error("Failed to fetch batch details");
+        return await response.json();
+    },
+
+    async updateBatch(id: string, batchData: any) {
+        const response = await fetch(`${API_BASE_URL}/batches/${id}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(batchData),
+        });
+        if (!response.ok) throw new Error("Failed to update batch");
+        return await response.json();
+    },
+
     // ==========================
     // PROGRAMS
     // ==========================

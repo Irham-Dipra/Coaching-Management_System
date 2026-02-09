@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom
 import Layout from './components/Layout';
 import Dashboard from './pages/Dashboard';
 import Batches from './pages/Batches';
+import BatchDetails from './pages/BatchDetails';
 import Programs from './pages/Programs';
 import StudentList from './components/StudentList';
 import StudentProfile from './pages/StudentProfile';
@@ -55,7 +56,8 @@ function App() {
               <Route path="/programs" element={<Programs />} />
               <Route path="/programs/:id" element={<ProgramDetails />} />
 
-              <Route path="/batches" element={<Batches />} /> {/* New Route */}
+              <Route path="/batches" element={<Batches />} />
+              <Route path="/batches/:id" element={<BatchDetails />} />
 
               {/* Exams Route */}
               <Route path="/exams" element={<Exams />} />

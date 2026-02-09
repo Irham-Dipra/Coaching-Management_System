@@ -20,6 +20,22 @@ def create_batch(batch: BatchCreate):
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
+@router.get("/batches/{batch_id}")
+def get_batch_details(batch_id: int):
+    batch = repo.get_batch_by_id(batch_id)
+    if not batch:
+        raise HTTPException(status_code=404, detail="Batch not found")
+    return batch
+
+@router.put("/batches/{batch_id}")
+def update_batch(batch_id: int, batch_update: BatchCreate):
+    try:
+        # Pydantic model -> dict
+        updates = batch_update.dict(exclude_unset=True)
+        return repo.update_batch(batch_id, updates)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
 # ==========================================
 # PROGRAM ENDPOINTS
 # ==========================================

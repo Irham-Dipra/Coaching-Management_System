@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ProgramRepository } from '../repositories/ProgramRepository';
 import { Loader2, Plus, Calendar, Layers } from 'lucide-react';
@@ -51,16 +52,20 @@ const Batches: React.FC = () => {
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {batches?.map((batch: any) => (
-                    <div key={batch.batch_id} className="bg-white p-5 rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
-                        <div className="flex items-start justify-between mb-2">
-                            <div className="w-10 h-10 rounded-lg bg-purple-50 flex items-center justify-center text-purple-600">
-                                <Calendar size={20} />
+                    <Link to={`/batches/${batch.batch_id}`} key={batch.batch_id} className="block group">
+                        <div className="bg-white p-5 rounded-xl shadow-sm border border-gray-100 group-hover:shadow-md group-hover:border-purple-200 transition-all">
+                            <div className="flex items-start justify-between mb-2">
+                                <div className="w-10 h-10 rounded-lg bg-purple-50 flex items-center justify-center text-purple-600">
+                                    <Calendar size={20} />
+                                </div>
+                                <div className="text-gray-300 group-hover:text-purple-400 transition-colors">
+                                    <Layers size={16} />
+                                </div>
                             </div>
-                            {/* Placeholder for future actions like delete/edit */}
+                            <h3 className="text-lg font-bold text-gray-800 group-hover:text-purple-700">{batch.batch_name}</h3>
+                            <p className="text-xs text-gray-400 mt-1">ID: #{batch.batch_id}</p>
                         </div>
-                        <h3 className="text-lg font-bold text-gray-800">{batch.batch_name}</h3>
-                        <p className="text-xs text-gray-400 mt-1">ID: #{batch.batch_id}</p>
-                    </div>
+                    </Link>
                 ))}
 
                 {(!batches || batches.length === 0) && (

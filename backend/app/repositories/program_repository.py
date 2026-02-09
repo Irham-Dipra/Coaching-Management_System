@@ -52,6 +52,27 @@ class ProgramRepository:
         # 3. Return the created object (so the frontend gets the new ID immediately)
         return response.data[0] # Return the first (and only) item created.
 
+    def get_batch_by_id(self, batch_id: int):
+        # Fetch batch details along with all programs in this batch
+        # We can also fetch students via filtered queries later, but basic batch info first.
+        query = """
+            *,
+            program(*)
+        """
+        response = supabase.table(self.batch_table)\
+            .select(query)\
+            .eq("batch_id", batch_id)\
+            .execute()
+            
+        return response.data[0] if response.data else None
+
+    def update_batch(self, batch_id: int, updates: dict):
+        response = supabase.table(self.batch_table)\
+            .update(updates)\
+            .eq("batch_id", batch_id)\
+            .execute()
+        return response.data[0] if response.data else None
+
     # ==========================================
     # PROGRAM OPERATIONS
     # ==========================================

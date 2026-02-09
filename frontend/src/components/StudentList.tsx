@@ -18,10 +18,14 @@ interface Student {
     enrollment?: { program_id: number; roll_no?: string; program?: { program_name: string; }; }[]; // Enrollment Info
 }
 
-const StudentList: React.FC = () => {
+interface StudentListProps {
+    fixedBatchId?: string; // Optional: If provided, locks the list to this batch
+}
+
+const StudentList: React.FC<StudentListProps> = ({ fixedBatchId }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [rollSearch, setRollSearch] = useState(''); // New separate search
-    const [batchFilter, setBatchFilter] = useState('');
+    const [batchFilter, setBatchFilter] = useState(fixedBatchId || '');
     const [classFilter, setClassFilter] = useState(''); // New
     const [programFilter, setProgramFilter] = useState(''); // New
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -195,17 +199,19 @@ const StudentList: React.FC = () => {
                     ))}
                 </select>
 
-                {/* Batch Filter */}
-                <select
-                    className="rounded-lg border-gray-300 border p-2 text-gray-700 bg-white"
-                    value={batchFilter}
-                    onChange={(e) => setBatchFilter(e.target.value)}
-                >
-                    <option value="">All Batches</option>
-                    {batches?.map((b: any) => (
-                        <option key={b.batch_id} value={b.batch_id}>{b.batch_name}</option>
-                    ))}
-                </select>
+                {/* Batch Filter (Hide if Fixed) */}
+                {!fixedBatchId && (
+                    <select
+                        className="rounded-lg border-gray-300 border p-2 text-gray-700 bg-white"
+                        value={batchFilter}
+                        onChange={(e) => setBatchFilter(e.target.value)}
+                    >
+                        <option value="">All Batches</option>
+                        {batches?.map((b: any) => (
+                            <option key={b.batch_id} value={b.batch_id}>{b.batch_name}</option>
+                        ))}
+                    </select>
+                )}
 
                 {/* Program Filter */}
                 <select

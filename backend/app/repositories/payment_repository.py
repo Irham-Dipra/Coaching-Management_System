@@ -789,21 +789,29 @@ class PaymentRepository:
         
         # Need to join with student/program for display
         query = supabase.table(self.table)\
-            .select("*, enrollment(student(name, student_id), program(program_name, program_id, batch(batch_name)))")\
+            .select("*, enrollment(program_id, student(name, student_id), program(program_name, program_id, batch(batch_name)))")\
             .gte("payment_date", start_date.isoformat())\
             .lt("payment_date", next_month_date.isoformat())\
             .order("payment_date", desc=True)
 
         if program_id:
-            # We must filter by the JOINED enrollment -> program -> program_id
-            # Supabase syntax for filtering on joined tables: "enrollment.program.program_id"
-            # BUT Supabase-py often struggles with deep filters.
-            # Easier verify: 'enrollment.program_id' IS ON the enrollment table?
-            # Yes, enrollment has 'program_id'. And we select enrollment above.
-            # So filtering "enrollment.program_id" is safer.
-            query = query.eq("enrollment.program_id", program_id)
+            # Strict Filtering: Get all payments, then filter in Python if Join fails, 
+            # OR fetch enrollments for program first.
             
-        raw_payments = query.execute().data
+            # Method A: Fetch Enrollment IDs for this program
+            er = supabase.table(self.enrollment_table).select("enrollment_id").eq("program_id", program_id).execute()
+            valid_eids = [x['enrollment_id'] for x in er.data]
+            
+            if not valid_eids:
+                 # No enrollments = No revenue
+                 raw_payments = []
+            else:
+                 # Fetch payments for these enrollments
+                 # We reuse the Query structure but add .in_()
+                 query = query.in_("enrollment_id", valid_eids)
+                 raw_payments = query.execute().data
+        else:
+            raw_payments = query.execute().data
             
         # 2. Grouping & Aggregation
         grouped_map = {}

@@ -20,7 +20,13 @@ const BatchPaymentModal: React.FC<BatchPaymentModalProps> = ({ isOpen, onClose, 
 
     const [selectedFullIds, setSelectedFullIds] = useState<number[]>([]);
     const [selectedPartialIds, setSelectedPartialIds] = useState<number[]>([]);
-    const [partialAmounts, setPartialAmounts] = useState<{ [key: number]: number }>({}); // student_id -> amount
+
+    // New: Clear All Modes
+    const [isFullClearAll, setIsFullClearAll] = useState(false);
+    const [isPartialClearAll, setIsPartialClearAll] = useState(false);
+
+    // Custom amounts for ANY student (Full or Partial list)
+    const [customAmounts, setCustomAmounts] = useState<{ [key: number]: number }>({});
 
     // Fetch Programs
     const { data: programs } = useQuery({
@@ -64,6 +70,45 @@ const BatchPaymentModal: React.FC<BatchPaymentModalProps> = ({ isOpen, onClose, 
         return { fullDueList: full, partialDueList: partial };
     }, [statusData]);
 
+    // Reset Clear All modes if list chances
+    useEffect(() => {
+        setIsFullClearAll(false);
+        setIsPartialClearAll(false);
+        setSelectedFullIds([]);
+        setSelectedPartialIds([]);
+        setCustomAmounts({});
+    }, [statusData]);
+
+    // Clear All Logic Effects
+    useEffect(() => {
+        if (isFullClearAll) {
+            setSelectedFullIds(fullDueList.map((s: any) => s.student_id));
+            // Reset custom amounts for these students to ensure Full Due is used
+            setCustomAmounts(prev => {
+                const next = { ...prev };
+                fullDueList.forEach((s: any) => delete next[s.student_id]);
+                return next;
+            });
+        } else {
+            // If unchecking clear all, maybe clear selection to allow manual?
+            // User said: "if not checked, I need to select the students individually"
+            setSelectedFullIds([]);
+        }
+    }, [isFullClearAll, fullDueList]);
+
+    useEffect(() => {
+        if (isPartialClearAll) {
+            setSelectedPartialIds(partialDueList.map((s: any) => s.student_id));
+            setCustomAmounts(prev => {
+                const next = { ...prev };
+                partialDueList.forEach((s: any) => delete next[s.student_id]);
+                return next;
+            });
+        } else {
+            setSelectedPartialIds([]);
+        }
+    }, [isPartialClearAll, partialDueList]);
+
     // Mutation
     const bulkPaymentMutation = useMutation({
         mutationFn: (payments: any[]) => PaymentRepository.createBulkPayment(payments),
@@ -76,20 +121,20 @@ const BatchPaymentModal: React.FC<BatchPaymentModalProps> = ({ isOpen, onClose, 
             setSelectedFullIds([]);
             setSelectedPartialIds([]);
             setPartialAmounts({});
+            setIsFullClearAll(false);
+            setIsPartialClearAll(false);
+            setCustomAmounts({});
         },
         onError: (err: any) => alert("Batch Payment Failed: " + err.message)
     });
 
     // Handlers
-    const toggleFullSelectAll = () => {
-        if (selectedFullIds.length === fullDueList.length) {
-            setSelectedFullIds([]);
-        } else {
-            setSelectedFullIds(fullDueList.map((s: any) => s.student_id));
-        }
+    const toggleFullClearAll = () => {
+        setIsFullClearAll(prev => !prev);
     };
 
     const toggleFullId = (id: number) => {
+        if (isFullClearAll) return; // Locked in Clear All Mode
         if (selectedFullIds.includes(id)) {
             setSelectedFullIds(prev => prev.filter(i => i !== id));
         } else {
@@ -97,15 +142,12 @@ const BatchPaymentModal: React.FC<BatchPaymentModalProps> = ({ isOpen, onClose, 
         }
     };
 
-    const togglePartialSelectAll = () => {
-        if (selectedPartialIds.length === partialDueList.length) {
-            setSelectedPartialIds([]);
-        } else {
-            setSelectedPartialIds(partialDueList.map((s: any) => s.student_id));
-        }
+    const togglePartialClearAll = () => {
+        setIsPartialClearAll(prev => !prev);
     };
 
     const togglePartialId = (id: number) => {
+        if (isPartialClearAll) return;
         if (selectedPartialIds.includes(id)) {
             setSelectedPartialIds(prev => prev.filter(i => i !== id));
         } else {
@@ -113,8 +155,8 @@ const BatchPaymentModal: React.FC<BatchPaymentModalProps> = ({ isOpen, onClose, 
         }
     };
 
-    const handlePartialAmountChange = (id: number, val: string) => {
-        setPartialAmounts(prev => ({
+    const handleAmountChange = (id: number, val: string) => {
+        setCustomAmounts(prev => ({
             ...prev,
             [id]: Number(val)
         }));
@@ -129,49 +171,46 @@ const BatchPaymentModal: React.FC<BatchPaymentModalProps> = ({ isOpen, onClose, 
         const payments = [];
         const today = new Date().toISOString().split('T')[0];
 
-        // 1. Process Full Dues (Pay remaining due)
+        // Helper to create payment object
+        const createPay = (student: any, listType: string) => {
+            // If Clear All mode is active for this list, STRICTLY use full due.
+            // Else use custom amount if exists, else full due.
+            const isClearMode = listType === 'Full' ? isFullClearAll : isPartialClearAll;
+
+            let amount = student.due_amount;
+            if (!isClearMode) {
+                const custom = customAmounts[student.student_id];
+                if (custom !== undefined && custom > 0) {
+                    amount = custom;
+                }
+            }
+
+            return {
+                enrollment_id: student.enrollment_id,
+                student_id: student.student_id,
+                program_id: Number(selectedProgramId),
+                paid_amount: amount,
+                payment_date: today,
+                month,
+                year,
+                payment_method: 'Cash',
+                remarks: `Batch Payment - ${listType} ${isClearMode ? '(Clear All)' : '(Custom)'}`
+            };
+        };
+
+        // 1. Process Full Dues
         for (const id of selectedFullIds) {
             const student = fullDueList.find((s: any) => s.student_id === id);
             if (student) {
-                payments.push({
-                    enrollment_id: student.enrollment_id,
-                    student_id: student.student_id, // backend might need this for validation or logging
-                    program_id: Number(selectedProgramId),
-                    paid_amount: student.due_amount, // Paying full remaining
-                    payment_date: today,
-                    month,
-                    year,
-                    payment_method: 'Cash', // Default for batch
-                    remarks: 'Batch Payment - Full Due'
-                });
+                payments.push(createPay(student, 'Full'));
             }
         }
 
-        // 2. Process Partial Dues (Pay custom amount or full remaining)
+        // 2. Process Partial Dues
         for (const id of selectedPartialIds) {
             const student = partialDueList.find((s: any) => s.student_id === id);
-            const customAmount = partialAmounts[id];
-
-            // If custom amount is entered, use it. Otherwise use full due?
-            // Requirement says: "Record Partial Batch' opens input... to manually enter"
-            // Let's assume if selected, we MUST have an amount. If no amount entered, maybe default to 0 or Full?
-            // Let's default to Full Due if 0/Empty, or strictly require input.
-            // Better UX: Default input to 'Due Amount' when selected? Or just use Due if 0.
-
-            const amount = customAmount && customAmount > 0 ? customAmount : student.due_amount;
-
             if (student) {
-                payments.push({
-                    enrollment_id: student.enrollment_id,
-                    student_id: student.student_id,
-                    program_id: Number(selectedProgramId),
-                    paid_amount: amount,
-                    payment_date: today,
-                    month,
-                    year,
-                    payment_method: 'Cash',
-                    remarks: 'Batch Payment - Partial/Custom'
-                });
+                payments.push(createPay(student, 'Partial'));
             }
         }
 
@@ -296,31 +335,48 @@ const BatchPaymentModal: React.FC<BatchPaymentModalProps> = ({ isOpen, onClose, 
                                     <div className="flex items-center gap-2">
                                         <input
                                             type="checkbox"
-                                            checked={fullDueList.length > 0 && selectedFullIds.length === fullDueList.length}
-                                            onChange={toggleFullSelectAll}
+                                            checked={isFullClearAll}
+                                            onChange={toggleFullClearAll}
                                             className="w-4 h-4 text-red-600 rounded"
                                         />
-                                        <span className="text-xs text-red-600 font-medium">Select All</span>
+                                        <span className="text-xs text-red-600 font-medium">Clear All Dues</span>
                                     </div>
                                 </div>
                                 <div className="flex-1 overflow-y-auto p-2 space-y-2 bg-white">
                                     {fullDueList.length === 0 && <p className="text-center text-gray-400 text-sm mt-4">No pending full dues.</p>}
-                                    {fullDueList.map((s: any) => (
-                                        <div key={s.student_id} className={`p-3 rounded border flex items-center justify-between transition-colors ${selectedFullIds.includes(s.student_id) ? 'bg-red-50 border-red-200' : 'hover:bg-gray-50 border-gray-100'}`}>
-                                            <div className="flex items-center gap-3">
-                                                <input
-                                                    type="checkbox"
-                                                    checked={selectedFullIds.includes(s.student_id)}
-                                                    onChange={() => toggleFullId(s.student_id)}
-                                                    className="w-4 h-4 text-red-600 rounded"
-                                                />
-                                                <div>
-                                                    <p className="font-medium text-gray-900">{s.name}</p>
-                                                    <p className="text-xs text-gray-500">ID: {s.student_id} | Due: <span className="font-mono text-red-600 font-bold">{s.due_amount}</span></p>
+                                    {fullDueList.map((s: any) => {
+                                        const isSelected = selectedFullIds.includes(s.student_id);
+                                        // Greyed out if Clear All is ON
+                                        const isLocked = isFullClearAll;
+
+                                        return (
+                                            <div key={s.student_id} className={`p-3 rounded border flex items-center justify-between transition-colors ${isSelected ? 'bg-red-50 border-red-200' : 'hover:bg-gray-50 border-gray-100'} ${isLocked ? 'opacity-75' : ''}`}>
+                                                <div className="flex items-center gap-3 flex-1">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={isSelected}
+                                                        onChange={() => toggleFullId(s.student_id)}
+                                                        className="w-4 h-4 text-red-600 rounded"
+                                                        disabled={isLocked}
+                                                    />
+                                                    <div>
+                                                        <p className="font-medium text-gray-900">{s.name}</p>
+                                                        <p className="text-xs text-gray-500">ID: {s.student_id} | Due: {s.due_amount}</p>
+                                                    </div>
+                                                </div>
+                                                <div className="w-24">
+                                                    <input
+                                                        type="number"
+                                                        disabled={isLocked} // User requirement: "if checked... greyed out"
+                                                        className={`w-full text-right p-1 text-sm border rounded ${isLocked ? 'bg-gray-100 text-gray-500' : 'border-gray-300 focus:ring-red-500'}`}
+                                                        value={customAmounts[s.student_id] ?? (isSelected ? s.due_amount : '')}
+                                                        placeholder={String(s.due_amount)}
+                                                        onChange={(e) => handleAmountChange(s.student_id, e.target.value)}
+                                                    />
                                                 </div>
                                             </div>
-                                        </div>
-                                    ))}
+                                        )
+                                    })}
                                 </div>
                             </div>
 
@@ -333,43 +389,44 @@ const BatchPaymentModal: React.FC<BatchPaymentModalProps> = ({ isOpen, onClose, 
                                     <div className="flex items-center gap-2">
                                         <input
                                             type="checkbox"
-                                            checked={partialDueList.length > 0 && selectedPartialIds.length === partialDueList.length}
-                                            onChange={togglePartialSelectAll}
+                                            checked={isPartialClearAll}
+                                            onChange={togglePartialClearAll}
                                             className="w-4 h-4 text-yellow-600 rounded"
                                         />
-                                        <span className="text-xs text-yellow-600 font-medium">Select All</span>
+                                        <span className="text-xs text-yellow-600 font-medium">Clear All Dues</span>
                                     </div>
                                 </div>
                                 <div className="flex-1 overflow-y-auto p-2 space-y-2 bg-white">
                                     {partialDueList.length === 0 && <p className="text-center text-gray-400 text-sm mt-4">No partial dues.</p>}
                                     {partialDueList.map((s: any) => {
                                         const isSelected = selectedPartialIds.includes(s.student_id);
+                                        const isLocked = isPartialClearAll;
+
                                         return (
-                                            <div key={s.student_id} className={`p-3 rounded border flex items-center justify-between transition-colors ${isSelected ? 'bg-yellow-50 border-yellow-200' : 'hover:bg-gray-50 border-gray-100'}`}>
+                                            <div key={s.student_id} className={`p-3 rounded border flex items-center justify-between transition-colors ${isSelected ? 'bg-yellow-50 border-yellow-200' : 'hover:bg-gray-50 border-gray-100'} ${isLocked ? 'opacity-75' : ''}`}>
                                                 <div className="flex items-center gap-3 flex-1">
                                                     <input
                                                         type="checkbox"
                                                         checked={isSelected}
                                                         onChange={() => togglePartialId(s.student_id)}
                                                         className="w-4 h-4 text-yellow-600 rounded"
+                                                        disabled={isLocked}
                                                     />
                                                     <div>
                                                         <p className="font-medium text-gray-900">{s.name}</p>
-                                                        <p className="text-xs text-gray-500">ID: {s.student_id} | Due: <span className="font-mono text-red-600 font-bold">{s.due_amount}</span></p>
+                                                        <p className="text-xs text-gray-500">ID: {s.student_id} | Due: {s.due_amount}</p>
                                                     </div>
                                                 </div>
-                                                {isSelected && (
-                                                    <div className="w-24">
-                                                        <input
-                                                            type="number"
-                                                            className="w-full text-right p-1 text-sm border-gray-300 rounded border focus:ring-yellow-500 focus:border-yellow-500"
-                                                            placeholder={String(s.due_amount)}
-                                                            value={partialAmounts[s.student_id] || ''}
-                                                            onChange={(e) => handlePartialAmountChange(s.student_id, e.target.value)}
-                                                            onClick={(e) => e.stopPropagation()}
-                                                        />
-                                                    </div>
-                                                )}
+                                                <div className="w-24">
+                                                    <input
+                                                        type="number"
+                                                        disabled={isLocked}
+                                                        className={`w-full text-right p-1 text-sm border rounded ${isLocked ? 'bg-gray-100 text-gray-500' : 'border-gray-300 focus:ring-yellow-500'}`}
+                                                        placeholder={String(s.due_amount)}
+                                                        value={customAmounts[s.student_id] ?? (isSelected ? s.due_amount : '')}
+                                                        onChange={(e) => handleAmountChange(s.student_id, e.target.value)}
+                                                    />
+                                                </div>
                                             </div>
                                         );
                                     })}

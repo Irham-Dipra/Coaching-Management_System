@@ -28,6 +28,25 @@ const BatchPaymentModal: React.FC<BatchPaymentModalProps> = ({ isOpen, onClose, 
         queryFn: ProgramRepository.getAllPrograms
     });
 
+    // Auto-Set Date Logic
+    useEffect(() => {
+        if (selectedProgramId && programs) {
+            const prog = programs.find((p: any) => p.program_id.toString() === selectedProgramId);
+            if (prog?.start_date) {
+                const startDate = new Date(prog.start_date);
+                const startY = startDate.getFullYear();
+                const startM = startDate.getMonth() + 1;
+
+                // If current selection is invalid, reset to start date (or current if valid)
+                // Logic: If (year < startY) OR (year == startY && month < startM) -> Reset
+                if (year < startY || (year === startY && month < startM)) {
+                    setYear(startY);
+                    setMonth(startM);
+                }
+            }
+        }
+    }, [selectedProgramId, programs, year, month]);
+
     // Fetch Status
     const { data: statusData, isLoading, isError } = useQuery({
         queryKey: ['batch-status', selectedProgramId, month, year],
@@ -179,37 +198,84 @@ const BatchPaymentModal: React.FC<BatchPaymentModalProps> = ({ isOpen, onClose, 
                     </button>
                 </div>
 
-                {/* Filters */}
-                <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-4 border-b border-gray-100">
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Target Program</label>
-                        <select
-                            className="w-full border rounded-md p-2"
-                            value={selectedProgramId}
-                            onChange={(e) => setSelectedProgramId(e.target.value)}
-                            disabled={!!initialProgramId}
-                        >
-                            <option value="">Select Program...</option>
-                            {programs?.map((p: any) => (
-                                <option key={p.program_id} value={p.program_id}>{p.program_name}</option>
-                            ))}
-                        </select>
-                    </div>
-                    <div className="grid grid-cols-2 gap-2">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Month</label>
-                            <select className="w-full border rounded-md p-2" value={month} onChange={(e) => setMonth(Number(e.target.value))}>
-                                {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
-                                    <option key={m} value={m}>{new Date(0, m - 1).toLocaleString('default', { month: 'long' })}</option>
-                                ))}
-                            </select>
+                {(() => {
+                    const selectedProgram = programs?.find((p: any) => p.program_id.toString() === selectedProgramId);
+                    let startYear = 2024; // Default fallback
+                    let startMonth = 1;
+
+                    if (selectedProgram?.start_date) {
+                        const d = new Date(selectedProgram.start_date);
+                        startYear = d.getFullYear();
+                        startMonth = d.getMonth() + 1;
+                    }
+
+                    // Auto-adjust if selected date is invalid
+                    // We can't use useEffect inside this render block easily without re-renders.
+                    // Better to control the OPTIONS. 
+                    // But if user switches program, we should reset.
+
+                    return (
+                        <div className="p-6 grid grid-cols-1 md:grid-cols-3 gap-4 border-b border-gray-100">
+                            {/* Program Select */}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Target Program</label>
+                                <select
+                                    className="w-full border rounded-md p-2"
+                                    value={selectedProgramId}
+                                    onChange={(e) => {
+                                        setSelectedProgramId(e.target.value);
+                                        // Reset date optional? Or let user fix it.
+                                    }}
+                                    disabled={!!initialProgramId}
+                                >
+                                    <option value="">Select Program...</option>
+                                    {programs?.map((p: any) => (
+                                        <option key={p.program_id} value={p.program_id}>{p.program_name}</option>
+                                    ))}
+                                </select>
+                                {selectedProgram?.start_date && (
+                                    <p className="text-xs text-gray-400 mt-1">
+                                        Starts: {new Date(selectedProgram.start_date).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}
+                                    </p>
+                                )}
+                            </div>
+
+                            {/* Date Selects */}
+                            <div className="grid grid-cols-2 gap-2">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Month</label>
+                                    <select
+                                        className="w-full border rounded-md p-2"
+                                        value={month}
+                                        onChange={(e) => setMonth(Number(e.target.value))}
+                                    >
+                                        {Array.from({ length: 12 }, (_, i) => i + 1).map(m => {
+                                            const isDisabled = (year < startYear) || (year === startYear && m < startMonth);
+                                            return (
+                                                <option key={m} value={m} disabled={isDisabled} className={isDisabled ? "text-gray-300" : ""}>
+                                                    {new Date(0, m - 1).toLocaleString('default', { month: 'long' })}
+                                                </option>
+                                            );
+                                        })}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">Year</label>
+                                    <select
+                                        className="w-full border rounded-md p-2"
+                                        value={year}
+                                        onChange={(e) => setYear(Number(e.target.value))}
+                                    >
+                                        {/* Allow from start year to current + 1 */}
+                                        {Array.from({ length: 5 }, (_, i) => startYear + i).map(y => (
+                                            <option key={y} value={y}>{y}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </div>
                         </div>
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">Year</label>
-                            <input type="number" className="w-full border rounded-md p-2" value={year} onChange={(e) => setYear(Number(e.target.value))} />
-                        </div>
-                    </div>
-                </div>
+                    );
+                })()}
 
                 {/* Content */}
                 <div className="flex-1 overflow-hidden flex flex-col md:flex-row">

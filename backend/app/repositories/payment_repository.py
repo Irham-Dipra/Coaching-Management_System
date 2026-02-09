@@ -1200,7 +1200,7 @@ class PaymentRepository:
 
         # We need student details (name, student_id, roll_no) and enrollment_id
         enrollments = supabase.table(self.enrollment_table)\
-            .select("enrollment_id, roll_no, student(student_id, name), program(program_id, monthly_fee)")\
+            .select("enrollment_id, roll_no, enrollment_date, student(student_id, name), program(program_id, monthly_fee, start_date)")\
             .eq("program_id", program_id)\
             .eq("status", "Active")\
             .execute().data
@@ -1210,15 +1210,27 @@ class PaymentRepository:
             
         results = []
         
-        # 2. For each enrollment, check payment status for the month
-        # Optimization: We could do a bulk fetch of payments for this program/month/year?
-        # But for now, let's trust the loop or do a single query if performance is key.
-        # Single Query Optimization: Fetch all payments for this program+month+year.
         
-        # Get all payments for this program in this month/year
-        # We need to filter payments by enrollment_ids in this list. 
-        # Supabase 'in' query: .in_('enrollment_id', [list])
-        enrollment_ids = [e['enrollment_id'] for e in enrollments]
+        # 2. Filter enrollments by date and prepare IDs
+        enrollment_ids = []
+        valid_enrollments = []
+        
+        for e in enrollments:
+            # Check Enrollment Date
+            e_date_str = e.get('enrollment_date')
+            if e_date_str:
+                try:
+                    e_year = int(e_date_str[:4])
+                    e_month = int(e_date_str[5:7])
+                    
+                    # If enrolled AFTER the target month/year, skip (not due yet)
+                    if (e_year > year) or (e_year == year and e_month > month):
+                        continue
+                except ValueError:
+                    pass # Invalid date format, include by default
+            
+            valid_enrollments.append(e)
+            enrollment_ids.append(e['enrollment_id'])
         
         if not enrollment_ids:
             return []
@@ -1236,8 +1248,9 @@ class PaymentRepository:
             eid = p['enrollment_id']
             payment_map[eid] = payment_map.get(eid, 0) + p['paid_amount']
             
+        
         # 3. Build Result
-        for enroll in enrollments:
+        for enroll in valid_enrollments:
             student = enroll.get('student') or {} # Handle potential missing join
             program = enroll.get('program') or {}
             

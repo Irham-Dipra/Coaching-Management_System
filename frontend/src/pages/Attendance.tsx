@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ProgramRepository } from '../repositories/ProgramRepository';
 import { AttendanceRepository } from '../repositories/AttendanceRepository';
-import { Calendar, Users, Save, CheckCircle } from 'lucide-react';
+import { Calendar, Users, Save } from 'lucide-react';
 
 const Attendance: React.FC = () => {
     const [selectedProgramId, setSelectedProgramId] = useState<string>('');
@@ -17,7 +17,7 @@ const Attendance: React.FC = () => {
     });
 
     // 2. Fetch Attendance when Program + Date selected
-    const { data: fetchedAttendance, refetch } = useQuery({
+    const { data: fetchedAttendance } = useQuery({
         queryKey: ['attendance', selectedProgramId, date],
         queryFn: () => AttendanceRepository.getDailyAttendance(selectedProgramId, date),
         enabled: !!selectedProgramId
@@ -138,24 +138,24 @@ const Attendance: React.FC = () => {
                         </thead>
                         <tbody className="divide-y divide-gray-100">
                             {attendanceData.map((student: any) => (
-                                <tr key={student.enrollment_id} className={`hover:bg-gray-50 ${!student.status ? 'opacity-60 bg-gray-50/50' : ''}`}>
+                                <tr key={student.enrollment_id} className="hover:bg-gray-50 border-b last:border-0 transition-colors">
                                     <td className="p-4">
                                         <div className="flex items-center gap-3">
                                             <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${student.status === 'Absent' ? 'bg-red-100 text-red-600' :
-                                                    student.status === 'Present' ? 'bg-blue-100 text-blue-600' :
-                                                        'bg-gray-200 text-gray-400'
+                                                student.status === 'Present' ? 'bg-blue-100 text-blue-600' :
+                                                    'bg-gray-100 text-gray-500'
                                                 }`}>
                                                 {student.name.charAt(0)}
                                             </div>
                                             <div>
                                                 <p className="font-medium text-gray-900">{student.name}</p>
-                                                <p className="text-xs text-gray-400">Roll: {student.roll_no}</p>
+                                                <p className="text-xs text-gray-500">Roll: {student.roll_no}</p>
                                             </div>
                                         </div>
                                     </td>
-                                    <td className="p-4 flex justify-center items-center gap-3">
+                                    <td className="p-4 flex justify-end items-center gap-3">
                                         {!student.status && (
-                                            <span className="text-xs font-bold text-amber-600 bg-amber-50 px-2 py-1 rounded border border-amber-100 uppercase tracking-wide">
+                                            <span className="text-xs font-bold text-amber-700 bg-amber-100 px-3 py-1.5 rounded-full border border-amber-200 uppercase tracking-wide shadow-sm animate-pulse">
                                                 Not Recorded
                                             </span>
                                         )}
@@ -164,9 +164,9 @@ const Attendance: React.FC = () => {
                                                 key={status}
                                                 onClick={() => handleStatusChange(student.enrollment_id, status)}
                                                 className={`px-4 py-1.5 text-sm rounded-full border transition-all ${student.status === status
-                                                        ? status === 'Absent' ? 'bg-red-600 text-white border-red-600 font-medium shadow-md scale-105'
-                                                            : 'bg-green-600 text-white border-green-600 font-medium shadow-md scale-105'
-                                                        : 'text-gray-500 bg-white border-gray-200 hover:bg-gray-50'
+                                                    ? status === 'Absent' ? 'bg-red-600 text-white border-red-600 font-medium shadow-md scale-105'
+                                                        : 'bg-green-600 text-white border-green-600 font-medium shadow-md scale-105'
+                                                    : 'text-gray-500 bg-white border-gray-200 hover:bg-gray-50'
                                                     }`}
                                             >
                                                 {status}

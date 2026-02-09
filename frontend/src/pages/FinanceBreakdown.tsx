@@ -48,7 +48,7 @@ const FinanceBreakdown: React.FC = () => {
             {/* HEADER */}
             <div className="flex items-center gap-4">
                 <button
-                    onClick={() => navigate('/admin/finance')}
+                    onClick={() => navigate('/finance')}
                     className="p-2 hover:bg-gray-100 rounded-full text-gray-500 transition-colors"
                 >
                     <ArrowLeft size={24} />

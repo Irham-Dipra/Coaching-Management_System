@@ -1,12 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { PaymentRepository } from '../repositories/PaymentRepository';
 import { StudentRepository } from '../repositories/StudentRepository';
 import { ProgramRepository } from '../repositories/ProgramRepository';
-import { DollarSign, Search, Plus, FileText, Download, X, Calendar, User, ArrowUpDown, Edit, Filter, Users } from 'lucide-react';
+import { DollarSign, Search, Plus, FileText, Download, X, Calendar, User, ArrowUpDown, Edit, Filter, Users, AlertCircle } from 'lucide-react';
 import jsPDF from 'jspdf';
-import FinanceBreakdownModal from '../components/FinanceBreakdownModal';
 import { generatePaymentSlip } from '../utils/pdfGenerator';
 
 import BatchPaymentModal from '../components/BatchPaymentModal';
@@ -16,9 +15,9 @@ const Finance: React.FC = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isBatchModalOpen, setIsBatchModalOpen] = useState(false);
     const [editPayment, setEditPayment] = useState<any>(null); // For edit modal
-    const [breakdownType, setBreakdownType] = useState<'revenue' | 'due' | null>(null);
     const [sortDesc, setSortDesc] = useState(true); // Default Descending
     const queryClient = useQueryClient();
+    const navigate = useNavigate();
 
     // Auto-Action Logic
     const [searchParams, setSearchParams] = useSearchParams();
@@ -113,38 +112,80 @@ const Finance: React.FC = () => {
             {/* ... stats ... */}
 
             {/* Modals */}
-
-
-            <BatchPaymentModal
-                isOpen={isBatchModalOpen}
-                onClose={() => setIsBatchModalOpen(false)}
-            />
+            {isBatchModalOpen && (
+                <BatchPaymentModal
+                    isOpen={isBatchModalOpen}
+                    onClose={() => setIsBatchModalOpen(false)}
+                />
+            )}
 
             {/* ... rest of the component ... */}
 
 
             {/* STATS */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {/* 1. REVENUE CARD */}
                 <div
-                    onClick={() => setBreakdownType('revenue')}
-                    className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 cursor-pointer hover:shadow-md transition-shadow group"
+                    onClick={() => navigate('/admin/finance/breakdown/revenue')}
+                    className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 cursor-pointer hover:shadow-md transition-all group"
                 >
-                    <p className="text-gray-500 text-xs font-bold uppercase tracking-wider group-hover:text-green-600 transition-colors">Revenue (This Month)</p>
-                    <p className="text-3xl font-bold text-green-600 mt-2">৳{stats?.revenue_this_month?.toLocaleString() || 0}</p>
+                    <div className="flex justify-between items-start mb-4">
+                        <div>
+                            <p className="text-sm font-medium text-gray-500 uppercase tracking-wide">Revenue (This Month)</p>
+                            <h3 className="text-3xl font-bold text-gray-900 mt-1 group-hover:text-green-600 transition-colors">
+                                ৳{(stats?.revenue_this_month || 0).toLocaleString()}
+                            </h3>
+                        </div>
+                        <div className="bg-green-100 p-3 rounded-xl">
+                            <DollarSign className="text-green-600" size={24} />
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm text-green-600 bg-green-50 px-3 py-1.5 rounded-lg w-fit">
+                        <ArrowUpDown size={14} className="rotate-45" />
+                        <span className="font-medium">+{(stats?.growth_percent || 0)}% vs last month</span>
+                    </div>
                 </div>
+
+                {/* 2. DUE THIS MONTH */}
                 <div
-                    onClick={() => setBreakdownType('due')}
-                    className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 cursor-pointer hover:shadow-md transition-shadow group"
+                    onClick={() => navigate('/admin/finance/breakdown/due')}
+                    className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 cursor-pointer hover:shadow-md transition-all group"
                 >
-                    <p className="text-gray-500 text-xs font-bold uppercase tracking-wider group-hover:text-orange-600 transition-colors">Due (This Month)</p>
-                    <p className="text-3xl font-bold text-orange-600 mt-2">৳{stats?.due_this_month?.toLocaleString() || 0}</p>
+                    <div className="flex justify-between items-start mb-4">
+                        <div>
+                            <p className="text-sm font-medium text-gray-500 uppercase tracking-wide">Due (This Month)</p>
+                            <h3 className="text-3xl font-bold text-gray-900 mt-1 group-hover:text-amber-600 transition-colors">
+                                ৳{(stats?.due_this_month || 0).toLocaleString()}
+                            </h3>
+                        </div>
+                        <div className="bg-amber-100 p-3 rounded-xl">
+                            <FileText className="text-amber-600" size={24} />
+                        </div>
+                    </div>
+                    <div className="text-xs text-gray-400 mt-2">
+                        Includes unpaid fees for current month only.
+                    </div>
                 </div>
+
+                {/* 3. TOTAL ARREARS */}
                 <div
-                    onClick={() => setBreakdownType('due')}
-                    className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 cursor-pointer hover:shadow-md transition-shadow group"
+                    onClick={() => navigate('/admin/finance/breakdown/due')}
+                    className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 cursor-pointer hover:shadow-md transition-all group"
                 >
-                    <p className="text-gray-500 text-xs font-bold uppercase tracking-wider group-hover:text-red-600 transition-colors">Total Due (Arrears)</p>
-                    <p className="text-3xl font-bold text-red-600 mt-2">৳{stats?.due_total?.toLocaleString() || 0}</p>
+                    <div className="flex justify-between items-start mb-4">
+                        <div>
+                            <p className="text-sm font-medium text-gray-500 uppercase tracking-wide">Total Arrears (Overall)</p>
+                            <h3 className="text-3xl font-bold text-gray-900 mt-1 group-hover:text-red-600 transition-colors">
+                                ৳{(stats?.total_due || 0).toLocaleString()}
+                            </h3>
+                        </div>
+                        <div className="bg-red-100 p-3 rounded-xl">
+                            <AlertCircle className="text-red-600" size={24} />
+                        </div>
+                    </div>
+                    <div className="text-xs text-gray-400 mt-2">
+                        Cumulative unpaid amount from all previous months.
+                    </div>
                 </div>
             </div>
 
@@ -301,7 +342,7 @@ const Finance: React.FC = () => {
 
             <AddPaymentModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
             <EditPaymentModal isOpen={!!editPayment} onClose={() => setEditPayment(null)} payment={editPayment} />
-            <FinanceBreakdownModal isOpen={!!breakdownType} onClose={() => setBreakdownType(null)} type={breakdownType} onEdit={setEditPayment} />
+
         </div>
     );
 };

@@ -11,6 +11,8 @@ import ExamDetails from './pages/ExamDetails';
 import Exams from './pages/Exams';
 import Attendance from './pages/Attendance';
 import Finance from './pages/Finance';
+import FinanceBreakdown from './pages/FinanceBreakdown';
+import ProgramFinanceDetails from './pages/ProgramFinanceDetails';
 import Scheduling from './pages/Scheduling';
 import ScheduleDetails from './pages/ScheduleDetails';
 import RoomDetails from './pages/RoomDetails';
@@ -66,6 +68,8 @@ function App() {
 
               <Route path="/attendance" element={<Attendance />} />
               <Route path="/finance" element={<Finance />} />
+              <Route path="/admin/finance/breakdown/:type" element={<FinanceBreakdown />} />
+              <Route path="/admin/finance/program/:id" element={<ProgramFinanceDetails />} />
               <Route path="/admin/scheduling" element={<Scheduling />} />
               <Route path="/admin/scheduling/:id" element={<ScheduleDetails />} />
               <Route path="/admin/scheduling/rooms/:id" element={<RoomDetails />} />

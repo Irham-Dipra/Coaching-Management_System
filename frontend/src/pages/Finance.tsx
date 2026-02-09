@@ -96,15 +96,15 @@ const Finance: React.FC = () => {
                 <div className="flex gap-3">
                     <button
                         onClick={() => setIsBatchModalOpen(true)}
-                        className="bg-blue-600 text-white px-4 py-2 rounded-lg shadow-sm hover:bg-blue-700 flex items-center gap-2 font-medium"
+                        className="bg-purple-600 text-white px-4 py-2 rounded-lg shadow-sm hover:bg-purple-700 flex items-center gap-2 font-medium"
                     >
                         <Users size={18} /> Record Batch Payment
                     </button>
                     <button
                         onClick={() => { setEditPayment(null); setIsModalOpen(true); }}
-                        className="bg-green-600 text-white px-4 py-2 rounded-lg shadow-sm hover:bg-green-700 flex items-center gap-2 font-medium"
+                        className="bg-blue-600 text-white px-4 py-2 rounded-lg shadow-sm hover:bg-blue-700 flex items-center gap-2 font-medium"
                     >
-                        <Plus size={18} /> Record Single Payment
+                        <Plus size={18} /> Record New Payment
                     </button>
                 </div>
             </div>
@@ -201,12 +201,6 @@ const Finance: React.FC = () => {
                     </button>
                     <span className="text-sm text-gray-400">({filteredPayments.length} found)</span>
                 </div>
-                <button
-                    onClick={() => setIsModalOpen(true)}
-                    className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 shadow-sm"
-                >
-                    <Plus size={18} /> Record New Payment
-                </button>
             </div>
 
             {/* FILTERS BAR */}

@@ -28,8 +28,9 @@ class PaymentRepository:
             raise Exception("No payment data provided")
             
         import uuid
-        # Generate one ID for the whole batch
-        group_id = str(uuid.uuid4())
+        # Generate one ID for the whole batch -> NO, user wants unique per student.
+        # Logic: Iterate and assign unique ID per record (or per student if multiple records exist per student)
+        # Assuming data_list is [StudentA_Jan, StudentB_Jan, StudentC_Jan], each needs unique ID.
         
         # Prepare batch payload
         batch_payload = []
@@ -37,6 +38,12 @@ class PaymentRepository:
         print(f"Processing Bulk Payment of {len(data_list)} months...")
         
         for data in data_list:
+            # Generate unique ID for this specific payment record/student
+            # If multiple months for same student were sent, they might want same ID?
+            # But BatchModal sends 1 entry per student (for current selected Month).
+            # So unique per entry is safer for now.
+            group_id = str(uuid.uuid4())
+            
             # Resolve Enrollment ID (Optimization: Could be done once if UI sends enrollment_id directly, 
             # but usually UI sends StudentID+ProgramID. We'll resolve strict.)
             

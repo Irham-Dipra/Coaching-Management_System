@@ -59,8 +59,8 @@ def get_program_finance_stats():
     return payment_repo.get_program_finance_stats()
 
 @router.get("/finance/revenue-breakdown")
-def get_revenue_breakdown(month: int = None, year: int = None):
-    return payment_repo.get_revenue_breakdown(month, year)
+def get_revenue_breakdown(month: int = None, year: int = None, program_id: int = None):
+    return payment_repo.get_revenue_breakdown(month, year, program_id)
 
 @router.get("/finance/due-breakdown")
 def get_due_breakdown():

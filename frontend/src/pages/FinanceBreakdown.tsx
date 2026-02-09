@@ -77,7 +77,7 @@ const FinanceBreakdown: React.FC = () => {
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                             {data?.program_summary?.map((prog: any, idx: number) => (
                                 <Link
-                                    to={`/admin/finance/program/${prog.program_id}`}
+                                    to={`/admin/finance/program/${prog.program_id}?view=${isRevenue ? 'revenue' : 'due'}`}
                                     key={idx}
                                     className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm flex justify-between items-center hover:shadow-md hover:border-blue-200 transition-all cursor-pointer group"
                                 >

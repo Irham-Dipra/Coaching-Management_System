@@ -771,9 +771,10 @@ class PaymentRepository:
 
         return stats
 
-    def get_revenue_breakdown(self, month: int = None, year: int = None):
+    def get_revenue_breakdown(self, month: int = None, year: int = None, program_id: int = None):
         """
         Phase 23: Detailed breakdown of revenue for a specific month.
+        Phase 27 Update: Added program_id filter.
         """
         today = date.today()
         target_month = month if month else today.month
@@ -787,29 +788,44 @@ class PaymentRepository:
             next_month_date = date(target_year, target_month + 1, 1)
         
         # Need to join with student/program for display
-        # Use gte (>=) start_date and lt (<) next_month_date
-        raw_payments = supabase.table(self.table)\
-            .select("*, enrollment(student(name, student_id), program(program_name, batch(batch_name)))")\
+        query = supabase.table(self.table)\
+            .select("*, enrollment(student(name, student_id), program(program_name, program_id, batch(batch_name)))")\
             .gte("payment_date", start_date.isoformat())\
             .lt("payment_date", next_month_date.isoformat())\
-            .order("payment_date", desc=True)\
-            .execute().data
+            .order("payment_date", desc=True)
+
+        if program_id:
+            # We must filter by the JOINED enrollment -> program -> program_id
+            # Supabase syntax for filtering on joined tables: "enrollment.program.program_id"
+            # BUT Supabase-py often struggles with deep filters.
+            # Easier verify: 'enrollment.program_id' IS ON the enrollment table?
+            # Yes, enrollment has 'program_id'. And we select enrollment above.
+            # So filtering "enrollment.program_id" is safer.
+            query = query.eq("enrollment.program_id", program_id)
             
-        # 2. Grouping & Aggregation (Logic adapted from get_recent_payments)
+        raw_payments = query.execute().data
+            
+        # 2. Grouping & Aggregation
         grouped_map = {}
         group_order = []
         
-        # for Program Summary
+        # for Program Summary (Tuple Key: ID, Name)
         prog_revenue = {} 
 
         for r in raw_payments:
             amount = float(r.get('paid_amount', 0))
             
-            # Program Revenue Aggr (Always based on raw rows for accuracy)
+            # Program Revenue Aggr
             enroll = r.get('enrollment') or {}
+            # Check if filtered program matches (double check if desired)
+            
             prog = enroll.get('program') or {}
-            prog_name = f"{prog.get('program_name')} ({prog.get('batch', {}).get('batch_name')})"
-            prog_revenue[prog_name] = prog_revenue.get(prog_name, 0) + amount
+            pid = prog.get('program_id') or enroll.get('program_id') # fallback
+            pname = f"{prog.get('program_name')} ({prog.get('batch', {}).get('batch_name')})"
+            
+            if pid:
+                key = (pid, pname)
+                prog_revenue[key] = prog_revenue.get(key, 0) + amount
 
             # Transaction Grouping
             gid = r.get('transaction_group_id')
@@ -818,20 +834,19 @@ class PaymentRepository:
             
             if gid not in grouped_map:
                 grouped_map[gid] = {
-                    "payment_id": r['payment_id'], # Use highest ID
+                    "payment_id": r['payment_id'],
                     "payment_date": r['payment_date'],
                     "student_name": enroll.get('student', {}).get('name', 'Unknown'),
                     "student_id": enroll.get('student', {}).get('student_id'),
-                    "program_name": prog_name,
+                    "program_name": pname,
                     "amount": 0.0,
                     "payment_method": r['payment_method'],
                     "months": [],
                     "type": "Single",
                     "enrollment_id": r['enrollment_id'],
-                    # Needed for Edit
                     "transaction_group_id": r.get('transaction_group_id'),
-                    "paid_amount": 0.0, # Will sum
-                    "total_amount": 0.0, # Will sum
+                    "paid_amount": 0.0, 
+                    "total_amount": 0.0, 
                     "remarks": r.get('remarks') or "",
                     "is_editable": False
                 }
@@ -839,10 +854,8 @@ class PaymentRepository:
             
             group = grouped_map[gid]
             group['amount'] += amount
-            group['total_amount'] += amount # Alias
-            group['paid_amount'] += amount  # Alias for Edit Modal compatibility? 
-            # Note: Edit Modal expects 'paid_amount' (legacy) or 'total_amount'. 
-            # Best to provide 'total_amount' as the main value.
+            group['total_amount'] += amount
+            group['paid_amount'] += amount
             
             if r.get('month') and r.get('year'):
                 group['months'].append( (r['year'], r['month']) )
@@ -877,10 +890,8 @@ class PaymentRepository:
                  
             transactions.append(g)
             
-        # 4. Best-Effort "Latest" Check (Top-Down)
-        # Note: This is imperfect for historic months, but matches Recent Payments behavior.
+        # 4. Best-Effort "Latest" Check
         seen_students = set()
-        # Since we ordered raw rows DESC, the first time we see a student in 'transactions' (which respects order), it's their latest IN THIS BATCH.
         for t in transactions:
             sid = t.get('student_id')
             if sid and sid not in seen_students:
@@ -889,7 +900,8 @@ class PaymentRepository:
             else:
                 t['is_editable'] = False
 
-        program_summary = [{"name": k, "amount": v} for k, v in prog_revenue.items()]
+        # Convert Tuple Key to List of Dicts
+        program_summary = [{"program_id": k[0], "name": k[1], "amount": v} for k, v in prog_revenue.items()]
         program_summary.sort(key=lambda x: x['amount'], reverse=True)
         
         return {

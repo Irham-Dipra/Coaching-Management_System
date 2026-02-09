@@ -152,12 +152,7 @@ const ProgramDetails: React.FC = () => {
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
                     <div>
-                        <div className="flex items-center gap-2 mb-1">
-                            <span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-xs font-bold uppercase">
-                                {program.batch?.batch_name || 'Batch'}
-                            </span>
-                        </div>
-                        <h1 className="text-3xl font-bold text-gray-900">{program.program_name}</h1>
+
                         <div className="flex gap-4 mt-2 text-sm text-gray-500">
                             <div className="flex items-center gap-1">
                                 <Calendar size={16} />

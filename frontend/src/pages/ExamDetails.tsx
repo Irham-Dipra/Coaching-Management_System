@@ -280,10 +280,10 @@ const ExamDetails: React.FC = () => {
                 body: stats,
                 theme: 'plain',
                 styles: { fontSize: 9, cellPadding: 1, halign: 'center' },
-                headStyles: { halign: 'center' },
+                headStyles: { halign: 'center', fillColor: [220, 220, 220], textColor: 0, fontStyle: 'bold' },
                 columnStyles: {
-                    0: { fontStyle: 'bold', cellWidth: 40, halign: 'right' },
-                    1: { cellWidth: 30, halign: 'left' }
+                    0: { fontStyle: 'bold', cellWidth: 50, halign: 'center' },
+                    1: { cellWidth: 30, halign: 'center' }
                 },
                 tableWidth: 80,
                 // Centered table logic:

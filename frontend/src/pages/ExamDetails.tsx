@@ -188,57 +188,142 @@ const ExamDetails: React.FC = () => {
         });
     };
 
-    // ... existing export functions ...
-    const exportCSV = () => {
-        if (!meritList) return;
-        // Ensure strictly sorted by Total Score
-        const sortedList = [...meritList].sort((a: any, b: any) => (b.total_score || 0) - (a.total_score || 0));
+    // --- EXPORT FUNCTIONS ---
 
-        const ws = XLSX.utils.json_to_sheet(sortedList.map((r: any) => ({
-            Name: r?.student?.name || 'Unknown',
-            // Roll: r?.student?.roll_no || '-', // Removed roll from student table?
-            // We might want Program Roll here, but merit list might not have it easily if we removed enrollment link.
-            // For now, Name is enough or we rely on what's available.
-            Written: r.written_marks,
-            MCQ: r.mcq_marks,
-            Total: r.total_score
-        })));
+    // 1. Download Excel Template for Re-upload
+    const exportResultTemplate = () => {
+        if (!candidates) return;
+
+        // Prepare Data: ID, Name, Written, MCQ
+        // Sorted by Student ID for easier data entry from physical sheets
+        const templateData = candidates
+            .map((c: any) => ({
+                "Student ID": c.student?.student_id,
+                "Student Name": c.student?.name,
+                "Program": c.program?.program_name || (c.enrollments && c.enrollments.map((e: any) => e.program_name).join(', ')),
+                "Written Marks": c.written_marks || '', // Pre-fill if exists, else empty
+                "MCQ Marks": c.mcq_marks || ''         // Pre-fill if exists, else empty
+            }))
+            .sort((a: any, b: any) => (a["Student ID"] || 0) - (b["Student ID"] || 0));
+
+        const ws = XLSX.utils.json_to_sheet(templateData);
+
+        // Adjust column widths
+        const wscols = [
+            { wch: 10 }, // ID
+            { wch: 30 }, // Name
+            { wch: 25 }, // Program
+            { wch: 15 }, // Written
+            { wch: 15 }  // MCQ
+        ];
+        ws['!cols'] = wscols;
+
         const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Merit List");
-        XLSX.writeFile(wb, `${exam.exam_name}_Merit_List.xlsx`);
+        XLSX.utils.book_append_sheet(wb, ws, "Result Entry");
+        XLSX.writeFile(wb, `${exam.exam_name}_Result_Template.xlsx`);
     };
 
-    const exportPDF = () => {
-        if (!meritList) return;
-        // Ensure strictly sorted by Total Score
-        const sortedList = [...meritList].sort((a: any, b: any) => (b.total_score || 0) - (a.total_score || 0));
+    // 2. Download Professional Merit List PDF
+    const exportMeritListPDF = () => {
+        if (!candidates) return;
+
+        // Sort by Total Score Descending (Rank)
+        const rankedList = [...candidates]
+            .sort((a: any, b: any) => (b.total_score || 0) - (a.total_score || 0))
+            .map((c: any, index: number) => ({
+                ...c,
+                rank: index + 1
+            }));
 
         const doc = new jsPDF();
 
-        // Title
-        doc.setFontSize(18);
-        doc.text(exam.exam_name || "Exam Results", 14, 22);
-        doc.setFontSize(11);
-        doc.text(`Date: ${exam.exam_date || 'N/A'}`, 14, 30);
-        doc.text(`Type: ${exam.exam_type}`, 14, 36);
+        // --- HEADER ---
+        // Brand Title
+        doc.setFontSize(22);
+        doc.setTextColor(41, 128, 185); // Blue
+        doc.setFont("helvetica", "bold");
+        doc.text("Science Point by Dr. Talha", 105, 20, { align: "center" });
 
-        // Table Data
-        const tableData = sortedList.map((r: any, index: number) => [
-            index + 1,
-            r?.student?.name || 'Unknown',
-            // r?.student?.roll_no || '-',
-            r.written_marks,
-            r.mcq_marks,
-            r.total_score
+        // Subtitle / Exam Name
+        doc.setFontSize(16);
+        doc.setTextColor(0, 0, 0);
+        doc.setFont("helvetica", "bold");
+        doc.text(exam.exam_name, 105, 30, { align: "center" });
+
+        // Exam Details Line
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "normal");
+        const details = `Date: ${exam.exam_date || 'N/A'} | Type: ${exam.exam_type} | Total Marks: ${exam.total_marks}`;
+        doc.text(details, 105, 36, { align: "center" });
+
+        // Linked Programs Line
+        const programNames = exam.program_exam?.map((pe: any) => pe.program?.program_name).join(', ') || 'General';
+        doc.setFontSize(9);
+        doc.setTextColor(100, 100, 100);
+        doc.text(`Programs: ${programNames}`, 105, 42, { align: "center" });
+
+        let currentY = 50;
+
+        // --- HIGHLIGHTS / ANALYTICS SECTION ---
+        if (analytics) {
+            const stats = [
+                ["Participated", `${analytics.total_students}`],
+                ["Highest (Written)", `${analytics.highest?.written || 0}`],
+                ["Highest (MCQ)", `${analytics.highest?.mcq || 0}`],
+                ["Highest (Total)", `${analytics.highest?.total || 0}`],
+                ["Average (Total)", `${analytics.averages?.total || 0}`]
+            ];
+
+            autoTable(doc, {
+                startY: currentY,
+                head: [['Statistic', 'Value']],
+                body: stats,
+                theme: 'plain',
+                styles: { fontSize: 9, cellPadding: 1 },
+                columnStyles: { 0: { fontStyle: 'bold', cellWidth: 40 }, 1: { cellWidth: 30 } },
+                margin: { left: 14 }
+                // Use limited width to keep it compact or side-by-side? 
+                // Let's keep it simple top-left for now or header style.
+            });
+            // Approximate height of stats table
+            currentY = (doc as any).lastAutoTable.finalY + 10;
+        }
+
+        // --- STUDENT RANKING TABLE ---
+        const tableData = rankedList.map((r: any) => [
+            r.rank,
+            r.student?.name || 'Unknown',
+            r.student?.student_id || '-',
+            r.written_marks || 0,
+            r.mcq_marks || 0,
+            r.total_score || 0,
+            // Simple status based on score? e.g. Pass/Fail if pass marks exist? 
+            // For now just empty or could be "Grade" placeholder.
+            // Let's omit Status col if we don't have logic, or just show Program name
+            r.enrollments && r.enrollments.length > 0 ? r.enrollments[0].program_name : '-'
         ]);
 
         autoTable(doc, {
-            head: [['Rank', 'Student Name', 'Written', 'MCQ', 'Total']],
+            startY: currentY,
+            head: [['Rank', 'Student Name', 'ID', 'Written', 'MCQ', 'Total', 'Program']],
             body: tableData,
-            startY: 44,
+            theme: 'grid',
+            headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: 'bold' },
+            styles: { fontSize: 10, cellPadding: 3 },
+            alternateRowStyles: { fillColor: [245, 245, 245] }
         });
 
-        doc.save(`${exam.exam_name}_Results.pdf`);
+        // Footer
+        const pageCount = (doc as any).internal.getNumberOfPages();
+        for (let i = 1; i <= pageCount; i++) {
+            doc.setPage(i);
+            doc.setFontSize(8);
+            doc.setTextColor(150);
+            doc.text(`Generated on ${new Date().toLocaleDateString()}`, 14, 285);
+            doc.text(`Page ${i} of ${pageCount}`, 196, 285, { align: 'right' });
+        }
+
+        doc.save(`${exam.exam_name}_Merit_List.pdf`);
     };
 
     return (
@@ -376,12 +461,20 @@ const ExamDetails: React.FC = () => {
                         </button>
                     )}
                 </div>
-                <div className="flex gap-4">
-                    <button onClick={exportCSV} className="flex items-center gap-2 text-green-600 border border-green-200 px-3 py-1.5 rounded hover:bg-green-50">
-                        <Download size={18} /> Export Excel
+                <div className="flex gap-2">
+                    <button
+                        onClick={exportResultTemplate}
+                        className="flex items-center gap-2 text-green-700 bg-green-50 border border-green-200 px-3 py-2 rounded-lg hover:bg-green-100 transition-colors text-sm font-medium"
+                        title="Download Excel Template for Data Entry"
+                    >
+                        <Download size={16} /> Excel Template
                     </button>
-                    <button onClick={exportPDF} className="flex items-center gap-2 text-red-600 border border-red-200 px-3 py-1.5 rounded hover:bg-red-50">
-                        <FileText size={18} /> Export PDF
+                    <button
+                        onClick={exportMeritListPDF}
+                        className="flex items-center gap-2 text-white bg-red-600 border border-red-700 px-3 py-2 rounded-lg hover:bg-red-700 transition-colors shadow-sm text-sm font-medium"
+                        title="Download Professional Merit List"
+                    >
+                        <FileText size={16} /> Merit List
                     </button>
                 </div>
             </div>

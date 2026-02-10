@@ -59,5 +59,15 @@ export const ProgramRepository = {
         });
         if (!response.ok) throw new Error("Failed to create program");
         return await response.json();
+    },
+
+    async updateProgram(id: string, programData: any) {
+        const response = await fetch(`${API_BASE_URL}/programs/${id}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(programData),
+        });
+        if (!response.ok) throw new Error("Failed to update program");
+        return await response.json();
     }
 };

@@ -54,3 +54,14 @@ def create_program(program: ProgramCreate):
         return repo.create_program(program)
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+@router.put("/programs/{program_id}")
+def update_program(program_id: int, program_update: ProgramCreate):
+    try:
+        # Pydantic model -> JSON-compatible dict (handles Dates, etc.)
+        from fastapi.encoders import jsonable_encoder
+        updates = jsonable_encoder(program_update, exclude_unset=True)
+        return repo.update_program(program_id, updates)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+

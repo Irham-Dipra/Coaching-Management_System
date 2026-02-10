@@ -31,6 +31,7 @@ class ProgramBase(BaseModel):
     monthly_fee: Optional[float] = 0.0
     start_date: Optional[date] = None
     end_date: Optional[date] = None
+    routine: Optional[str] = None # Google Drive Link
     # We use the ID to link it to a batch
     batch_id: Optional[int] = None
 

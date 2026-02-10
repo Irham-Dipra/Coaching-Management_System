@@ -2,9 +2,10 @@ import React, { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ProgramRepository } from '../repositories/ProgramRepository';
-import { Users, FileText, DollarSign, Calendar, GraduationCap, Clock, Plus, X, Trash2, AlertCircle } from 'lucide-react';
+import { Users, FileText, DollarSign, Calendar, GraduationCap, Clock, Plus, X, Trash2, AlertCircle, Edit, ExternalLink } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import CreateExamModal from '../components/CreateExamModal';
+import EditProgramModal from '../components/EditProgramModal';
 import { AttendanceRepository } from '../repositories/AttendanceRepository';
 import { ScheduleRepository } from '../repositories/ScheduleRepository';
 import { StudentRepository } from '../repositories/StudentRepository';
@@ -14,7 +15,8 @@ const ProgramDetails: React.FC = () => {
     const { id } = useParams<{ id: string }>();
     const [activeTab, setActiveTab] = useState<'students' | 'exams' | 'attendance' | 'schedule'>('students');
     const [isExamModalOpen, setIsExamModalOpen] = useState(false);
-    const [isBatchModalOpen, setIsBatchModalOpen] = useState(false); // New State
+    const [isBatchModalOpen, setIsBatchModalOpen] = useState(false);
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false); // New Edit State
     const [attendanceDate, setAttendanceDate] = useState(new Date().toISOString().split('T')[0]);
     const [attendanceData, setAttendanceData] = useState<any[]>([]);
     const queryClient = useQueryClient();
@@ -111,12 +113,33 @@ const ProgramDetails: React.FC = () => {
                     <h1 className="text-3xl font-bold text-gray-900">{program.program_name}</h1>
                 </div>
                 <div className="flex gap-3">
+                    {/* View Routine Button */}
+                    {program.routine && (
+                        <a
+                            href={program.routine}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="bg-blue-50 text-blue-700 border border-blue-200 px-3 py-2 rounded shadow-sm hover:bg-blue-100 flex items-center gap-2 font-medium text-sm"
+                        >
+                            <ExternalLink size={16} /> View Routine
+                        </a>
+                    )}
+
+                    <button
+                        onClick={() => setIsEditModalOpen(true)}
+                        className="bg-white text-gray-700 border border-gray-300 p-2 rounded shadow-sm hover:bg-gray-50 flex items-center justify-center font-medium"
+                        title="Edit Program Details"
+                    >
+                        <Edit size={18} />
+                    </button>
+
                     <button
                         onClick={() => setIsBatchModalOpen(true)}
                         className="bg-blue-600 text-white px-4 py-2 rounded shadow-sm hover:bg-blue-700 flex items-center gap-2 font-medium"
                     >
                         <Users size={18} /> Record Batch Payment
                     </button>
+
                     <Link
                         to={`/admin/finance/program/${id}?view=revenue`}
                         className="bg-white text-green-600 border border-green-200 px-3 py-2 rounded shadow-sm hover:bg-green-50 flex items-center gap-2 font-medium text-sm"
@@ -145,6 +168,13 @@ const ProgramDetails: React.FC = () => {
                 isOpen={isBatchModalOpen}
                 onClose={() => setIsBatchModalOpen(false)}
                 initialProgramId={id}
+            />
+
+            {/* Edit Program Modal */}
+            <EditProgramModal
+                isOpen={isEditModalOpen}
+                onClose={() => setIsEditModalOpen(false)}
+                program={program}
             />
 
             {/* ... rest of component ... */}

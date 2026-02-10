@@ -140,3 +140,11 @@ class ProgramRepository:
         
         # Return the newly created program
         return response.data[0]
+
+    def update_program(self, program_id: int, updates: dict):
+        response = supabase.table(self.program_table)\
+            .update(updates)\
+            .eq("program_id", program_id)\
+            .execute()
+        return response.data[0] if response.data else None
+

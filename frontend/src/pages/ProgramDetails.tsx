@@ -100,63 +100,78 @@ const ProgramDetails: React.FC = () => {
     return (
         <div className="space-y-6">
             {/* HEADER */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                <div>
-                    <div className="flex items-center gap-2 mb-1">
-                        <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded uppercase tracking-wider">Program</span>
-                        {program.batch && (
-                            <span className="text-xs text-gray-500 font-medium px-2 py-0.5 border rounded">
-                                {program.batch.batch_name}
-                            </span>
-                        )}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                <div className="flex flex-col md:flex-row justify-between items-start gap-4 mb-6">
+                    <div>
+                        <div className="flex items-center gap-2 mb-2">
+                            <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded uppercase tracking-wider">Program</span>
+                            {program.batch && (
+                                <span className="text-xs text-gray-500 font-medium px-2 py-0.5 border rounded">
+                                    {program.batch.batch_name}
+                                </span>
+                            )}
+                            {program.routine && (
+                                <a
+                                    href={program.routine}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex items-center gap-1 text-xs font-medium text-blue-600 hover:text-blue-800 hover:underline ml-2"
+                                >
+                                    <ExternalLink size={12} /> View Routine
+                                </a>
+                            )}
+                        </div>
+                        <h1 className="text-3xl font-bold text-gray-900">{program.program_name}</h1>
                     </div>
-                    <h1 className="text-3xl font-bold text-gray-900">{program.program_name}</h1>
-                </div>
-                <div className="flex gap-3">
-                    {/* View Routine Button */}
-                    {program.routine && (
-                        <a
-                            href={program.routine}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="bg-blue-50 text-blue-700 border border-blue-200 px-3 py-2 rounded shadow-sm hover:bg-blue-100 flex items-center gap-2 font-medium text-sm"
+
+                    <div className="flex items-center gap-3">
+                        <button
+                            onClick={() => setIsEditModalOpen(true)}
+                            className="bg-white text-gray-700 border border-gray-300 p-2.5 rounded-lg shadow-sm hover:bg-gray-50 flex items-center justify-center transition-colors"
+                            title="Edit Program Details"
                         >
-                            <ExternalLink size={16} /> View Routine
-                        </a>
-                    )}
+                            <Edit size={20} />
+                        </button>
 
-                    <button
-                        onClick={() => setIsEditModalOpen(true)}
-                        className="bg-white text-gray-700 border border-gray-300 p-2 rounded shadow-sm hover:bg-gray-50 flex items-center justify-center font-medium"
-                        title="Edit Program Details"
-                    >
-                        <Edit size={18} />
-                    </button>
+                        <button
+                            onClick={() => setIsBatchModalOpen(true)}
+                            className="bg-blue-600 text-white px-5 py-2.5 rounded-lg shadow-sm hover:bg-blue-700 flex items-center gap-2 font-bold transition-all hover:shadow-md"
+                        >
+                            <Users size={20} /> Record Batch Payment
+                        </button>
+                    </div>
+                </div>
 
-                    <button
-                        onClick={() => setIsBatchModalOpen(true)}
-                        className="bg-blue-600 text-white px-4 py-2 rounded shadow-sm hover:bg-blue-700 flex items-center gap-2 font-medium"
-                    >
-                        <Users size={18} /> Record Batch Payment
-                    </button>
-
+                {/* Quick Stats / Finance Links Row */}
+                <div className="flex flex-wrap gap-3 pt-4 border-t border-gray-100">
                     <Link
                         to={`/admin/finance/program/${id}?view=revenue`}
-                        className="bg-white text-green-600 border border-green-200 px-3 py-2 rounded shadow-sm hover:bg-green-50 flex items-center gap-2 font-medium text-sm"
+                        className="flex-1 min-w-[140px] bg-green-50 text-green-700 border border-green-100 px-4 py-3 rounded-lg hover:bg-green-100 transition-colors flex flex-col items-start group"
                     >
-                        <DollarSign size={16} /> Revenue
+                        <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide opacity-80 mb-1">
+                            <DollarSign size={14} /> Revenue
+                        </div>
+                        <span className="text-sm font-medium group-hover:underline">View Breakdown</span>
                     </Link>
+
                     <Link
                         to={`/admin/finance/program/${id}?view=due_monthly`}
-                        className="bg-white text-amber-600 border border-amber-200 px-3 py-2 rounded shadow-sm hover:bg-amber-50 flex items-center gap-2 font-medium text-sm"
+                        className="flex-1 min-w-[140px] bg-amber-50 text-amber-700 border border-amber-100 px-4 py-3 rounded-lg hover:bg-amber-100 transition-colors flex flex-col items-start group"
                     >
-                        <FileText size={16} /> Due (Mo)
+                        <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide opacity-80 mb-1">
+                            <FileText size={14} /> Due (Monthly)
+                        </div>
+                        <span className="text-sm font-medium group-hover:underline">View List</span>
                     </Link>
+
                     <Link
                         to={`/admin/finance/program/${id}?view=due_overall`}
-                        className="bg-white text-red-600 border border-red-200 px-3 py-2 rounded shadow-sm hover:bg-red-50 flex items-center gap-2 font-medium text-sm"
+                        className="flex-1 min-w-[140px] bg-red-50 text-red-700 border border-red-100 px-4 py-3 rounded-lg hover:bg-red-100 transition-colors flex flex-col items-start group"
                     >
-                        <AlertCircle size={16} /> Due (All)
+                        <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide opacity-80 mb-1">
+                            <AlertCircle size={14} /> Due (All-Time)
+                        </div>
+                        <span className="text-sm font-medium group-hover:underline">View List</span>
                     </Link>
                 </div>
             </div>

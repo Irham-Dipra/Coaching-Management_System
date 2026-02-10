@@ -40,11 +40,32 @@ class ResultRepository:
         return response.data
 
     def get_exam_results(self, exam_id: int):
-        # Fetch results with student details for the Merit List
-        # Now linked via student_id directly
+        # 1. Get programs linked to this exam
+        linked_programs = supabase.table("program_exam").select("program_id").eq("exam_id", exam_id).execute().data
+        program_ids = [p['program_id'] for p in linked_programs]
+
+        if not program_ids:
+            return []
+
+        # 2. Get students actively enrolled in these programs
+        # We need to filter results to only show students who are currently in the linked programs
+        enrollments = supabase.table(self.enrollment_table)\
+            .select("student_id")\
+            .in_("program_id", program_ids)\
+            .eq("status", "Active")\
+            .execute().data
+            
+        valid_student_ids = [e['student_id'] for e in enrollments]
+        
+        if not valid_student_ids:
+            return []
+
+        # 3. Fetch results with student details for the Merit List
+        # Only for valid students
         response = supabase.table(self.result_table)\
             .select("*, student(student_id, name)")\
             .eq("exam_id", exam_id)\
+            .in_("student_id", valid_student_ids)\
             .order("total_score", desc=True)\
             .execute()
         
@@ -118,8 +139,8 @@ class ResultRepository:
         # Map by student_id
         result_map = {r['student_id']: r for r in results}
 
-        # 4. Map Results (No Deduplication - Frontend handles grouping)
-        candidates = []
+        # 4. Map Results and Group by Student
+        candidates_map = {}
         
         for enroll in enrollments:
             student = enroll.get('student')
@@ -128,20 +149,26 @@ class ResultRepository:
             student_id = student['student_id']
             res = result_map.get(student_id)
             
-            candidate_entry = {
+            if student_id not in candidates_map:
+                candidates_map[student_id] = {
+                    "student": student,
+                    "result_id": res['result_id'] if res else None,
+                    "written_marks": res['written_marks'] if res else 0,
+                    "mcq_marks": res['mcq_marks'] if res else 0,
+                    "total_score": res['total_score'] if res else 0,
+                    "has_attended": True if res else False,
+                    "enrollments": []
+                }
+            
+            # Add enrollment info to the list
+            candidates_map[student_id]["enrollments"].append({
                 "enrollment_id": enroll['enrollment_id'],
-                "student": student,
-                "program_id": enroll.get('program_id'), 
-                "program": enroll.get('program'),
-                "program_roll_no": enroll.get('roll_no'), 
-                "result_id": res['result_id'] if res else None,
-                "written_marks": res['written_marks'] if res else 0,
-                "mcq_marks": res['mcq_marks'] if res else 0,
-                "total_score": res['total_score'] if res else 0,
-                "has_attended": True if res else False
-            }
-            candidates.append(candidate_entry)
+                "program_id": enroll.get('program_id'),
+                "program_name": enroll.get('program', {}).get('program_name'),
+                "roll_no": enroll.get('roll_no')
+            })
 
-        # Sort by Student Name for easier reading, or Roll No
+        # Convert map to list and sort
+        candidates = list(candidates_map.values())
         candidates.sort(key=lambda x: x['student']['name'] or "")
         return candidates

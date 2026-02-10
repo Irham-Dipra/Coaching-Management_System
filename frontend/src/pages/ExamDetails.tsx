@@ -57,79 +57,31 @@ const ExamDetails: React.FC = () => {
     const sortedCandidates = React.useMemo(() => {
         if (!candidates) return [];
 
-        // 1. Group by Student ID
-        const groupedMap = new Map();
+        // Candidates are already grouped by Student from Backend
+        const merged = candidates.map((g: any) => {
+            // Apply edits from state if available
+            const studentId = g.student?.student_id;
+            const localEdit = editedMarks[studentId];
 
-        candidates.forEach((c: any) => {
-            const studentId = c?.student?.student_id;
-            if (!studentId) return;
-
-            if (!groupedMap.has(studentId)) {
-                // Initialize group
-                // Use result data from candidate if available (fallback/primary if meritList join fails)
-                const candidateResult = c.result_id ? {
-                    result_id: c.result_id,
-                    written_marks: c.written_marks,
-                    mcq_marks: c.mcq_marks,
-                    total_score: c.total_score,
-                    student: c.student // Keep student ref if needed
-                } : null;
-
-                groupedMap.set(studentId, {
-                    student: c.student,
-                    enrollments: [],
-                    result: candidateResult,
-                    editData: { written: 0, mcq: 0 }
-                });
-            }
-
-            const group = groupedMap.get(studentId);
-
-            // Add enrollment details
-            group.enrollments.push({
-                program_name: c?.program?.program_name,
-                program_id: c?.program_id, // Corrected: fetch from top level
-                roll_no: c?.program_roll_no,
-                enrollment_id: c.enrollment_id
-            });
-
-            // Find result for this student (meritList should now be keyed/findable by student_id or contain student info)
-            // meritList comes from getExamResults which returns student object in result.
-            // This is still useful if meritList has fresher data or extra fields, but candidateResult is a good baseline.
-            const result = meritList?.find((r: any) => r.student?.student_id === studentId);
-
-            // If found, assign it. Since we group by student, we don't need to check "better" result anymore 
-            // as there is only one result per student per exam now.
-            if (result) {
-                group.result = result;
-            }
-
-            // Consolidate Edit Data 
-            if (editedMarks[studentId]) {
-                group.editData = editedMarks[studentId];
-                group.hasEdits = true;
-            }
-        });
-
-        const merged = Array.from(groupedMap.values()).map((g: any) => {
-            const result = g.result;
-            // If we have local edits, use them. Otherwise fallback to DB result.
-            // FIX: Use explicit flag rather than value check to allow 0
-            const editData = g.hasEdits ? g.editData :
-                { written: result?.written_marks || 0, mcq: result?.mcq_marks || 0 };
+            const finalEditData = localEdit || {
+                written: g.written_marks || 0,
+                mcq: g.mcq_marks || 0
+            };
 
             return {
                 ...g,
-                result_written: result?.written_marks ?? '-',
-                result_mcq: result?.mcq_marks ?? '-',
-                result_total: result?.total_score ?? '-',
-                // Numeric values for sorting
-                sort_written: isEditing ? (Number(editData.written) || 0) : (result?.written_marks || 0),
-                sort_mcq: isEditing ? (Number(editData.mcq) || 0) : (result?.mcq_marks || 0),
-                sort_total: isEditing ? ((Number(editData.written) || 0) + (Number(editData.mcq) || 0)) : (result?.total_score || 0),
-                sort_student_id: g.student?.student_id || 0,
-                editData: editData,
-                // program_list_display moved to JSX
+                result_written: g.written_marks ?? '-',
+                result_mcq: g.mcq_marks ?? '-',
+                result_total: g.total_score ?? '-',
+
+                // Sorting Values
+                sort_written: isEditing ? (Number(finalEditData.written) || 0) : (g.written_marks || 0),
+                sort_mcq: isEditing ? (Number(finalEditData.mcq) || 0) : (g.mcq_marks || 0),
+                sort_total: isEditing ? ((Number(finalEditData.written) || 0) + (Number(finalEditData.mcq) || 0)) : (g.total_score || 0),
+                sort_student_id: studentId || 0,
+
+                editData: finalEditData,
+                enrollments: g.enrollments // Already provided by backend
             };
         });
 
@@ -138,20 +90,18 @@ const ExamDetails: React.FC = () => {
             let aValue: any;
             let bValue: any;
 
-            // FIX: When editing, do NOT sort by live edited values to prevent jumping rows.
-            // Use the original result or 0.
             if (sortConfig.key === 'student_id') {
                 aValue = a.sort_student_id;
                 bValue = b.sort_student_id;
             } else if (sortConfig.key === 'written') {
-                aValue = isEditing ? (a.result_written === '-' ? 0 : a.result_written) : a.sort_written;
-                bValue = isEditing ? (b.result_written === '-' ? 0 : b.result_written) : b.sort_written;
+                aValue = a.sort_written;
+                bValue = b.sort_written;
             } else if (sortConfig.key === 'mcq') {
-                aValue = isEditing ? (a.result_mcq === '-' ? 0 : a.result_mcq) : a.sort_mcq;
-                bValue = isEditing ? (b.result_mcq === '-' ? 0 : b.result_mcq) : b.sort_mcq;
+                aValue = a.sort_mcq;
+                bValue = b.sort_mcq;
             } else if (sortConfig.key === 'total') {
-                aValue = isEditing ? (a.result_total === '-' ? 0 : a.result_total) : a.sort_total;
-                bValue = isEditing ? (b.result_total === '-' ? 0 : b.result_total) : b.sort_total;
+                aValue = a.sort_total;
+                bValue = b.sort_total;
             }
 
             if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;

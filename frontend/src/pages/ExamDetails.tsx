@@ -279,11 +279,15 @@ const ExamDetails: React.FC = () => {
                 head: [['Statistic', 'Value']],
                 body: stats,
                 theme: 'plain',
-                styles: { fontSize: 9, cellPadding: 1 },
-                columnStyles: { 0: { fontStyle: 'bold', cellWidth: 40 }, 1: { cellWidth: 30 } },
-                margin: { left: 14 }
-                // Use limited width to keep it compact or side-by-side? 
-                // Let's keep it simple top-left for now or header style.
+                styles: { fontSize: 9, cellPadding: 1, halign: 'center' },
+                headStyles: { halign: 'center' },
+                columnStyles: {
+                    0: { fontStyle: 'bold', cellWidth: 40, halign: 'right' },
+                    1: { cellWidth: 30, halign: 'left' }
+                },
+                tableWidth: 80,
+                // Centered table logic:
+                margin: { left: (doc.internal.pageSize.width - 80) / 2 }
             });
             // Approximate height of stats table
             currentY = (doc as any).lastAutoTable.finalY + 10;
@@ -296,20 +300,17 @@ const ExamDetails: React.FC = () => {
             r.student?.student_id || '-',
             r.written_marks || 0,
             r.mcq_marks || 0,
-            r.total_score || 0,
-            // Simple status based on score? e.g. Pass/Fail if pass marks exist? 
-            // For now just empty or could be "Grade" placeholder.
-            // Let's omit Status col if we don't have logic, or just show Program name
-            r.enrollments && r.enrollments.length > 0 ? r.enrollments[0].program_name : '-'
+            r.total_score || 0
         ]);
 
         autoTable(doc, {
             startY: currentY,
-            head: [['Rank', 'Student Name', 'ID', 'Written', 'MCQ', 'Total', 'Program']],
+            head: [['Rank', 'Student Name', 'ID', 'Written', 'MCQ', 'Total']],
             body: tableData,
             theme: 'grid',
-            headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: 'bold' },
-            styles: { fontSize: 10, cellPadding: 3 },
+            headStyles: { fillColor: [41, 128, 185], textColor: 255, fontStyle: 'bold', halign: 'center' },
+            styles: { fontSize: 10, cellPadding: 3, halign: 'center' },
+            columnStyles: { 1: { halign: 'left' } }, // Name Left Aligned
             alternateRowStyles: { fillColor: [245, 245, 245] }
         });
 

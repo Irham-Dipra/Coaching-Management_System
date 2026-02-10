@@ -39,6 +39,17 @@ class ResultRepository:
         
         return response.data
 
+    def get_exam_results(self, exam_id: int):
+        # Fetch results with student details for the Merit List
+        # Now linked via student_id directly
+        response = supabase.table(self.result_table)\
+            .select("*, student(student_id, name)")\
+            .eq("exam_id", exam_id)\
+            .order("total_score", desc=True)\
+            .execute()
+        
+        return response.data
+
     def get_exam_analytics(self, exam_id: int):
         # Get raw results
         results = self.get_exam_results(exam_id)

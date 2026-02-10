@@ -107,13 +107,15 @@ const ExamDetails: React.FC = () => {
             // Consolidate Edit Data 
             if (editedMarks[studentId]) {
                 group.editData = editedMarks[studentId];
+                group.hasEdits = true;
             }
         });
 
         const merged = Array.from(groupedMap.values()).map((g: any) => {
             const result = g.result;
             // If we have local edits, use them. Otherwise fallback to DB result.
-            const editData = g.editData.written || g.editData.mcq ? g.editData :
+            // FIX: Use explicit flag rather than value check to allow 0
+            const editData = g.hasEdits ? g.editData :
                 { written: result?.written_marks || 0, mcq: result?.mcq_marks || 0 };
 
             return {

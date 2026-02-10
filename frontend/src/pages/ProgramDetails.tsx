@@ -10,15 +10,17 @@ import { AttendanceRepository } from '../repositories/AttendanceRepository';
 import { ScheduleRepository } from '../repositories/ScheduleRepository';
 import { StudentRepository } from '../repositories/StudentRepository';
 import BatchPaymentModal from '../components/BatchPaymentModal';
+import WithdrawalModal from '../components/WithdrawalModal';
 
 const ProgramDetails: React.FC = () => {
     const { id } = useParams<{ id: string }>();
     const [activeTab, setActiveTab] = useState<'students' | 'exams' | 'attendance' | 'schedule'>('students');
     const [isExamModalOpen, setIsExamModalOpen] = useState(false);
     const [isBatchModalOpen, setIsBatchModalOpen] = useState(false);
-    const [isEditModalOpen, setIsEditModalOpen] = useState(false); // New Edit State
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [attendanceDate, setAttendanceDate] = useState(new Date().toISOString().split('T')[0]);
     const [attendanceData, setAttendanceData] = useState<any[]>([]);
+    const [withdrawEnrollment, setWithdrawEnrollment] = useState<any>(null); // New state for modal
     const queryClient = useQueryClient();
 
     const { data: program, isLoading } = useQuery({
@@ -46,18 +48,6 @@ const ProgramDetails: React.FC = () => {
         onSuccess: () => {
             alert("Attendance Saved!");
             queryClient.invalidateQueries({ queryKey: ['attendance', id] });
-        }
-    });
-
-    // Added Delete Mutation
-    const deleteEnrollmentMutation = useMutation({
-        mutationFn: StudentRepository.deleteEnrollment,
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['program', id] });
-            // Also invalidate student list if needed
-        },
-        onError: (err) => {
-            alert("Failed to remove student");
         }
     });
 
@@ -320,13 +310,9 @@ const ProgramDetails: React.FC = () => {
                                                 <td className="p-3 text-gray-600 text-sm">{enroll.enrollment_date || '-'}</td>
                                                 <td className="p-3">
                                                     <button
-                                                        onClick={() => {
-                                                            if (confirm(`Are you sure you want to remove ${enroll.student.name} from this program?`)) {
-                                                                deleteEnrollmentMutation.mutate(enroll.enrollment_id);
-                                                            }
-                                                        }}
+                                                        onClick={() => setWithdrawEnrollment(enroll)}
                                                         className="text-gray-300 hover:text-red-600 p-2 rounded-full transition-all opacity-0 group-hover:opacity-100"
-                                                        title="Remove Student"
+                                                        title="Withdraw / Remove Student"
                                                     >
                                                         <Trash2 size={18} />
                                                     </button>
@@ -458,6 +444,20 @@ const ProgramDetails: React.FC = () => {
                     {activeTab === 'schedule' && <ProgramScheduleManager programId={parseInt(id!)} />}
                 </div>
             </div>
+
+            {/* WITHDRAWAL MODAL */}
+            {withdrawEnrollment && (
+                <WithdrawalModal
+                    isOpen={!!withdrawEnrollment}
+                    onClose={() => setWithdrawEnrollment(null)}
+                    enrollment={withdrawEnrollment}
+                    studentId={String(withdrawEnrollment.student.student_id)}
+                    onSuccess={() => {
+                        setWithdrawEnrollment(null);
+                        queryClient.invalidateQueries({ queryKey: ['program', id] });
+                    }}
+                />
+            )}
         </div>
     );
 };

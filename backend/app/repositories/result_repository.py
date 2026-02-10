@@ -29,7 +29,6 @@ class ResultRepository:
         response = supabase.table(self.result_table).upsert(upsert_list, on_conflict="student_id, exam_id").execute()
         return response.data
 
-    def get_exam_results(self, exam_id: int):
         # Fetch results with student details for the Merit List
         # Now linked via student_id directly
         response = supabase.table(self.result_table)\
@@ -38,17 +37,6 @@ class ResultRepository:
             .order("total_score", desc=True)\
             .execute()
         
-        # Note: Roll No in student table might be obsolete if we moved it to enrollment.
-        # But for Merit List, we might want the Program Roll No? 
-        # The user said "remove enrollment_id". 
-        # If we need Program Roll No, we have to join Enrollment back? 
-        # Or we rely on the fact that we can get one of the active enrollments?
-        # Let's check get_exam_candidates which constructs the view. 
-        # get_exam_results is for "Merit List" export purely? 
-        
-        # If we need roll_no specific to the program, we might need to fetch it separately or join enrollment.
-        # Since student_id is unique per exam in result table, we can join any valid enrollment for this student in this exam's programs?
-        # For now, let's just return what we have. Frontend 'candidates' query handles the display with roll nos.
         return response.data
 
     def get_exam_analytics(self, exam_id: int):

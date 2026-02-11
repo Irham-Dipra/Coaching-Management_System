@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { PaymentRepository } from '../repositories/PaymentRepository';
 import { StudentRepository } from '../repositories/StudentRepository';
 import { ProgramRepository } from '../repositories/ProgramRepository';
-import { DollarSign, Search, Plus, FileText, Download, X, Calendar, User, ArrowUpDown, Edit, Filter, Users, AlertCircle } from 'lucide-react';
+import { DollarSign, Search, Plus, FileText, Download, X, Calendar, User, ArrowUpDown, Edit, Filter, Users, AlertCircle, Trash2 } from 'lucide-react';
 import jsPDF from 'jspdf';
 import { generatePaymentSlip } from '../utils/pdfGenerator';
 
@@ -61,6 +61,16 @@ const Finance: React.FC = () => {
     const { data: stats } = useQuery({
         queryKey: ['finance', 'stats'],
         queryFn: PaymentRepository.getFinanceStats
+    });
+
+    const deleteMutation = useMutation({
+        mutationFn: PaymentRepository.deletePayment,
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['payments'] });
+            queryClient.invalidateQueries({ queryKey: ['finance'] });
+            alert("Payment Deleted Successfully!");
+        },
+        onError: (err) => alert("Failed to delete: " + err)
     });
 
     // --- FILTER LOGIC ---
@@ -290,17 +300,30 @@ const Finance: React.FC = () => {
                                     </td>
                                     <td className="p-5 text-center flex justify-center gap-2">
                                         {p.is_editable ? (
-                                            <button
-                                                onClick={() => setEditPayment(p)}
-                                                className="text-slate-400 hover:text-blue-400 p-2 rounded-full hover:bg-slate-700/50 transition-colors"
-                                                title="Edit"
-                                            >
-                                                <Edit size={16} />
-                                            </button>
+                                            <div className="flex gap-1">
+                                                <button
+                                                    onClick={() => setEditPayment(p)}
+                                                    className="text-slate-400 hover:text-blue-400 p-2 rounded-full hover:bg-slate-700/50 transition-colors"
+                                                    title="Edit"
+                                                >
+                                                    <Edit size={16} />
+                                                </button>
+                                                <button
+                                                    onClick={() => {
+                                                        if (window.confirm("Are you sure you want to delete this payment? This action cannot be undone.")) {
+                                                            deleteMutation.mutate(p.sort_id || p.payment_id);
+                                                        }
+                                                    }}
+                                                    className="text-slate-400 hover:text-red-400 p-2 rounded-full hover:bg-red-500/10 transition-colors"
+                                                    title="Delete"
+                                                >
+                                                    <Trash2 size={16} />
+                                                </button>
+                                            </div>
                                         ) : (
                                             <button
                                                 className="text-slate-700 cursor-not-allowed p-2 rounded-full"
-                                                title="Only the most recent transaction can be edited"
+                                                title="Only the most recent transaction can be edited/deleted"
                                                 disabled
                                             >
                                                 <Edit size={16} />

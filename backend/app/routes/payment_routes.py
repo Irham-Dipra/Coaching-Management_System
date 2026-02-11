@@ -32,6 +32,13 @@ def update_payment(payment_id: int, payment: PaymentUpdate):
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
+@router.delete("/payments/{payment_id}")
+def delete_payment(payment_id: int):
+    try:
+        return payment_repo.delete_payment(payment_id)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
 @router.post("/payments/bulk")
 def create_bulk_payment(payments: List[PaymentCreate]):
     try:

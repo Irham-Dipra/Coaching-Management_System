@@ -45,6 +45,18 @@ export const PaymentRepository = {
         return await response.json();
     },
 
+    // Delete Payment
+    async deletePayment(id: number) {
+        const response = await fetch(`${API_BASE_URL}/payments/${id}`, {
+            method: "DELETE",
+        });
+        if (!response.ok) {
+            const err = await response.json();
+            throw new Error(err.detail || "Failed to delete payment");
+        }
+        return await response.json();
+    },
+
     // New: Get Payment Status (Ledger)
     async getPaymentStatus(enrollmentId: number) {
         const response = await fetch(`${API_BASE_URL}/enrollments/${enrollmentId}/payment-status`);

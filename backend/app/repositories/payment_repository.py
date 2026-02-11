@@ -168,6 +168,32 @@ class PaymentRepository:
             .eq("payment_id", payment_id)\
             .execute().data
 
+    def delete_payment(self, payment_id: int):
+        """
+        Deletes a payment record.
+        Strictly enforces that ONLY the most recent payment for an enrollment can be deleted
+        to maintain ledger integrity.
+        """
+        # 1. Fetch the payment to identify enrollment
+        current = supabase.table(self.table).select("enrollment_id").eq("payment_id", payment_id).single().execute().data
+        if not current:
+            raise Exception("Payment record not found")
+            
+        enrollment_id = current['enrollment_id']
+        
+        # 2. Integrity Check: Ensure no newer payments exist for this enrollment
+        newer_exists = supabase.table(self.table)\
+            .select("payment_id")\
+            .eq("enrollment_id", enrollment_id)\
+            .gt("payment_id", payment_id)\
+            .execute().data
+            
+        if newer_exists:
+            raise Exception("Integrity Error: You can only delete the most recent transaction for this student to maintain ledger consistency.")
+            
+        # 3. Delete
+        return supabase.table(self.table).delete().eq("payment_id", payment_id).execute().data
+
     def get_payment_status(self, enrollment_id: int):
         """
         Calculates the current financial standing for a specific enrollment.
@@ -415,6 +441,7 @@ class PaymentRepository:
                     "sort_id": r['payment_id'], # Keep highest ID for sorting
                     "payment_ids": [],
                     "student_id": student.get("student_id"),
+                    "enrollment_id": r.get("enrollment_id"), # Critical for "Latest" check per enrollment
                     "student_name": student.get("name") or "Unknown",
                     "class": student.get("class"),       
                     "batch_id": student.get("batch_id"), 
@@ -487,12 +514,14 @@ class PaymentRepository:
             results.append(g)
             
         # Post-Processing for "Latest" Flag
-        seen_students = set()
+        # Changed Phase: Action button should appear for the last payment of EVERY enrollment.
+        # So we track seen_enrollment_ids instead of seen_student_ids.
+        seen_enrollments = set()
         for res in results:
-            sid = res.get('student_id')
-            if sid and sid not in seen_students:
+            eid = res.get('enrollment_id')
+            if eid and eid not in seen_enrollments:
                 res['is_editable'] = True
-                seen_students.add(sid)
+                seen_enrollments.add(eid)
             else:
                 res['is_editable'] = False
                 

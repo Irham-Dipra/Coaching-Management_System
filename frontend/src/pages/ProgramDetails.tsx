@@ -73,7 +73,7 @@ const ProgramDetails: React.FC = () => {
     // --- Statistics Calculation ---
     const totalEnrolled = program.enrollment?.length || 0;
     const teachersCount = program.teacher_program_enrollment?.length || 0;
-    const totalExams = program.exam?.length || 0;
+    const totalExams = program.program_exam?.length || 0;
 
     // Calculate Fees
     let totalCollected = 0;

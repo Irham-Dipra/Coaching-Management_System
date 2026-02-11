@@ -132,7 +132,7 @@ const ProgramPerformance = ({ programId }: { programId: string }) => {
         <div className="space-y-6 animate-fade-in relative w-full">
 
             {/* FILTER HEADER */}
-            <div className="flex justify-between items-center bg-slate-800/50 p-4 rounded-xl border border-slate-700 backdrop-blur-md">
+            <div className="relative z-20 flex justify-between items-center bg-slate-800/50 p-4 rounded-xl border border-slate-700 backdrop-blur-md">
                 <h2 className="text-xl font-bold text-white flex items-center gap-2">
                     <TrendingUp className="text-emerald-400" /> Performance Report
                 </h2>
@@ -146,7 +146,7 @@ const ProgramPerformance = ({ programId }: { programId: string }) => {
                     </button>
 
                     {isFilterOpen && (
-                        <div className="absolute right-0 top-full mt-2 w-72 bg-slate-800 border border-slate-600 rounded-xl shadow-2xl z-20 p-2 overflow-hidden animate-in fade-in zoom-in-95 duration-100">
+                        <div className="absolute right-0 top-full mt-2 w-72 bg-slate-800 border border-slate-600 rounded-xl shadow-2xl z-50 p-2 overflow-hidden animate-in fade-in zoom-in-95 duration-100">
                             <div
                                 className="flex items-center gap-2 p-2 hover:bg-slate-700 rounded-lg cursor-pointer text-sm font-bold text-white border-b border-slate-700/50 mb-1"
                                 onClick={toggleAll}

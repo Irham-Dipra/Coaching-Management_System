@@ -17,24 +17,26 @@ import Scheduling from './pages/Scheduling';
 import ScheduleDetails from './pages/ScheduleDetails';
 import RoomDetails from './pages/RoomDetails';
 import Login from './pages/Login';
-import Signup from './pages/Signup';
-import Unauthorized from './pages/Unauthorized';
-import UserProfile from './pages/UserProfile'; // Import
+import UserProfile from './pages/UserProfile';
 import Enrollment from './pages/Enrollment';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
-// Protected Route Wrapper
-const PrivateRoute = () => {
-  const { session, userRole, loading } = useAuth();
 
-  if (loading) return <div className="h-screen flex items-center justify-center">Loading...</div>;
+// Admin-Only Protected Route
+const AdminRoute = () => {
+  const { session, roleId, loading, signOut } = useAuth();
 
-  // 1. Must be logged in
+  if (loading) return <div className="h-screen flex items-center justify-center bg-slate-900 text-white">Loading...</div>;
+
+  // Must be logged in
   if (!session) return <Navigate to="/login" replace />;
 
-  // 2. (Optional) Check specific roles if needed
-  // if (userRole === 'restricted') return <Navigate to="/unauthorized" replace />;
+  // Must be an admin (role_id = 1)
+  if (roleId !== 1) {
+    // Sign out non-admin users and redirect to login
+    signOut();
+    return <Navigate to="/login" replace />;
+  }
 
-  // 3. Render child routes (Layout > Dashboard etc.)
   return <Outlet />;
 }
 
@@ -43,26 +45,20 @@ function App() {
     <AuthProvider>
       <BrowserRouter>
         <Routes>
-          {/* PUBLIC ROUTES */}
+          {/* PUBLIC: Login only */}
           <Route path="/login" element={<Login />} />
-          <Route path="/signup" element={<Signup />} />
-          <Route path="/unauthorized" element={<Unauthorized />} />
 
-          {/* PROTECTED ROUTES */}
-          <Route element={<PrivateRoute />}>
+          {/* PROTECTED: Admin-only routes */}
+          <Route element={<AdminRoute />}>
             <Route element={<Layout />}>
-
-              {/* Default Path: Redirect to Dashboard */}
               <Route path="/" element={<Dashboard />} />
 
-              {/* Modules */}
               <Route path="/programs" element={<Programs />} />
               <Route path="/programs/:id" element={<ProgramDetails />} />
 
               <Route path="/batches" element={<Batches />} />
               <Route path="/batches/:id" element={<BatchDetails />} />
 
-              {/* Exams Route */}
               <Route path="/exams" element={<Exams />} />
               <Route path="/exams/:id" element={<ExamDetails />} />
 
@@ -78,11 +74,10 @@ function App() {
               <Route path="/students/:id" element={<StudentProfile />} />
 
               <Route path="/enrollment" element={<Enrollment />} />
-              <Route path="/profile" element={<UserProfile />} /> {/* New Route */}
+              <Route path="/profile" element={<UserProfile />} />
 
-              {/* Catch-all: Redirect to Home (which then checks auth) */}
+              {/* Catch-all */}
               <Route path="*" element={<Navigate to="/" replace />} />
-
             </Route>
           </Route>
         </Routes>

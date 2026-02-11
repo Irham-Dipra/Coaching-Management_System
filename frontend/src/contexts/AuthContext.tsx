@@ -7,6 +7,7 @@ type AuthContextType = {
     user: User | null;
     userName: string | null;
     dbUserId: number | null;
+    roleId: number | null;
     userRole: string | null;
     loading: boolean;
     signOut: () => Promise<void>;
@@ -19,31 +20,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [user, setUser] = useState<User | null>(null);
     const [userName, setUserName] = useState<string | null>(null);
     const [dbUserId, setDbUserId] = useState<number | null>(null);
+    const [roleId, setRoleId] = useState<number | null>(null);
     const [userRole, setUserRole] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        // 1. Check active session
         supabase.auth.getSession().then(({ data: { session } }) => {
             setSession(session);
             setUser(session?.user ?? null);
-            if (session?.user?.email) {
-                fetchUserProfile(session.user.email);
+            if (session?.user) {
+                fetchUserProfile(session.user.id);
             } else {
                 setLoading(false);
             }
         });
 
-        // 2. Listen for changes
         const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
             setSession(session);
             setUser(session?.user ?? null);
-            if (session?.user?.email) {
-                fetchUserProfile(session.user.email);
+            if (session?.user) {
+                fetchUserProfile(session.user.id);
             } else {
-                setUserName(null);
-                setDbUserId(null);
-                setUserRole(null);
+                clearProfile();
                 setLoading(false);
             }
         });
@@ -51,41 +49,48 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return () => subscription.unsubscribe();
     }, []);
 
-    const fetchUserProfile = async (email: string) => {
+    const fetchUserProfile = async (authId: string) => {
         try {
             const { data, error } = await supabase
                 .from('users')
-                .select('user_id, role_id, user_name, roles(role_name)')
-                .eq('email', email)
+                .select('user_id, role_id, user_name')
+                .eq('auth_id', authId)
                 .single();
 
-            if (error) {
+            if (error || !data) {
                 console.error("Error fetching user profile:", error);
-            } else if (data) {
+                clearProfile();
+            } else {
                 setUserName(data.user_name);
                 setDbUserId(data.user_id);
+                setRoleId(data.role_id);
 
-                // Resolve role name from joined roles data
-                const r = data.roles as any;
-                const roleName = Array.isArray(r) ? r[0]?.role_name : r?.role_name;
-                setUserRole(roleName?.toLowerCase() || 'unknown');
+                // Map role_id to name (1=Admin, 2=Teacher, 3=Student)
+                const roleMap: { [key: number]: string } = { 1: 'admin', 2: 'teacher', 3: 'student' };
+                setUserRole(roleMap[data.role_id] || 'unknown');
             }
         } catch (err) {
             console.error("Unexpected error fetching profile:", err);
+            clearProfile();
         } finally {
             setLoading(false);
         }
     };
 
-    const signOut = async () => {
-        await supabase.auth.signOut();
+    const clearProfile = () => {
         setUserName(null);
         setDbUserId(null);
+        setRoleId(null);
         setUserRole(null);
     };
 
+    const signOut = async () => {
+        await supabase.auth.signOut();
+        clearProfile();
+    };
+
     return (
-        <AuthContext.Provider value={{ session, user, userName, dbUserId, userRole, loading, signOut }}>
+        <AuthContext.Provider value={{ session, user, userName, dbUserId, roleId, userRole, loading, signOut }}>
             {!loading && children}
         </AuthContext.Provider>
     );

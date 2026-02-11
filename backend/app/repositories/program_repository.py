@@ -57,7 +57,7 @@ class ProgramRepository:
         # We can also fetch students via filtered queries later, but basic batch info first.
         query = """
             *,
-            program(*)
+            programs:program(*)
         """
         response = supabase.table(self.batch_table)\
             .select(query)\

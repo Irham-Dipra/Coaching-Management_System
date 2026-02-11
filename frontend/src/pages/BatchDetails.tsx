@@ -99,53 +99,74 @@ const BatchDetails: React.FC = () => {
                 )}
             </div>
 
-            {/* Content Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Content Stack */}
+            <div className="space-y-8">
 
-                {/* Left Column: Programs */}
-                <div className="lg:col-span-1 space-y-6">
-                    <div className="bg-slate-800/50 backdrop-blur-xl rounded-xl shadow-lg border border-slate-700 p-6">
-                        <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
-                            <Calendar size={20} className="text-purple-400" /> Programs
-                        </h2>
-                        <div className="space-y-3">
-                            {batch.programs && batch.programs.length > 0 ? (
-                                batch.programs.map((prog: any) => (
-                                    <Link key={prog.program_id} to={`/admin/programs/${prog.program_id}`} className="block">
-                                        <div className="p-3 rounded-lg bg-slate-900/50 border border-slate-700 hover:border-purple-500/50 hover:bg-slate-800 transition-all group">
-                                            <h3 className="font-semibold text-slate-200 group-hover:text-purple-400 transition-colors">{prog.program_name}</h3>
-                                            <div className="flex justify-between items-center mt-2">
-                                                <span className="text-xs text-slate-500">
-                                                    Starts: {prog.start_date ? new Date(prog.start_date).toLocaleDateString() : 'TBD'}
-                                                </span>
-                                                <span className="text-xs bg-purple-500/10 text-purple-400 px-2 py-0.5 rounded border border-purple-500/20">
-                                                    View
-                                                </span>
+                {/* Section: Assigned Programs */}
+                <div className="space-y-4">
+                    <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                        <Calendar size={24} className="text-purple-400" /> Assigned Programs
+                    </h2>
+
+                    {batch.programs && batch.programs.length > 0 ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {batch.programs.map((prog: any) => (
+                                <Link key={prog.program_id} to={`/admin/programs/${prog.program_id}`} className="block h-full">
+                                    <div className="h-full bg-slate-800/50 backdrop-blur-xl rounded-xl border border-slate-700 p-6 hover:border-purple-500/50 hover:bg-slate-800 transition-all group shadow-lg flex flex-col justify-between">
+                                        <div>
+                                            <div className="flex justify-between items-start mb-4">
+                                                <div className="w-10 h-10 rounded-lg bg-purple-500/10 text-purple-400 flex items-center justify-center group-hover:bg-purple-500 group-hover:text-white transition-colors">
+                                                    <Briefcase size={20} />
+                                                </div>
+                                                {prog.status && (
+                                                    <span className={`px-2 py-1 rounded text-xs font-semibold ${prog.status === 'Active' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' :
+                                                        'bg-slate-700 text-slate-400 border border-slate-600'
+                                                        }`}>
+                                                        {prog.status}
+                                                    </span>
+                                                )}
                                             </div>
+                                            <h3 className="text-lg font-bold text-slate-200 group-hover:text-white transition-colors mb-2 line-clamp-2">
+                                                {prog.program_name}
+                                            </h3>
                                         </div>
-                                    </Link>
-                                ))
-                            ) : (
-                                <p className="text-slate-500 italic text-sm text-center py-4">No programs in this batch yet.</p>
-                            )}
+
+                                        <div className="mt-4 pt-4 border-t border-slate-700/50 flex justify-between items-center text-sm text-slate-400">
+                                            <span className="flex items-center gap-1.5">
+                                                <Calendar size={14} />
+                                                {prog.start_date ? new Date(prog.start_date).toLocaleDateString() : 'No Start Date'}
+                                            </span>
+                                            <span className="text-purple-400 font-medium text-xs bg-purple-500/10 px-2 py-1 rounded group-hover:bg-purple-500 group-hover:text-white transition-colors">
+                                                View Details →
+                                            </span>
+                                        </div>
+                                    </div>
+                                </Link>
+                            ))}
                         </div>
-                    </div>
+                    ) : (
+                        <div className="bg-slate-800/30 border border-slate-700/50 rounded-xl p-8 text-center">
+                            <Briefcase size={48} className="mx-auto text-slate-600 mb-3" />
+                            <p className="text-slate-400 font-medium">No programs assigned to this batch.</p>
+                            <p className="text-slate-500 text-sm mt-1">Create a program and assign it to this batch to see it here.</p>
+                        </div>
+                    )}
                 </div>
 
-                {/* Right Column: Students */}
-                <div className="lg:col-span-2">
-                    <div className="bg-slate-800/50 backdrop-blur-xl rounded-xl shadow-lg border border-slate-700 overflow-hidden flex flex-col h-full">
-                        <div className="p-6 border-b border-slate-700 flex justify-between items-center bg-slate-800/80">
-                            <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                                <Users size={20} className="text-emerald-400" /> Batch Students
-                            </h2>
-                            <span className="text-xs text-slate-400 bg-slate-900 px-2 py-1 rounded border border-slate-700">
-                                Auto-filtered by Batch ID
-                            </span>
+                {/* Section: Students List */}
+                <div className="space-y-4">
+                    <div className="bg-slate-800/50 backdrop-blur-xl rounded-xl shadow-lg border border-slate-700 overflow-hidden flex flex-col">
+                        <div className="p-6 border-b border-slate-700 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-slate-800/80">
+                            <div>
+                                <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                                    <Users size={24} className="text-emerald-400" /> Student Directory
+                                </h2>
+                                <p className="text-slate-400 text-sm mt-1">Manage all students enrolled in this batch.</p>
+                            </div>
                         </div>
-                        <div className="p-4 flex-1 bg-slate-900/30">
+                        <div className="p-0 bg-slate-900/30">
                             {/* Reusing StudentList with fixedBatchId prop */}
-                            <StudentList fixedBatchId={id} />
+                            <StudentList fixedBatchId={id} hideHeader={true} />
                         </div>
                     </div>
                 </div>

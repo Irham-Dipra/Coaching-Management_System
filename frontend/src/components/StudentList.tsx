@@ -20,9 +20,10 @@ interface Student {
 
 interface StudentListProps {
     fixedBatchId?: string; // Optional: If provided, locks the list to this batch
+    hideHeader?: boolean; // Optional: Hide the top header
 }
 
-const StudentList: React.FC<StudentListProps> = ({ fixedBatchId }) => {
+const StudentList: React.FC<StudentListProps> = ({ fixedBatchId, hideHeader }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [rollSearch, setRollSearch] = useState(''); // New separate search
     const [batchFilter, setBatchFilter] = useState(fixedBatchId || '');
@@ -37,9 +38,6 @@ const StudentList: React.FC<StudentListProps> = ({ fixedBatchId }) => {
     React.useEffect(() => {
         if (searchParams.get('action') === 'new') {
             setIsModalOpen(true);
-            // Clear param to prevent reopening on refresh? 
-            // Or keep it? Standard UX: usually consume it.
-            // But setSearchParams might re-trigger render.
             setSearchParams(params => {
                 params.delete('action');
                 return params;
@@ -133,36 +131,40 @@ const StudentList: React.FC<StudentListProps> = ({ fixedBatchId }) => {
     return (
         <div className="space-y-6">
             {/* HEADER & ACTIONS */}
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 animate-fade-in">
-                <div>
-                    <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-400">
-                        Student Directory
-                    </h1>
-                    <p className="text-slate-400 text-sm mt-1">{filteredStudents.length} Students Found</p>
+            {!hideHeader && (
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 animate-fade-in">
+                    <div>
+                        <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-400">
+                            Student Directory
+                        </h1>
+                        <p className="text-slate-400 text-sm mt-1">{filteredStudents.length} Students Found</p>
+                    </div>
                 </div>
-                <div className="flex gap-3">
-                    <button
-                        onClick={handleExport}
-                        className="bg-slate-800 border border-slate-700 text-slate-300 px-4 py-2.5 rounded-xl flex items-center gap-2 hover:bg-slate-700 hover:text-white transition-all shadow-lg"
-                    >
-                        <Download size={18} />
-                        <span className="hidden md:inline font-medium">Export</span>
-                    </button>
-                    <button
-                        onClick={() => setIsImportModalOpen(true)}
-                        className="bg-emerald-600 text-white px-4 py-2.5 rounded-xl flex items-center gap-2 hover:bg-emerald-500 shadow-lg shadow-emerald-500/20 transition-all hover:-translate-y-0.5"
-                    >
-                        <Upload size={18} />
-                        <span className="hidden md:inline font-bold">Import</span>
-                    </button>
-                    <button
-                        onClick={() => setIsModalOpen(true)}
-                        className="bg-blue-600 text-white px-4 py-2.5 rounded-xl flex items-center gap-2 hover:bg-blue-500 shadow-lg shadow-blue-500/20 transition-all hover:-translate-y-0.5"
-                    >
-                        <Plus size={18} />
-                        <span className="hidden md:inline font-bold">Add Student</span>
-                    </button>
-                </div>
+            )}
+
+            {/* ACTIONS ROW (Always Visible or grouped?) - Let's keep actions visible but maybe aligned differently if header hidden */}
+            <div className={`flex justify-end gap-3 ${hideHeader ? 'mb-4' : ''}`}>
+                <button
+                    onClick={handleExport}
+                    className="bg-slate-800 border border-slate-700 text-slate-300 px-4 py-2.5 rounded-xl flex items-center gap-2 hover:bg-slate-700 hover:text-white transition-all shadow-lg"
+                >
+                    <Download size={18} />
+                    <span className="hidden md:inline font-medium">Export</span>
+                </button>
+                <button
+                    onClick={() => setIsImportModalOpen(true)}
+                    className="bg-emerald-600 text-white px-4 py-2.5 rounded-xl flex items-center gap-2 hover:bg-emerald-500 shadow-lg shadow-emerald-500/20 transition-all hover:-translate-y-0.5"
+                >
+                    <Upload size={18} />
+                    <span className="hidden md:inline font-bold">Import</span>
+                </button>
+                <button
+                    onClick={() => setIsModalOpen(true)}
+                    className="bg-blue-600 text-white px-4 py-2.5 rounded-xl flex items-center gap-2 hover:bg-blue-500 shadow-lg shadow-blue-500/20 transition-all hover:-translate-y-0.5"
+                >
+                    <Plus size={18} />
+                    <span className="hidden md:inline font-bold">Add Student</span>
+                </button>
             </div>
 
             {/* FILTERS BAR */}
@@ -238,7 +240,6 @@ const StudentList: React.FC<StudentListProps> = ({ fixedBatchId }) => {
                                 <th className="p-4 border-b border-slate-700/50">Student Name</th>
                                 <th className="p-4 border-b border-slate-700/50">Enrolled Programs (Roll)</th>
                                 <th className="p-4 border-b border-slate-700/50">Father's Name</th>
-                                {/* <th className="p-4 border-b">Roll No</th> REMOVED */}
                                 <th className="p-4 border-b border-slate-700/50">Class</th>
                                 <th className="p-4 border-b border-slate-700/50">School</th>
                                 <th className="p-4 border-b border-slate-700/50">Contact</th>
@@ -250,7 +251,11 @@ const StudentList: React.FC<StudentListProps> = ({ fixedBatchId }) => {
                                 filteredStudents.map((student: Student) => (
                                     <tr key={student.student_id} className="hover:bg-slate-700/30 transition-colors group">
                                         <td className="p-4 text-slate-500 text-sm">#{student.student_id}</td>
-                                        <td className="p-4 font-bold text-slate-200">{student.name}</td>
+                                        <td className="p-4 font-bold text-slate-200">
+                                            <Link to={`/students/${student.student_id}`} className="hover:text-blue-400 transition-colors">
+                                                {student.name}
+                                            </Link>
+                                        </td>
                                         <td className="p-4">
                                             <div className="flex flex-col gap-1.5">
                                                 {student.enrollment?.map((enroll, idx) => (
@@ -262,7 +267,6 @@ const StudentList: React.FC<StudentListProps> = ({ fixedBatchId }) => {
                                             </div>
                                         </td>
                                         <td className="p-4 text-slate-400 text-sm">{student.fathers_name || '-'}</td>
-                                        {/* <td className="p-4 text-gray-600 font-mono text-sm">{student.roll_no}</td> REMOVED */}
                                         <td className="p-4">
                                             <span className="bg-blue-500/10 text-blue-400 px-2.5 py-1 rounded-md text-xs font-bold border border-blue-500/20">
                                                 Class {student.class}
@@ -294,7 +298,7 @@ const StudentList: React.FC<StudentListProps> = ({ fixedBatchId }) => {
                 </div>
             </div>
 
-            {/* MODAL */}
+            {/* MODALS */}
             <CreateStudentModal
                 isOpen={isModalOpen}
                 onClose={() => setIsModalOpen(false)}

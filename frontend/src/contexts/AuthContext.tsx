@@ -53,7 +53,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const fetchUserProfile = async (email: string) => {
         try {
-            // Fallback to query by email since auth_id is missing in current DB schema
             const { data, error } = await supabase
                 .from('users')
                 .select('user_id, role_id, user_name, roles(role_name)')
@@ -63,10 +62,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             if (error) {
                 console.error("Error fetching user profile:", error);
             } else if (data) {
-                const roleName = (data.roles as any)?.role_name || 'student';
                 setUserName(data.user_name);
                 setDbUserId(data.user_id);
-                setUserRole(roleName.toLowerCase());
+
+                // Resolve role name from joined roles data
+                const r = data.roles as any;
+                const roleName = Array.isArray(r) ? r[0]?.role_name : r?.role_name;
+                setUserRole(roleName?.toLowerCase() || 'unknown');
             }
         } catch (err) {
             console.error("Unexpected error fetching profile:", err);

@@ -352,7 +352,7 @@ const ProgramDetails: React.FC = () => {
                                         const exam = pe.exam;
                                         if (!exam) return null;
                                         return (
-                                            <div key={exam.exam_id} className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-5 hover:border-blue-500/30 transition-all group">
+                                            <div key={exam.exam_id} className="relative bg-slate-800/50 border border-slate-700/50 rounded-xl p-5 hover:border-blue-500/30 transition-all group">
                                                 <div className="flex justify-between items-start mb-3">
                                                     <div className="p-2 bg-blue-500/10 rounded-lg text-blue-400 group-hover:bg-blue-500 group-hover:text-white transition-colors">
                                                         <Award size={20} />

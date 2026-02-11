@@ -20,8 +20,8 @@ import Login from './pages/Login';
 import Signup from './pages/Signup';
 import Unauthorized from './pages/Unauthorized';
 import UserProfile from './pages/UserProfile'; // Import
+import Enrollment from './pages/Enrollment';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
-
 // Protected Route Wrapper
 const PrivateRoute = () => {
   const { session, userRole, loading } = useAuth();
@@ -77,6 +77,7 @@ function App() {
               <Route path="/students" element={<StudentList />} />
               <Route path="/students/:id" element={<StudentProfile />} />
 
+              <Route path="/enrollment" element={<Enrollment />} />
               <Route path="/profile" element={<UserProfile />} /> {/* New Route */}
 
               {/* Catch-all: Redirect to Home (which then checks auth) */}

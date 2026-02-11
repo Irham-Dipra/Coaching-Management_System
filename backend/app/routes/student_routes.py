@@ -4,6 +4,7 @@ from app.schemas.student import StudentCreate
 from app.repositories.enrollment_repository import EnrollmentRepository
 from app.repositories.payment_repository import PaymentRepository
 from app.schemas.enrollment import EnrollmentCreate, EnrollmentResponse
+from app.schemas.student import StudentCreate, StudentEnrollmentRequest
 
 # 1. Create a Router (like a mini-app for students)
 router = APIRouter()
@@ -24,6 +25,13 @@ def get_students():
 def create_student(student: StudentCreate):
     # FastAPI automatically validates 'student' against your Pydantic rules here!
     return repo.enroll_new_student(student)
+
+@router.post("/students/register-with-enrollment")
+def register_student_with_enrollment(request: StudentEnrollmentRequest):
+    try:
+        return repo.register_student_with_enrollment(request.student, request.program_ids)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 @router.get("/students/{student_id}")
 def get_student(student_id: int):

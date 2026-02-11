@@ -9,7 +9,8 @@ import {
     CreditCard,
     Settings,
     Calendar,
-    Layers
+    Layers,
+    UserPlus
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -27,7 +28,7 @@ const Layout: React.FC = () => {
         { label: 'Exams', path: '/exams', icon: <ClipboardCheck size={20} /> },
         { type: 'divider', label: 'User Directory' },
         { label: 'Students', path: '/students', icon: <GraduationCap size={20} /> },
-        { label: 'Teachers', path: '/teachers', icon: <Users size={20} /> },
+        { label: 'Enrollment', path: '/enrollment', icon: <UserPlus size={20} /> },
         { type: 'divider', label: 'Operations' },
         { label: 'Scheduling', path: '/admin/scheduling', icon: <Calendar size={20} /> },
         { label: 'Attendance', path: '/attendance', icon: <ClipboardCheck size={20} /> },

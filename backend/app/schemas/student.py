@@ -36,3 +36,7 @@ class StudentCreate(BaseModel):
     fathers_name: Optional[str] = None
     school: Optional[str] = None
     contact: Optional[str] = None
+
+class StudentEnrollmentRequest(BaseModel):
+    student: StudentCreate
+    program_ids: list[int]

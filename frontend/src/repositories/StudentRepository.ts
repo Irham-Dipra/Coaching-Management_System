@@ -126,7 +126,22 @@ export const StudentRepository = {
     return await response.json();
   },
 
-  // 10. Get Financial Summary
+  // 10. Register Student with Enrollment (Atomic)
+  async registerStudentWithEnrollment(data: { student: any, program_ids: number[] }) {
+    const response = await fetch(`${API_BASE_URL}/students/register-with-enrollment`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      const err = await response.json().catch(() => ({ detail: "Failed to register student" }));
+      throw new Error(err.detail || "Failed to register student");
+    }
+    return await response.json();
+  },
+
+  // 11. Get Financial Summary
   async getFinancialSummary(studentId: string) {
     const response = await fetch(`${API_BASE_URL}/students/${studentId}/financial-summary`);
     if (!response.ok) throw new Error("Failed to fetch financial summary");

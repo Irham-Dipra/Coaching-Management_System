@@ -78,3 +78,19 @@ class StudentRepository:
             .eq("student_id", student_id)\
             .execute()
         return response.data[0] if response.data else None
+
+    def register_student_with_enrollment(self, student_data: StudentCreate, program_ids: list[int]):
+        # Convert Pydantic object to a dictionary
+        data_dict = student_data.dict()
+        
+        # FIX: The database column is named "class", but our Pydantic field is "class_grade"
+        if 'class_grade' in data_dict:
+            data_dict['class_grade'] = data_dict.pop('class_grade') # RPC expects 'class_grade' key for logic inside
+
+        # Call the RPC
+        response = supabase.rpc('register_student_with_enrollment', {
+            'p_student_data': data_dict,
+            'p_program_ids': program_ids
+        }).execute()
+        
+        return response.data

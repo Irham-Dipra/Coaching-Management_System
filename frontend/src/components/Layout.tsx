@@ -16,6 +16,7 @@ import { useAuth } from '../contexts/AuthContext';
 const Layout: React.FC = () => {
     const location = useLocation();
     const { user, userName, userRole } = useAuth();
+    const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
 
     // Navigation Items Configuration
     const navItems = [
@@ -39,23 +40,42 @@ const Layout: React.FC = () => {
     const displayName = userName || user?.user_metadata?.full_name || 'User';
 
     return (
-        <div className="flex h-screen bg-gray-100">
+        <div className="flex h-screen bg-slate-900 text-slate-100 font-sans selection:bg-blue-500/30">
+            {/* MOBILE OVERLAY */}
+            {isMobileMenuOpen && (
+                <div
+                    className="fixed inset-0 bg-black/60 z-20 backdrop-blur-sm lg:hidden animate-fade-in"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                />
+            )}
+
             {/* SIDEBAR */}
-            <aside className="w-64 bg-white shadow-md flex flex-col">
-                <div className="p-6 border-b">
-                    <Link to="/" className="block">
-                        <h1 className="text-xl font-bold text-blue-600 leading-tight">Science Point</h1>
-                        <p className="text-sm font-semibold text-gray-600">by Dr. Talha</p>
+            <aside
+                className={`
+                    fixed lg:static inset-y-0 left-0 z-30 w-64 
+                    bg-slate-900 border-r border-slate-800 
+                    transform transition-transform duration-300 ease-in-out
+                    ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+                    flex flex-col shadow-2xl
+                `}
+            >
+                {/* Brand */}
+                <div className="p-6 border-b border-slate-800/50 bg-slate-900/50 backdrop-blur-md sticky top-0 z-10">
+                    <Link to="/" className="block group">
+                        <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-400 group-hover:from-blue-300 group-hover:to-purple-300 transition-all">
+                            Science Point
+                        </h1>
+                        <p className="text-xs font-semibold text-slate-500 tracking-wider uppercase mt-1">by Dr. Talha</p>
                     </Link>
-                    <p className="text-xs text-gray-500 mt-1">Admin Console</p>
                 </div>
 
-                <nav className="flex-1 overflow-y-auto py-4">
-                    <ul>
+                {/* Nav */}
+                <nav className="flex-1 overflow-y-auto py-6 px-3 scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent">
+                    <ul className="space-y-1">
                         {navItems.map((item, index) => {
                             if (item.type === 'divider') {
                                 return (
-                                    <li key={index} className="px-6 py-2 mt-2 text-xs font-semibold text-gray-400 uppercase tracking-wider">
+                                    <li key={index} className="px-4 py-3 mt-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest">
                                         {item.label}
                                     </li>
                                 );
@@ -66,12 +86,18 @@ const Layout: React.FC = () => {
                                 <li key={index}>
                                     <Link
                                         to={item.path!}
-                                        className={`flex items-center px-6 py-3 text-sm font-medium transition-colors ${isActive
-                                            ? 'bg-blue-50 text-blue-600 border-r-4 border-blue-600'
-                                            : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                                            }`}
+                                        onClick={() => setIsMobileMenuOpen(false)}
+                                        className={`
+                                            flex items-center px-4 py-3 rounded-xl text-sm font-medium transition-all duration-200 group
+                                            ${isActive
+                                                ? 'bg-blue-600/10 text-blue-400 border border-blue-600/20 shadow-lg shadow-blue-500/5'
+                                                : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800/50 hover:translate-x-1'
+                                            }
+                                        `}
                                     >
-                                        <span className="mr-3">{item.icon}</span>
+                                        <span className={`mr-3 transition-colors ${isActive ? 'text-blue-400' : 'text-slate-500 group-hover:text-slate-300'}`}>
+                                            {item.icon}
+                                        </span>
                                         {item.label}
                                     </Link>
                                 </li>
@@ -80,33 +106,46 @@ const Layout: React.FC = () => {
                     </ul>
                 </nav>
 
-                <Link to="/profile" className="p-4 border-t hover:bg-gray-50 transition cursor-pointer block">
-                    <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold uppercase">
-                            {(displayName?.[0] || user?.email?.[0] || 'U')}
+                {/* User Profile Snippet */}
+                <div className="p-4 border-t border-slate-800/50 bg-slate-900/30">
+                    <Link to="/profile" className="flex items-center gap-3 p-2 rounded-xl hover:bg-slate-800/50 transition-colors group">
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 p-[1px]">
+                            <div className="w-full h-full rounded-full bg-slate-900 flex items-center justify-center">
+                                <span className="text-blue-400 font-bold text-sm">
+                                    {(displayName?.[0] || user?.email?.[0] || 'U').toUpperCase()}
+                                </span>
+                            </div>
                         </div>
                         <div className="overflow-hidden">
-                            <p className="text-sm font-medium truncate">{displayName}</p>
-                            <p className="text-xs text-gray-500 truncate">{user?.email}</p>
-                            <p className="text-[10px] text-gray-400 uppercase mt-0.5">{userRole}</p>
+                            <p className="text-sm font-medium text-slate-200 truncate group-hover:text-white transition-colors">{displayName}</p>
+                            <p className="text-[10px] text-slate-500 uppercase tracking-wider">{userRole || 'Admin'}</p>
                         </div>
-                    </div>
-                </Link>
+                    </Link>
+                </div>
             </aside>
 
             {/* MAIN CONTENT AREA */}
-            <main className="flex-1 overflow-auto">
-                <header className="bg-white shadow-sm p-4 flex justify-between items-center sticky top-0 z-10">
-                    <h2 className="text-lg font-semibold text-gray-800">
+            <main className="flex-1 overflow-x-hidden overflow-y-auto bg-slate-900 relative">
+                {/* Background Gradients */}
+                <div className="fixed inset-0 pointer-events-none">
+                    <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-blue-500/5 rounded-full blur-3xl -mr-20 -mt-20"></div>
+                    <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-purple-500/5 rounded-full blur-3xl -ml-20 -mb-20"></div>
+                </div>
+
+                {/* Mobile Header */}
+                <header className="lg:hidden bg-slate-900/80 backdrop-blur-md border-b border-slate-800 p-4 sticky top-0 z-20 flex justify-between items-center">
+                    <h2 className="text-lg font-bold text-slate-100">
                         {navItems.find(i => i.path === location.pathname)?.label || 'Overview'}
                     </h2>
-                    <div className="flex gap-2">
-                        {/* Header Actions (Search, Notifs) go here */}
-                    </div>
+                    <button
+                        onClick={() => setIsMobileMenuOpen(true)}
+                        className="p-2 text-slate-400 hover:text-white bg-slate-800 rounded-lg"
+                    >
+                        <LayoutDashboard size={20} />
+                    </button>
                 </header>
 
-                <div className="p-6">
-                    {/* This is where the page content will appear */}
+                <div className="relative p-4 lg:p-8 max-w-7xl mx-auto min-h-full">
                     <Outlet />
                 </div>
             </main>

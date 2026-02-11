@@ -15,28 +15,28 @@ const Scheduling: React.FC = () => {
     const { data: windows } = useQuery({ queryKey: ['windows'], queryFn: ScheduleRepository.getAllWindows });
 
     return (
-        <div className="space-y-6">
-            <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-                <Calendar className="text-blue-600" /> Class Scheduling
+        <div className="space-y-6 animate-in fade-in duration-300">
+            <h1 className="text-3xl font-bold text-white flex items-center gap-3">
+                <Calendar className="text-blue-500" size={32} /> Class Scheduling
             </h1>
 
             {/* TABS */}
-            <div className="flex border-b">
+            <div className="flex border-b border-slate-700">
                 <button
                     onClick={() => setActiveTab('rooms')}
-                    className={`px-6 py-3 font-medium text-sm border-b-2 transition-colors ${activeTab === 'rooms' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+                    className={`px-6 py-3 font-medium text-sm border-b-2 transition-colors ${activeTab === 'rooms' ? 'border-blue-500 text-blue-400' : 'border-transparent text-slate-400 hover:text-slate-200 hover:border-slate-600'}`}
                 >
                     Room Manager
                 </button>
                 <button
                     onClick={() => setActiveTab('schedule')}
-                    className={`px-6 py-3 font-medium text-sm border-b-2 transition-colors ${activeTab === 'schedule' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'}`}
+                    className={`px-6 py-3 font-medium text-sm border-b-2 transition-colors ${activeTab === 'schedule' ? 'border-blue-500 text-blue-400' : 'border-transparent text-slate-400 hover:text-slate-200 hover:border-slate-600'}`}
                 >
                     Master Schedule
                 </button>
             </div>
 
-            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 min-h-[500px]">
+            <div className="bg-slate-800 rounded-2xl shadow-xl border border-slate-700 p-6 min-h-[500px]">
                 {activeTab === 'rooms' ? (
                     <RoomManager rooms={rooms || []} />
                 ) : (
@@ -74,34 +74,34 @@ const RoomManager: React.FC<{ rooms: Room[] }> = ({ rooms }) => {
 
     return (
         <div className="max-w-2xl">
-            <h3 className="text-lg font-bold text-gray-800 mb-4">Physical Classrooms</h3>
+            <h3 className="text-lg font-bold text-white mb-4">Physical Classrooms</h3>
 
             {/* ADD FORM */}
-            <div className="flex gap-4 mb-8 items-end bg-gray-50 p-4 rounded-lg">
+            <div className="flex gap-4 mb-8 items-end bg-slate-900/50 p-4 rounded-xl border border-slate-700/50">
                 <div className="flex-1">
-                    <label className="block text-xs font-bold text-gray-500 mb-1">Room Name</label>
+                    <label className="block text-xs font-bold text-slate-400 mb-1">Room Name</label>
                     <input
                         type="text"
                         value={newRoomName}
                         onChange={e => setNewRoomName(e.target.value)}
                         placeholder="e.g. Mars, Room 101"
-                        className="w-full p-2 border rounded"
+                        className="w-full p-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:ring-2 focus:ring-blue-500 outline-none"
                     />
                 </div>
                 <div className="w-32">
-                    <label className="block text-xs font-bold text-gray-500 mb-1">Capacity</label>
+                    <label className="block text-xs font-bold text-slate-400 mb-1">Capacity</label>
                     <input
                         type="number"
                         value={newCapacity}
                         onChange={e => setNewCapacity(e.target.value)}
                         placeholder="Opt."
-                        className="w-full p-2 border rounded"
+                        className="w-full p-2 bg-slate-800 border border-slate-700 rounded-lg text-white placeholder-slate-500 focus:ring-2 focus:ring-blue-500 outline-none"
                     />
                 </div>
                 <button
                     onClick={() => createMutation.mutate()}
                     disabled={!newRoomName}
-                    className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-50 font-medium"
+                    className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-500 disabled:opacity-50 font-medium transition-colors"
                 >
                     Add Room
                 </button>
@@ -110,14 +110,14 @@ const RoomManager: React.FC<{ rooms: Room[] }> = ({ rooms }) => {
             {/* LIST */}
             <div className="grid gap-3">
                 {rooms.map(room => (
-                    <div key={room.room_id} className="flex justify-between items-center p-4 border rounded hover:bg-gray-50 bg-white group">
+                    <div key={room.room_id} className="flex justify-between items-center p-4 border border-slate-700 rounded-xl hover:bg-slate-700/30 bg-slate-800/50 transition-colors group">
                         <Link to={`/admin/scheduling/rooms/${room.room_id}`} className="flex items-center gap-3 flex-1">
-                            <div className="w-10 h-10 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center group-hover:bg-blue-200 transition-colors">
+                            <div className="w-10 h-10 bg-slate-700 text-blue-400 rounded-full flex items-center justify-center group-hover:bg-blue-500/20 group-hover:text-blue-300 transition-colors">
                                 <MapPin size={20} />
                             </div>
                             <div>
-                                <p className="font-bold text-gray-800 group-hover:text-blue-700 transition-colors">{room.room_name}</p>
-                                {room.capacity && <p className="text-xs text-gray-500">Capacity: {room.capacity} students</p>}
+                                <p className="font-bold text-slate-200 group-hover:text-blue-400 transition-colors">{room.room_name}</p>
+                                {room.capacity && <p className="text-xs text-slate-500">Capacity: {room.capacity} students</p>}
                             </div>
                         </Link>
                         <button
@@ -125,13 +125,13 @@ const RoomManager: React.FC<{ rooms: Room[] }> = ({ rooms }) => {
                                 e.preventDefault(); // Prevent navigation
                                 if (confirm('Delete room?')) deleteMutation.mutate(room.room_id)
                             }}
-                            className="text-gray-400 hover:text-red-500 hover:bg-red-50 p-2 rounded transition-colors"
+                            className="text-slate-500 hover:text-red-400 hover:bg-red-500/10 p-2 rounded-lg transition-colors"
                         >
                             <Trash2 size={18} />
                         </button>
                     </div>
                 ))}
-                {rooms.length === 0 && <p className="text-gray-400 italic text-center p-4">No rooms added yet.</p>}
+                {rooms.length === 0 && <p className="text-slate-500 italic text-center p-4">No rooms added yet.</p>}
             </div>
         </div>
     );
@@ -215,24 +215,24 @@ const MasterSchedule: React.FC<{
 
     return (
         <div className="space-y-6">
-            <div className="flex justify-between items-center bg-white p-4 rounded-xl border shadow-sm">
-                <div className="flex gap-2 bg-gray-100 p-1 rounded-lg">
+            <div className="flex justify-between items-center bg-slate-800 p-4 rounded-xl border border-slate-700 shadow-sm">
+                <div className="flex gap-2 bg-slate-900/50 p-1 rounded-lg border border-slate-700">
                     <button
                         onClick={() => setViewMode('list')}
-                        className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${viewMode === 'list' ? 'bg-white shadow text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
+                        className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${viewMode === 'list' ? 'bg-slate-700 shadow text-blue-400' : 'text-slate-500 hover:text-slate-300'}`}
                     >
                         List View
                     </button>
                     <button
                         onClick={() => setViewMode('grid')}
-                        className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${viewMode === 'grid' ? 'bg-white shadow text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
+                        className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${viewMode === 'grid' ? 'bg-slate-700 shadow text-blue-400' : 'text-slate-500 hover:text-slate-300'}`}
                     >
                         Grid View (Occupancy)
                     </button>
                 </div>
                 <button
                     onClick={() => setIsCreateOpen(true)}
-                    className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 font-medium shadow-sm transition-transform hover:scale-105 active:scale-95"
+                    className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-500 font-medium shadow-sm transition-transform hover:scale-105 active:scale-95 border border-transparent"
                 >
                     <Plus size={18} /> Add Time Slot
                 </button>
@@ -245,20 +245,17 @@ const MasterSchedule: React.FC<{
                         const dayWindows = windows?.filter((w: any) => w.day_of_week === day)
                             .sort((a: any, b: any) => a.start_time.localeCompare(b.start_time));
 
-                        // We show the day header even if empty? User said "If a specific day has no scheduled windows, show a 'No classes scheduled' placeholder."
-                        // Current map returns null if empty. Let's change this.
-
                         return (
-                            <div key={day} className="bg-white rounded-xl border border-gray-200 overflow-hidden shadow-sm flex flex-col h-full">
-                                <div className="bg-gray-50 px-4 py-3 border-b flex justify-between items-center">
-                                    <h3 className="font-bold text-gray-800">{day}</h3>
-                                    <span className="text-xs font-semibold bg-gray-200 text-gray-600 px-2 py-1 rounded-full">
+                            <div key={day} className="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden shadow-sm flex flex-col h-full">
+                                <div className="bg-slate-900/50 px-4 py-3 border-b border-slate-700 flex justify-between items-center">
+                                    <h3 className="font-bold text-slate-200">{day}</h3>
+                                    <span className="text-xs font-semibold bg-slate-700 text-slate-300 px-2 py-1 rounded-full border border-slate-600">
                                         {dayWindows?.length || 0} Slots
                                     </span>
                                 </div>
-                                <div className="divide-y divide-gray-100 flex-1">
+                                <div className="divide-y divide-slate-700/50 flex-1">
                                     {(!dayWindows || dayWindows.length === 0) ? (
-                                        <div className="p-8 text-center text-gray-400 italic text-sm">No classes scheduled</div>
+                                        <div className="p-8 text-center text-slate-500 italic text-sm">No classes scheduled</div>
                                     ) : (
                                         dayWindows.map((w: any) => {
                                             // Handling Data Structure Compatibility (View vs Join)
@@ -266,38 +263,38 @@ const MasterSchedule: React.FC<{
 
                                             return (
                                                 <div key={w.window_id} className="relative group">
-                                                    <Link to={`/admin/scheduling/${w.window_id}`} className="block p-4 hover:bg-gray-50 flex justify-between items-start transition-colors">
+                                                    <Link to={`/admin/scheduling/${w.window_id}`} className="block p-4 hover:bg-slate-700/30 flex justify-between items-start transition-colors">
                                                         <div className="flex-1">
                                                             <div className="flex items-center gap-2 mb-1">
                                                                 <Clock size={16} className="text-blue-500" />
-                                                                <span className="font-mono font-bold text-lg text-gray-900">
+                                                                <span className="font-mono font-bold text-lg text-white">
                                                                     {formatTime(w.start_time)} - {formatTime(w.end_time)}
                                                                 </span>
                                                                 {w.window_name && (
-                                                                    <span className="ml-2 px-2 py-0.5 bg-yellow-100 text-yellow-800 text-xs font-bold rounded border border-yellow-200">
+                                                                    <span className="ml-2 px-2 py-0.5 bg-yellow-500/10 text-yellow-400 text-xs font-bold rounded border border-yellow-500/20">
                                                                         {w.window_name}
                                                                     </span>
                                                                 )}
                                                             </div>
-                                                            <div className="flex flex-wrap items-center gap-2 text-sm text-gray-500 mt-2">
-                                                                <span className="flex items-center gap-1 bg-blue-50 text-blue-700 px-2 py-0.5 rounded border border-blue-100">
+                                                            <div className="flex flex-wrap items-center gap-2 text-sm text-slate-400 mt-2">
+                                                                <span className="flex items-center gap-1 bg-blue-500/10 text-blue-400 px-2 py-0.5 rounded border border-blue-500/20">
                                                                     <MapPin size={12} /> {w.room?.room_name || w.room_name || 'No Room'}
                                                                 </span>
 
                                                                 {/* Student Count Badge */}
-                                                                <span className="flex items-center gap-1 bg-green-50 text-green-700 px-2 py-0.5 rounded border border-green-200" title="Active Students Enrolled">
+                                                                <span className="flex items-center gap-1 bg-emerald-500/10 text-emerald-400 px-2 py-0.5 rounded border border-emerald-500/20" title="Active Students Enrolled">
                                                                     <span className="font-bold">{w.student_count || 0}</span> Students
                                                                 </span>
 
                                                                 {/* Assigned Programs */}
                                                                 {displayPrograms.map((p: any) => (
-                                                                    <span key={p.program_id} className="bg-purple-100 text-purple-700 px-2 py-0.5 rounded text-xs border border-purple-200">
+                                                                    <span key={p.program_id} className="bg-purple-500/10 text-purple-400 px-2 py-0.5 rounded text-xs border border-purple-500/20">
                                                                         {p.program_name}
                                                                     </span>
                                                                 ))}
 
                                                                 {displayPrograms.length === 0 && (
-                                                                    <span className="text-xs italic text-orange-400 flex items-center gap-1">
+                                                                    <span className="text-xs italic text-amber-500/80 flex items-center gap-1">
                                                                         <AlertCircle size={10} /> Unassigned
                                                                     </span>
                                                                 )}
@@ -309,7 +306,7 @@ const MasterSchedule: React.FC<{
                                                             e.preventDefault();
                                                             if (confirm('Delete schedule window?')) deleteMutation.mutate(w.window_id);
                                                         }}
-                                                        className="absolute top-4 right-4 text-gray-300 hover:text-red-500 hover:bg-red-50 p-2 rounded-full transition-colors z-10"
+                                                        className="absolute top-4 right-4 text-slate-600 hover:text-red-400 hover:bg-red-500/10 p-2 rounded-full transition-colors z-10"
                                                     >
                                                         <Trash2 size={18} />
                                                     </button>
@@ -326,24 +323,24 @@ const MasterSchedule: React.FC<{
 
             {/* GRID VIEW */}
             {viewMode === 'grid' && (
-                <div className="bg-white rounded-xl border shadow-sm p-6 overflow-x-auto">
+                <div className="bg-slate-800 rounded-xl border border-slate-700 shadow-sm p-6 overflow-x-auto">
                     <div className="flex items-center gap-4 mb-6">
-                        <label className="font-bold text-gray-700">Select Day:</label>
+                        <label className="font-bold text-slate-300">Select Day:</label>
                         <select
                             value={gridDay}
                             onChange={(e) => setGridDay(e.target.value)}
-                            className="border rounded-md px-3 py-1.5 font-medium text-gray-800"
+                            className="bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 font-medium text-white focus:ring-2 focus:ring-blue-500 outline-none"
                         >
-                            {DAYS.map(d => <option key={d} value={d}>{d}</option>)}
+                            {DAYS.map(d => <option key={d} value={d} className="bg-slate-900">{d}</option>)}
                         </select>
                     </div>
 
                     <table className="min-w-full text-center border-collapse">
                         <thead>
                             <tr>
-                                <th className="p-3 border bg-gray-50 text-xs uppercase text-gray-500 w-24">Time</th>
+                                <th className="p-3 border border-slate-700 bg-slate-900/50 text-xs uppercase text-slate-500 w-24">Time</th>
                                 {rooms?.map((r: any) => (
-                                    <th key={r.room_id} className="p-3 border bg-gray-50 text-xs uppercase text-gray-700">
+                                    <th key={r.room_id} className="p-3 border border-slate-700 bg-slate-900/50 text-xs uppercase text-slate-300">
                                         {r.room_name} ({r.capacity || '-'})
                                     </th>
                                 ))}
@@ -358,7 +355,7 @@ const MasterSchedule: React.FC<{
 
                                 return (
                                     <tr key={hour}>
-                                        <th className="p-3 border bg-gray-50 text-xs font-mono text-gray-500 whitespace-nowrap">{timeLabel}</th>
+                                        <th className="p-3 border border-slate-700 bg-slate-900/30 text-xs font-mono text-slate-500 whitespace-nowrap">{timeLabel}</th>
                                         {rooms?.map((r: any) => {
                                             // Robust start time check using integer hour
                                             const slot = windows?.find((w: any) => {
@@ -372,22 +369,18 @@ const MasterSchedule: React.FC<{
                                                 if (w.room_id !== r.room_id || w.day_of_week !== gridDay) return false;
                                                 const startH = parseInt(w.start_time.split(':')[0]);
                                                 const endH = parseInt(w.end_time.split(':')[0]);
-                                                // If class is 8:30-9:30, it occupies 8 and 9 slots? 
-                                                // Simplified: If starts in this hour or runs through it.
-                                                // Current logic: occupies [startH, endH).
                                                 return hour >= startH && hour < endH;
                                             });
 
                                             return (
-                                                <td key={r.room_id} className={`border p-1 h-20 relative align-top transition-colors ${occupied ? 'bg-blue-50/30' : 'hover:bg-gray-50'}`}>
+                                                <td key={r.room_id} className={`border border-slate-700 p-1 h-20 relative align-top transition-colors ${occupied ? 'bg-blue-500/10' : 'hover:bg-slate-700/30'}`}>
                                                     {slot && (
-                                                        <div className="absolute inset-x-1 top-1 bottom-1 bg-blue-100 border-l-4 border-blue-500 rounded p-1.5 text-left overflow-y-auto shadow-sm z-10 hover:shadow-md group">
-                                                            <div className="font-bold text-xs text-blue-900 mb-0.5 leading-tight">
+                                                        <div className="absolute inset-x-1 top-1 bottom-1 bg-blue-600/20 border-l-4 border-blue-500 rounded p-1.5 text-left overflow-y-auto shadow-sm z-10 hover:shadow-md hover:bg-blue-600/30 group transition-all">
+                                                            <div className="font-bold text-xs text-blue-100 mb-0.5 leading-tight">
                                                                 {slot.window_name || 'Class'}
                                                             </div>
-                                                            <div className="text-[10px] text-blue-700 font-medium mb-1">
+                                                            <div className="text-[10px] text-blue-300 font-medium mb-1">
                                                                 {(() => {
-                                                                    // Format time range: 14:00:00 -> 2:00 PM
                                                                     const format = (t: string) => {
                                                                         const [h, m] = t.split(':');
                                                                         const hi = parseInt(h);
@@ -398,18 +391,18 @@ const MasterSchedule: React.FC<{
                                                                     return `${format(slot.start_time)} - ${format(slot.end_time)}`;
                                                                 })()}
                                                             </div>
-                                                            <div className="text-[10px] text-blue-800 leading-tight">
+                                                            <div className="text-[10px] text-blue-200 leading-tight">
                                                                 {/* Handle flat programs or nested */}
                                                                 {(() => {
                                                                     const progs = slot.programs || slot.program_schedule?.map((ps: any) => ps.program) || [];
-                                                                    if (progs.length === 0) return <span className="text-gray-400 italic">Unassigned</span>;
+                                                                    if (progs.length === 0) return <span className="text-slate-400 italic">Unassigned</span>;
                                                                     return progs.map((p: any) => p.program_name).join(', ');
                                                                 })()}
                                                             </div>
                                                             {/* Student Count Badge */}
                                                             {slot.student_count !== undefined && (
                                                                 <div className="mt-1 flex justify-end">
-                                                                    <span className="text-[9px] bg-white/60 px-1.5 py-0.5 rounded text-blue-800 font-bold border border-blue-200">
+                                                                    <span className="text-[9px] bg-slate-900/60 px-1.5 py-0.5 rounded text-blue-200 font-bold border border-blue-500/30">
                                                                         {slot.student_count} 👥
                                                                     </span>
                                                                 </div>
@@ -429,30 +422,30 @@ const MasterSchedule: React.FC<{
 
             {/* CREATE MODAL */}
             {isCreateOpen && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50 backdrop-blur-sm">
-                    <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in duration-200">
-                        <div className="px-6 py-4 border-b bg-gray-50 flex justify-between items-center">
-                            <h3 className="font-bold text-lg text-gray-800">Add New Time Slot</h3>
-                            <button onClick={() => { setIsCreateOpen(false); setCreateError(null); }} className="text-gray-400 hover:text-gray-600">&times;</button>
+                <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50 backdrop-blur-sm">
+                    <div className="bg-slate-800 rounded-xl shadow-2xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in duration-200 border border-slate-700">
+                        <div className="px-6 py-4 border-b border-slate-700 bg-slate-900/50 flex justify-between items-center">
+                            <h3 className="font-bold text-lg text-white">Add New Time Slot</h3>
+                            <button onClick={() => { setIsCreateOpen(false); setCreateError(null); }} className="text-slate-400 hover:text-slate-200">&times;</button>
                         </div>
                         <form onSubmit={handleSubmit} className="p-6 space-y-4">
                             {createError && (
-                                <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-r shadow-sm animate-pulse">
+                                <div className="bg-red-500/10 border-l-4 border-red-500 p-4 rounded-r shadow-sm animate-pulse">
                                     <div className="flex items-start">
                                         <AlertCircle className="text-red-500 mr-2 mt-0.5 flex-shrink-0" size={18} />
                                         <div>
-                                            <p className="text-sm text-red-700 font-bold">Validation Error</p>
-                                            <p className="text-xs text-red-600 mt-1">{createError}</p>
+                                            <p className="text-sm text-red-400 font-bold">Validation Error</p>
+                                            <p className="text-xs text-red-300 mt-1">{createError}</p>
                                         </div>
                                     </div>
                                 </div>
                             )}
                             {/* Window Name */}
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Subject / Window Name <span className="text-gray-400 font-normal">(Optional)</span></label>
+                                <label className="block text-sm font-medium text-slate-300 mb-1">Subject / Window Name <span className="text-slate-500 font-normal">(Optional)</span></label>
                                 <input
                                     type="text"
-                                    className="w-full border rounded-lg px-3 py-2"
+                                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white placeholder-slate-500 focus:ring-2 focus:ring-blue-500 outline-none"
                                     placeholder="e.g. Morning Assembly, Biology 101"
                                     value={formData.window_name}
                                     onChange={e => setFormData({ ...formData, window_name: e.target.value })}
@@ -460,16 +453,16 @@ const MasterSchedule: React.FC<{
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Room</label>
+                                <label className="block text-sm font-medium text-slate-300 mb-1">Room</label>
                                 <select
-                                    className="w-full border rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500"
+                                    className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white focus:ring-2 focus:ring-blue-500 outline-none"
                                     value={formData.room_id}
                                     onChange={e => setFormData({ ...formData, room_id: e.target.value })}
                                     required
                                 >
-                                    <option value="">Select Room...</option>
+                                    <option value="" className="bg-slate-900">Select Room...</option>
                                     {rooms?.map((r: any) => (
-                                        <option key={r.room_id} value={r.room_id}>
+                                        <option key={r.room_id} value={r.room_id} className="bg-slate-900">
                                             {r.room_name} (Cap: {r.capacity || '∞'})
                                         </option>
                                     ))}
@@ -478,30 +471,30 @@ const MasterSchedule: React.FC<{
 
                             <div className="grid grid-cols-3 gap-4">
                                 <div className="col-span-1">
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Day</label>
+                                    <label className="block text-sm font-medium text-slate-300 mb-1">Day</label>
                                     <select
-                                        className="w-full border rounded-lg px-3 py-2"
+                                        className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white focus:ring-2 focus:ring-blue-500 outline-none"
                                         value={formData.day_of_week}
                                         onChange={e => setFormData({ ...formData, day_of_week: e.target.value })}
                                     >
-                                        {DAYS.map(d => <option key={d} value={d}>{d}</option>)}
+                                        {DAYS.map(d => <option key={d} value={d} className="bg-slate-900">{d}</option>)}
                                     </select>
                                 </div>
                                 <div className="col-span-1">
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">Start</label>
+                                    <label className="block text-sm font-medium text-slate-300 mb-1">Start</label>
                                     <input
-                                        type="time"
-                                        className="w-full border rounded-lg px-3 py-2"
+                                        type="time" // Browser time input usually adapts to system theme, but might need custom CSS for icon
+                                        className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white focus:ring-2 focus:ring-blue-500 outline-none date-input-dark"
                                         value={formData.start_time}
                                         onChange={e => setFormData({ ...formData, start_time: e.target.value })}
                                         required
                                     />
                                 </div>
                                 <div className="col-span-1">
-                                    <label className="block text-sm font-medium text-gray-700 mb-1">End</label>
+                                    <label className="block text-sm font-medium text-slate-300 mb-1">End</label>
                                     <input
-                                        type="time"
-                                        className="w-full border rounded-lg px-3 py-2"
+                                        type="time" // Browser time input usually adapts to system theme
+                                        className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2 text-white focus:ring-2 focus:ring-blue-500 outline-none date-input-dark"
                                         value={formData.end_time}
                                         onChange={e => setFormData({ ...formData, end_time: e.target.value })}
                                         required
@@ -521,22 +514,22 @@ const MasterSchedule: React.FC<{
                                 return (
                                     <div>
                                         <div className="flex justify-between items-center mb-2">
-                                            <label className="block text-sm font-medium text-gray-700">Assign Programs (Optional)</label>
+                                            <label className="block text-sm font-medium text-slate-300">Assign Programs (Optional)</label>
                                             {formData.room_id && (
-                                                <span className={`text-xs font-bold px-2 py-1 rounded ${isOverCapacity ? 'bg-red-100 text-red-600' : 'bg-blue-50 text-blue-600'}`}>
+                                                <span className={`text-xs font-bold px-2 py-1 rounded ${isOverCapacity ? 'bg-red-500/20 text-red-400 border border-red-500/30' : 'bg-blue-500/20 text-blue-400 border border-blue-500/30'}`}>
                                                     {totalStudents} / {capacity || '∞'} Students
                                                 </span>
                                             )}
                                         </div>
 
                                         {isOverCapacity && (
-                                            <div className="mb-3 text-xs text-red-600 font-bold flex items-center bg-red-50 p-2 rounded border border-red-200 animate-pulse">
+                                            <div className="mb-3 text-xs text-red-400 font-bold flex items-center bg-red-500/10 p-2 rounded border border-red-500/20 animate-pulse">
                                                 <AlertCircle size={14} className="mr-2" />
                                                 Capacity Exceeded! Room can't fit active students.
                                             </div>
                                         )}
 
-                                        <div className="border rounded-lg max-h-48 overflow-y-auto divide-y bg-gray-50/50">
+                                        <div className="border border-slate-700 rounded-lg max-h-48 overflow-y-auto divide-y divide-slate-700/50 bg-slate-900/30 custom-scrollbar">
                                             {(() => {
                                                 const busyProgramMap = new Map<number, any>();
                                                 if (windows && formData.day_of_week && formData.start_time && formData.end_time) {
@@ -567,32 +560,32 @@ const MasterSchedule: React.FC<{
                                                         <div
                                                             key={prog.program_id}
                                                             onClick={() => !isBusy && toggleProgram(prog.program_id)}
-                                                            className={`px-3 py-2.5 text-sm flex justify-between items-center transition-colors ${isBusy ? 'bg-gray-100 opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-white'} ${isSelected ? 'bg-blue-50 text-blue-800' : ''}`}
+                                                            className={`px-3 py-2.5 text-sm flex justify-between items-center transition-colors ${isBusy ? 'bg-slate-800/50 opacity-50 cursor-not-allowed' : 'cursor-pointer hover:bg-slate-800'} ${isSelected ? 'bg-blue-500/10 text-blue-400' : 'text-slate-300'}`}
                                                         >
                                                             <div className="flex flex-col">
                                                                 <div className="flex items-center">
                                                                     <span className="font-medium mr-1">{prog.program_name}</span>
-                                                                    {prog.batch?.batch_name && <span className="text-gray-500 text-xs">({prog.batch.batch_name})</span>}
+                                                                    {prog.batch?.batch_name && <span className="text-slate-500 text-xs">({prog.batch.batch_name})</span>}
                                                                 </div>
-                                                                <span className="text-[10px] text-gray-500">
+                                                                <span className="text-[10px] text-slate-500">
                                                                     {prog.student_count || 0} active students
-                                                                    {isBusy && <span className="text-red-500 font-bold ml-1"> (Busy in {conflictWindow?.room?.room_name || 'another room'})</span>}
+                                                                    {isBusy && <span className="text-red-400 font-bold ml-1"> (Busy in {conflictWindow?.room?.room_name || 'another room'})</span>}
                                                                 </span>
                                                             </div>
-                                                            {isSelected && <div className="w-2 h-2 rounded-full bg-blue-600" />}
+                                                            {isSelected && <div className="w-2 h-2 rounded-full bg-blue-500" />}
                                                         </div>
                                                     );
                                                 });
                                             })()}
                                         </div>
-                                        <p className="text-[10px] text-gray-400 mt-1">
+                                        <p className="text-[10px] text-slate-500 mt-1">
                                             Programs busy in other rooms are disabled.
                                         </p>
 
                                         <button
                                             type="submit"
                                             disabled={isOverCapacity || createMutation.isPending}
-                                            className="w-full mt-4 bg-blue-600 text-white py-2.5 rounded-lg font-bold hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm"
+                                            className="w-full mt-4 bg-blue-600 text-white py-2.5 rounded-lg font-bold hover:bg-blue-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-sm border border-transparent"
                                         >
                                             {createMutation.isPending ? 'Creating...' : 'Create Time Slot'}
                                         </button>

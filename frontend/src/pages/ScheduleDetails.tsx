@@ -1,408 +1,380 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ScheduleRepository } from '../repositories/ScheduleRepository';
-import { ProgramRepository } from '../repositories/ProgramRepository';
-import { Clock, MapPin, Users, Edit, Save, ArrowLeft, Trash2, AlertCircle, X, DollarSign } from 'lucide-react';
+import { StudentRepository } from '../repositories/StudentRepository';
+import {
+    ArrowLeft, Clock, MapPin, Users, Edit2, Save, X, Plus, Trash2,
+    DollarSign, Search
+} from 'lucide-react';
 import BatchPaymentModal from '../components/BatchPaymentModal';
 
 const DAYS = ['Saturday', 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
 
 const ScheduleDetails: React.FC = () => {
-    const { id } = useParams<{ id: string }>();
+    const { windowId } = useParams<{ windowId: string }>();
     const navigate = useNavigate();
     const queryClient = useQueryClient();
-    const [isEditing, setIsEditing] = useState(false);
-    const [showPaymentModal, setShowPaymentModal] = useState(false);
 
-    // FETCH DATA
-    const { data: window, isLoading } = useQuery({
-        queryKey: ['window', id],
-        queryFn: () => ScheduleRepository.getWindowDetails(id!)
+    const [isEditing, setIsEditing] = useState(false);
+    const [isAddStudentOpen, setIsAddStudentOpen] = useState(false);
+
+    // BATCH PAYMENT STATE
+    const [isBatchPaymentOpen, setIsBatchPaymentOpen] = useState(false);
+
+    // FETCH WINDOW DETAILS
+    const { data: windowData, isLoading, error } = useQuery({
+        queryKey: ['window', windowId],
+        queryFn: () => ScheduleRepository.getWindowDetails(windowId || ''),
+        enabled: !!windowId
     });
 
-    const { data: rooms } = useQuery({ queryKey: ['rooms'], queryFn: ScheduleRepository.getRooms });
-    const { data: allPrograms } = useQuery({ queryKey: ['programs'], queryFn: ProgramRepository.getAllPrograms });
-    const { data: allWindows } = useQuery({ queryKey: ['windows'], queryFn: ScheduleRepository.getAllWindows });
-
     // EDIT FORM STATE
-    const [editData, setEditData] = useState<any>(null);
-    const [error, setError] = useState<string | null>(null);
+    const [editForm, setEditForm] = useState({
+        window_name: '',
+        day_of_week: '',
+        start_time: '',
+        end_time: '',
+        room_id: '',
+        program_ids: [] as number[]
+    });
 
-    // Initialize edit data when window loads
-    React.useEffect(() => {
-        if (window) {
-            setEditData({
-                window_name: window.window_name || '',
-                room_id: window.room_id,
-                day_of_week: window.day_of_week,
-                start_time: window.start_time,
-                end_time: window.end_time,
-                program_ids: window.program_schedule?.map((ps: any) => ps.program.program_id) || []
+    // Populate Edit Form
+    useEffect(() => {
+        if (windowData) {
+            setEditForm({
+                window_name: windowData.window_name || '',
+                day_of_week: windowData.day_of_week,
+                start_time: windowData.start_time,
+                end_time: windowData.end_time,
+                room_id: windowData.room_id.toString(),
+                program_ids: windowData.programs?.map((p: any) => p.program_id) || windowData.program_schedule?.map((ps: any) => ps.program_id) || []
             });
         }
-    }, [window]);
+    }, [windowData]);
+
 
     const updateMutation = useMutation({
-        mutationFn: (data: any) => ScheduleRepository.updateWindow(id!, data),
+        mutationFn: (data: any) => ScheduleRepository.updateWindow(windowId!, {
+            ...data,
+            room_id: parseInt(data.room_id)
+        }),
         onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['window', id] });
+            queryClient.invalidateQueries({ queryKey: ['window', windowId] });
+            queryClient.invalidateQueries({ queryKey: ['windows'] });
             setIsEditing(false);
-            setError(null);
-            alert("Schedule Updated!");
+            alert("Schedule updated!");
         },
-        onError: (err: any) => setError(err.message || "Failed to update schedule.")
+        onError: (err: any) => alert(err.message)
     });
 
     const deleteMutation = useMutation({
-        mutationFn: () => ScheduleRepository.deleteWindow(parseInt(id!)),
+        mutationFn: ScheduleRepository.deleteWindow,
         onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['windows'] });
             navigate('/admin/scheduling');
         }
     });
 
-    const handleSave = () => {
-        updateMutation.mutate(editData);
-    };
+    // Handle Manual Add Student
+    const [selectedProgramForEnroll, setSelectedProgramForEnroll] = useState('');
+    const [enrollSearch, setEnrollSearch] = useState('');
 
-    const toggleProgram = (pid: number) => {
-        setEditData((prev: any) => ({
-            ...prev,
-            program_ids: prev.program_ids.includes(pid)
-                ? prev.program_ids.filter((id: number) => id !== pid)
-                : [...prev.program_ids, pid]
-        }));
-    };
+    // Using getAllStudents and filtering client side for now as searchStudents doesn't exist
+    const { data: allStudents } = useQuery({
+        queryKey: ['students-all'],
+        queryFn: StudentRepository.getAllStudents,
+        enabled: isAddStudentOpen
+    });
 
-    if (isLoading || !window) return <div className="p-8">Loading details...</div>;
+    const searchResults = useMemo(() => {
+        if (!allStudents || enrollSearch.length < 2) return [];
+        return allStudents.filter((s: any) => s.name.toLowerCase().includes(enrollSearch.toLowerCase()));
+    }, [allStudents, enrollSearch]);
+
+    const enrollMutation = useMutation({
+        mutationFn: (data: { student_id: number, program_id: number }) => StudentRepository.enrollStudent(data),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['window', windowId] });
+            queryClient.invalidateQueries({ queryKey: ['students-by-program'] });
+            setIsAddStudentOpen(false);
+            setEnrollSearch('');
+            alert("Student enrolled!");
+        },
+        onError: (err: any) => alert(err.message)
+    });
+
+
+    if (isLoading) return <div className="p-8 text-white">Loading schedule details...</div>;
+    if (error || !windowData) return <div className="p-8 text-red-500">Error loading schedule.</div>;
+
+    const attachedPrograms = windowData.programs || windowData.program_schedule?.map((ps: any) => ps.program) || [];
+
+    // Helper to format time
+    const formatTime = (t: string) => {
+        if (!t) return '';
+        const [h, m] = t.split(':');
+        const hi = parseInt(h);
+        const s = hi >= 12 ? 'PM' : 'AM';
+        const h12 = hi % 12 || 12;
+        return `${h12}:${m} ${s}`;
+    };
 
     return (
-        <div className="space-y-6 max-w-5xl mx-auto">
-            {/* HEADER */}
-            <div className="flex items-center gap-4 text-gray-500 mb-4">
-                <Link to="/admin/scheduling" className="hover:text-gray-900 flex items-center gap-1">
-                    <ArrowLeft size={16} /> Back to Master Schedule
-                </Link>
-            </div>
-
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                <div className="p-6 border-b bg-gray-50 flex justify-between items-start">
+        <div className="space-y-6 animate-in fade-in duration-300">
+            {/* TOP BAR */}
+            <div className="flex justify-between items-start">
+                <div className="flex items-center gap-4">
+                    <button onClick={() => navigate('/admin/scheduling')} className="p-2 hover:bg-slate-800 rounded-full text-slate-400 transition-colors">
+                        <ArrowLeft size={24} />
+                    </button>
                     <div>
-                        <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-                            <Clock className="text-blue-600" />
-                            {isEditing ? 'Edit Schedule Window' : (window.window_name || `${window.day_of_week}, ${window.start_time.substring(0, 5)} - ${window.end_time.substring(0, 5)}`)}
+                        <h1 className="text-3xl font-bold text-white flex items-center gap-3">
+                            {windowData.window_name || "Untitled Slot"}
+                            {windowData.window_name && <span className="text-sm font-normal text-slate-500 bg-slate-900 border border-slate-700 px-2 py-1 rounded">ID: {windowId}</span>}
                         </h1>
-                        <p className="text-gray-500 mt-1 flex items-center gap-2">
-                            <MapPin size={16} /> {rooms?.find((r: any) => r.room_id === window.room_id)?.room_name || 'Room TBD'}
-                        </p>
-                    </div>
-                    <div className="flex gap-2">
-                        {!isEditing ? (
-                            <>
-                                <button
-                                    onClick={() => setShowPaymentModal(true)}
-                                    className="flex items-center gap-2 px-4 py-2 bg-green-50 border border-green-100 rounded-lg hover:bg-green-100 font-medium text-green-700"
-                                >
-                                    <DollarSign size={16} /> Record Payment
-                                </button>
-                                <button onClick={() => setIsEditing(true)} className="flex items-center gap-2 px-4 py-2 bg-white border rounded-lg hover:bg-gray-50 font-medium text-gray-700">
-                                    <Edit size={16} /> Edit Details
-                                </button>
-                                <button
-                                    onClick={() => { if (confirm('Are you sure you want to delete this time slot?')) deleteMutation.mutate() }}
-                                    className="flex items-center gap-2 px-4 py-2 bg-red-50 border border-red-100 rounded-lg hover:bg-red-100 font-medium text-red-600">
-                                    <Trash2 size={16} /> Delete
-                                </button>
-                            </>
-                        ) : (
-                            <>
-                                <button onClick={() => setIsEditing(false)} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg">Cancel</button>
-                                {(() => {
-                                    const selectedRoom = rooms?.find((r: any) => r.room_id.toString() === editData?.room_id?.toString());
-                                    const capacity = selectedRoom?.capacity || 0;
-                                    const selectedPrograms = allPrograms?.filter((p: any) => editData?.program_ids?.includes(p.program_id)) || [];
-                                    const totalStudents = selectedPrograms.reduce((sum: number, p: any) => sum + (p.student_count || 0), 0);
-                                    const isOverCapacity = capacity > 0 && totalStudents > capacity;
-
-                                    return (
-                                        <button
-                                            onClick={handleSave}
-                                            disabled={isOverCapacity || updateMutation.isPending}
-                                            className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 font-medium shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
-                                        >
-                                            <Save size={16} /> Save Changes
-                                        </button>
-                                    );
-                                })()}
-                            </>
-                        )}
+                        <div className="flex items-center gap-4 text-slate-400 mt-1">
+                            <span className="flex items-center gap-1"><Clock size={16} className="text-blue-500" /> {windowData.day_of_week}, {formatTime(windowData.start_time)} - {formatTime(windowData.end_time)}</span>
+                            <span className="flex items-center gap-1"><MapPin size={16} className="text-purple-500" /> {windowData.room?.room_name || 'No Room'}</span>
+                        </div>
                     </div>
                 </div>
+                <div className="flex gap-2">
+                    <button
+                        onClick={() => setIsEditing(!isEditing)}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors border ${isEditing ? 'bg-slate-700 text-white border-slate-600' : 'bg-slate-800 text-slate-300 border-slate-700 hover:bg-slate-700'}`}
+                    >
+                        {isEditing ? <X size={18} /> : <Edit2 size={18} />}
+                        {isEditing ? 'Cancel Edit' : 'Edit Details'}
+                    </button>
+                    <button
+                        onClick={() => {
+                            if (confirm('Delete this schedule window? This cannot be undone.')) deleteMutation.mutate(Number(windowId));
+                        }}
+                        className="flex items-center gap-2 bg-red-500/10 text-red-400 px-4 py-2 rounded-lg hover:bg-red-500/20 border border-red-500/20 font-medium transition-colors"
+                    >
+                        <Trash2 size={18} />
+                    </button>
+                </div>
+            </div>
 
-                {/* EDIT FORM */}
-                {isEditing && (
-                    <div className="p-6 bg-blue-50/50 border-b space-y-6 animate-in fade-in slide-in-from-top-4 duration-200">
-                        {error && (
-                            <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-r shadow-sm">
-                                <div className="flex items-start">
-                                    <AlertCircle className="text-red-500 mr-2 mt-0.5 flex-shrink-0" size={18} />
-                                    <div>
-                                        <p className="text-sm text-red-700 font-bold">Validation Error</p>
-                                        <p className="text-xs text-red-600 mt-1">{error}</p>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
+            {/* EDIT FORM */}
+            {isEditing && (
+                <div className="bg-slate-800/50 p-6 rounded-xl border border-slate-700 animate-in slide-in-from-top-4">
+                    <h3 className="font-bold text-lg text-white mb-4">Edit Schedule Window</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label className="block text-sm font-medium text-slate-300 mb-1">Name (Optional)</label>
+                            <input
+                                type="text"
+                                className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white focus:ring-2 focus:ring-blue-500 outline-none"
+                                value={editForm.window_name}
+                                onChange={e => setEditForm({ ...editForm, window_name: e.target.value })}
+                            />
+                        </div>
+                        <div>
+                            <label className="block text-sm font-medium text-slate-300 mb-1">Room</label>
+                            <input
+                                type="number"
+                                className="w-full bg-slate-900 border border-slate-700 rounded-lg p-2 text-white focus:ring-2 focus:ring-blue-500 outline-none"
+                                value={editForm.room_id}
+                                placeholder="Room ID"
+                                onChange={e => setEditForm({ ...editForm, room_id: e.target.value })}
+                            />
+                        </div>
+                        <div className="grid grid-cols-3 gap-2 md:col-span-2">
+                            <select
+                                className="bg-slate-900 border border-slate-700 rounded-lg p-2 text-white outline-none"
+                                value={editForm.day_of_week}
+                                onChange={e => setEditForm({ ...editForm, day_of_week: e.target.value })}
+                            >
+                                {DAYS.map(d => <option key={d} value={d} className="bg-slate-900">{d}</option>)}
+                            </select>
+                            <input
+                                type="time"
+                                className="bg-slate-900 border border-slate-700 rounded-lg p-2 text-white outline-none date-input-dark"
+                                value={editForm.start_time}
+                                onChange={e => setEditForm({ ...editForm, start_time: e.target.value })}
+                            />
+                            <input
+                                type="time"
+                                className="bg-slate-900 border border-slate-700 rounded-lg p-2 text-white outline-none date-input-dark"
+                                value={editForm.end_time}
+                                onChange={e => setEditForm({ ...editForm, end_time: e.target.value })}
+                            />
+                        </div>
+                    </div>
+                    <div className="flex justify-end">
+                        <button
+                            onClick={() => updateMutation.mutate(editForm)}
+                            className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-500 font-bold flex items-center gap-2"
+                        >
+                            <Save size={18} /> Save Changes
+                        </button>
+                    </div>
+                </div>
+            )}
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div className="space-y-4">
-                                <div>
-                                    <label className="block text-sm font-bold text-gray-700 mb-1">Subject / Name</label>
+            {/* ATTACHED PROGRAMS & PAYMENT ACTION */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                {/* Programs List */}
+                <div className="lg:col-span-2 space-y-4">
+                    <div className="flex justify-between items-center">
+                        <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                            <Users size={20} className="text-emerald-500" /> Attached Programs
+                        </h3>
+                        <button
+                            onClick={() => setIsAddStudentOpen(!isAddStudentOpen)}
+                            className="text-sm bg-slate-800 hover:bg-slate-700 text-blue-400 border border-slate-700 px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1"
+                        >
+                            <Plus size={16} /> Enroll Student
+                        </button>
+                    </div>
+
+                    {/* ENROLL FORM */}
+                    {isAddStudentOpen && (
+                        <div className="bg-slate-800/50 p-4 rounded-xl border border-slate-700">
+                            <h4 className="text-sm font-bold text-slate-300 mb-2">Enroll Student into Program</h4>
+                            <div className="flex flex-col gap-3">
+                                <select
+                                    className="w-full bg-slate-900 border border-slate-600 rounded-lg p-2 text-white focus:ring-2 focus:ring-blue-500 outline-none"
+                                    value={selectedProgramForEnroll}
+                                    onChange={e => setSelectedProgramForEnroll(e.target.value)}
+                                >
+                                    <option value="" className="bg-slate-900">Select Program...</option>
+                                    {attachedPrograms.map((p: any) => (
+                                        <option key={p.program_id} value={p.program_id} className="bg-slate-900">{p.program_name}</option>
+                                    ))}
+                                </select>
+                                <div className="relative">
+                                    <Search className="absolute left-3 top-2.5 text-slate-500" size={16} />
                                     <input
                                         type="text"
-                                        className="w-full border rounded p-2 bg-white"
-                                        placeholder="e.g. Physics Lab, Weekly Meeting"
-                                        value={editData.window_name}
-                                        onChange={e => setEditData({ ...editData, window_name: e.target.value })}
+                                        placeholder="Search student name to enroll..."
+                                        className="w-full bg-slate-900 border border-slate-600 rounded-lg pl-9 p-2 text-white outline-none focus:border-blue-500"
+                                        value={enrollSearch}
+                                        onChange={e => setEnrollSearch(e.target.value)}
                                     />
-                                </div>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block text-sm font-bold text-gray-700 mb-1">Start Time</label>
-                                        <input
-                                            type="time"
-                                            className="w-full border rounded p-2 bg-white"
-                                            value={editData.start_time}
-                                            onChange={e => setEditData({ ...editData, start_time: e.target.value })}
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-bold text-gray-700 mb-1">End Time</label>
-                                        <input
-                                            type="time"
-                                            className="w-full border rounded p-2 bg-white"
-                                            value={editData.end_time}
-                                            onChange={e => setEditData({ ...editData, end_time: e.target.value })}
-                                        />
-                                    </div>
-                                </div>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block text-sm font-bold text-gray-700 mb-1">Day</label>
-                                        <select
-                                            className="w-full border rounded p-2 bg-white"
-                                            value={editData.day_of_week}
-                                            onChange={e => setEditData({ ...editData, day_of_week: e.target.value })}
-                                        >
-                                            {DAYS.map(d => <option key={d} value={d}>{d}</option>)}
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-bold text-gray-700 mb-1">Room</label>
-                                        <select
-                                            className="w-full border rounded p-2 bg-white"
-                                            value={editData.room_id}
-                                            onChange={e => setEditData({ ...editData, room_id: e.target.value })}
-                                        >
-                                            {rooms?.map((r: any) => (
-                                                <option key={r.room_id} value={r.room_id}>
-                                                    {r.room_name} (Cap: {r.capacity || '∞'})
-                                                </option>
+                                    {searchResults && searchResults.length > 0 && (
+                                        <div className="absolute top-12 left-0 right-0 bg-slate-800 border border-slate-700 shadow-xl rounded-lg z-10 max-h-48 overflow-y-auto">
+                                            {searchResults.map((s: any) => (
+                                                <button
+                                                    key={s.student_id}
+                                                    onClick={() => {
+                                                        if (!selectedProgramForEnroll) return alert("Select a program first");
+                                                        if (confirm(`Enroll ${s.name} into selected program?`)) {
+                                                            enrollMutation.mutate({ student_id: s.student_id, program_id: parseInt(selectedProgramForEnroll) });
+                                                        }
+                                                    }}
+                                                    className="w-full text-left p-2 hover:bg-slate-700 text-slate-300 border-b border-slate-700 last:border-0"
+                                                >
+                                                    {s.name} <span className="text-xs text-slate-500 ml-2">ID: {s.student_id}</span>
+                                                </button>
                                             ))}
-                                        </select>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-bold text-gray-700 mb-1">Assigned Programs</label>
-
-                                {(() => {
-                                    // Calculate Capacity for UI
-                                    const selectedRoom = rooms?.find((r: any) => r.room_id.toString() === editData.room_id?.toString());
-                                    const capacity = selectedRoom?.capacity || 0;
-                                    const selectedPrograms = allPrograms?.filter((p: any) => editData.program_ids.includes(p.program_id)) || [];
-                                    const totalStudents = selectedPrograms.reduce((sum: number, p: any) => sum + (p.student_count || 0), 0);
-                                    const isOverCapacity = capacity > 0 && totalStudents > capacity;
-
-                                    return (
-                                        <>
-                                            <div className="flex justify-between items-center mb-2">
-                                                <span className="text-xs text-gray-500">Manage enrolled classes</span>
-                                                {editData.room_id && (
-                                                    <span className={`text-xs font-bold px-2 py-1 rounded ${isOverCapacity ? 'bg-red-100 text-red-600' : 'bg-blue-50 text-blue-600'}`}>
-                                                        {totalStudents} / {capacity || '∞'} Students
-                                                    </span>
-                                                )}
-                                            </div>
-
-                                            {isOverCapacity && (
-                                                <div className="mb-2 text-xs text-red-600 font-bold flex items-center bg-red-50 p-2 rounded border border-red-200 animate-pulse">
-                                                    <AlertCircle size={14} className="mr-2" />
-                                                    Capacity Exceeded!
-                                                </div>
-                                            )}
-
-                                            {/* Selected Programs List */}
-                                            <div className="bg-white border rounded-lg p-2 min-h-[100px] max-h-[150px] overflow-y-auto space-y-1 mb-2">
-                                                {editData.program_ids.length === 0 && <p className="text-gray-400 text-xs italic p-2">No programs assigned.</p>}
-                                                {editData.program_ids.map((pid: number) => {
-                                                    const prog = allPrograms?.find((p: any) => p.program_id === pid);
-                                                    return (
-                                                        <div key={pid} className="flex justify-between items-center bg-blue-50 text-blue-800 px-3 py-1.5 rounded text-sm group hover:bg-blue-100 transition-colors">
-                                                            <div className="flex flex-col">
-                                                                <span className="font-medium">{prog?.program_name || `Program ${pid}`}</span>
-                                                                <span className="text-[10px] text-blue-600/70">{prog?.student_count || 0} students</span>
-                                                            </div>
-                                                            <button onClick={() => toggleProgram(pid)} className="text-blue-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                                <X size={14} />
-                                                            </button>
-                                                        </div>
-                                                    );
-                                                })}
-                                            </div>
-                                        </>
-                                    );
-                                })()}
-
-                                {/* Add Program Dropdown */}
-                                <div className="relative">
-                                    {(() => {
-                                        // Dynamic Busy Calculation
-                                        const busyMap = new Map<number, string>();
-                                        if (allWindows && editData.day_of_week && editData.start_time && editData.end_time) {
-                                            const parseT = (t: string) => parseInt(t.replace(/:/g, '').substring(0, 4));
-                                            const newStart = parseT(editData.start_time);
-                                            const newEnd = parseT(editData.end_time);
-
-                                            // eslint-disable-next-line array-callback-return
-                                            allWindows.forEach((w: any) => {
-                                                if (w.window_id === parseInt(id!)) return; // Exclude current window
-                                                if (w.day_of_week !== editData.day_of_week) return;
-
-                                                const wStart = parseT(w.start_time);
-                                                const wEnd = parseT(w.end_time);
-
-                                                if (newStart < wEnd && newEnd > wStart) {
-                                                    const progs = w.programs || w.program_schedule?.map((ps: any) => ps.program) || [];
-                                                    progs.forEach((p: any) => {
-                                                        const roomName = w.room?.room_name || w.room_name || 'another room';
-                                                        busyMap.set(p.program_id, roomName);
-                                                    });
-                                                }
-                                            });
-                                        }
-
-                                        return (
-                                            <select
-                                                className="w-full border rounded p-2 bg-white text-sm"
-                                                onChange={(e) => {
-                                                    if (e.target.value) {
-                                                        toggleProgram(parseInt(e.target.value));
-                                                        e.target.value = ''; // Reset
-                                                    }
-                                                }}
-                                                defaultValue=""
-                                            >
-                                                <option value="" disabled>+ Add Program...</option>
-                                                {allPrograms?.filter((p: any) => !editData.program_ids.includes(p.program_id)).map((p: any) => {
-                                                    const busyRoom = busyMap.get(p.program_id);
-                                                    return (
-                                                        <option key={p.program_id} value={p.program_id} disabled={!!busyRoom} className={busyRoom ? "text-gray-400 bg-gray-50" : ""}>
-                                                            {p.program_name} {p.batch?.batch_name ? `(${p.batch.batch_name})` : ''} ({p.student_count || 0} students)
-                                                            {busyRoom ? ` (Busy in ${busyRoom})` : ''}
-                                                        </option>
-                                                    );
-                                                })}
-                                            </select>
-                                        );
-                                    })()}
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         </div>
-                    </div>
-                )}
+                    )}
 
-                {/* ASSIGNED PROGRAMS LIST (READ ONLY) */}
-                <div className="px-6 pt-6">
-                    <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-3">Assigned Classes</h3>
-                    <div className="flex flex-wrap gap-2">
-                        {window.program_schedule?.map((ps: any) => (
-                            <Link
-                                key={ps.program.program_id}
-                                to={`/programs/${ps.program.program_id}`}
-                                className="bg-blue-50 text-blue-700 px-3 py-1.5 rounded-full border border-blue-100 text-sm font-medium hover:bg-blue-100 transition-colors flex items-center gap-1"
-                            >
-                                {ps.program.program_name}
-                            </Link>
+                    <div className="grid gap-4">
+                        {attachedPrograms.length === 0 && <p className="text-slate-500 italic">No programs attached to this window.</p>}
+                        {attachedPrograms.map((p: any) => (
+                            <div key={p.program_id} className="bg-slate-800 rounded-xl border border-slate-700 p-4 shadow-sm hover:border-slate-600 transition-colors">
+                                <div className="flex justify-between items-start mb-3">
+                                    <div>
+                                        <Link to={`/admin/programs/${p.program_id}`} className="text-lg font-bold text-blue-400 hover:text-blue-300 hover:underline">
+                                            {p.program_name}
+                                        </Link>
+                                        <p className="text-sm text-slate-400">{p.batch?.batch_name || 'No Batch'}</p>
+                                    </div>
+                                    <span className="bg-emerald-500/10 text-emerald-400 text-xs font-bold px-2 py-1 rounded border border-emerald-500/20">
+                                        {p.active_students || p.student_count || 0} Students
+                                    </span>
+                                </div>
+
+                                <div className="flex gap-2">
+                                    <button
+                                        onClick={() => {
+                                            // Open Batch Payment for THIS program if we want specific program targeting
+                                            // For now just view students
+                                        }}
+                                        className="text-xs flex items-center gap-1 bg-slate-700 hover:bg-slate-600 text-slate-300 px-3 py-1.5 rounded transition-colors"
+                                    >
+                                        <Users size={14} /> View Students
+                                    </button>
+                                </div>
+                            </div>
                         ))}
-                        {(!window.program_schedule || window.program_schedule.length === 0) && (
-                            <span className="text-gray-400 italic text-sm">No programs assigned.</span>
-                        )}
                     </div>
                 </div>
 
-                {/* STUDENTS LIST */}
-                <div className="p-6">
-                    <div className="flex justify-between items-end mb-4">
-                        <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
-                            <Users size={20} className="text-gray-400" />
-                            Students List
+                {/* Quick Actions Card */}
+                <div className="space-y-6">
+                    <div className="bg-gradient-to-br from-blue-900/40 to-slate-900 border border-blue-500/30 p-6 rounded-2xl shadow-lg">
+                        <h3 className="text-lg font-bold text-white mb-2 flex items-center gap-2">
+                            <DollarSign className="text-blue-400" /> Quick Finance
                         </h3>
-                        <div className="text-right">
-                            <p className="text-2xl font-bold text-blue-600">{window.students?.length || 0}</p>
-                            <p className="text-xs text-gray-500 uppercase font-semibold">Total Students</p>
-                        </div>
+                        <p className="text-sm text-blue-200/70 mb-6">
+                            Record payments for students in this schedule block efficiently.
+                        </p>
+                        <button
+                            onClick={() => setIsBatchPaymentOpen(true)}
+                            className="w-full bg-blue-600 hover:bg-blue-500 text-white py-3 rounded-xl font-bold shadow-lg shadow-blue-900/20 transition-all active:scale-95 flex justify-center items-center gap-2 border border-transparent"
+                        >
+                            <DollarSign size={20} /> Record Batch Payment
+                        </button>
+                        <p className="text-xs text-center text-blue-300/50 mt-3">
+                            Opens bulk payment interface for attached programs.
+                        </p>
                     </div>
 
-                    <div className="border rounded-lg overflow-hidden">
-                        <table className="w-full text-left bg-white">
-                            <thead className="bg-gray-50 text-gray-500 text-xs uppercase font-semibold border-b">
-                                <tr>
-                                    <th className="p-3">Student Name</th>
-                                    <th className="p-3">Roll No</th>
-                                    <th className="p-3">Program</th>
-                                    <th className="p-3">Contact</th>
-                                </tr>
-                            </thead>
-                            <tbody className="divide-y divide-gray-100">
-                                {window.students?.map((s: any) => (
-                                    <tr key={s.student_id} className="hover:bg-gray-50 group">
-                                        <td className="p-3 font-medium text-gray-900">
-                                            <Link to={`/students/${s.student_id}`} className="hover:text-blue-600 hover:underline">
-                                                {s.name}
-                                            </Link>
-                                        </td>
-                                        <td className="p-3 text-gray-600 font-mono text-sm">{s.roll_no}</td>
-                                        <td className="p-3">
-                                            <span className="bg-purple-100 text-purple-700 px-2 py-0.5 rounded text-xs">
-                                                {s.program_name}
+                    <div className="bg-slate-800 border border-slate-700 p-6 rounded-2xl">
+                        <h3 className="text-sm font-bold text-slate-300 mb-4 uppercase tracking-wider">Window Stats</h3>
+                        <div className="space-y-4">
+                            <div className="flex justify-between items-center pb-3 border-b border-slate-700">
+                                <span className="text-slate-400">Duration</span>
+                                <span className="text-white font-mono">
+                                    {(() => {
+                                        const start = new Date(`2000/01/01 ${windowData.start_time}`);
+                                        const end = new Date(`2000/01/01 ${windowData.end_time}`);
+                                        const diff = (end.getTime() - start.getTime()) / (1000 * 60);
+                                        return `${diff} mins`;
+                                    })()}
+                                </span>
+                            </div>
+                            <div className="flex justify-between items-center pb-3 border-b border-slate-700">
+                                <span className="text-slate-400">Programs</span>
+                                <span className="text-white font-mono">{attachedPrograms.length}</span>
+                            </div>
+                            <div className="flex justify-between items-center">
+                                <span className="text-slate-400">Capacity Load</span>
+                                <span className="text-white font-mono">
+                                    {/* Calculating load */}
+                                    {(() => {
+                                        const cap = windowData.room?.capacity || 0;
+                                        const load = attachedPrograms.reduce((s: number, p: any) => s + (p.student_count || 0), 0);
+                                        const pct = cap ? Math.round((load / cap) * 100) : 0;
+                                        return (
+                                            <span className={pct > 100 ? 'text-red-400' : 'text-emerald-400'}>
+                                                {load} / {cap || '∞'} ({pct}%)
                                             </span>
-                                        </td>
-                                        <td className="p-3 text-gray-500 text-sm">{s.contact || '-'}</td>
-                                    </tr>
-                                ))}
-                                {(!window.students || window.students.length === 0) && (
-                                    <tr>
-                                        <td colSpan={4} className="p-8 text-center text-gray-400 italic">
-                                            No students assigned to this time slot yet.
-                                        </td>
-                                    </tr>
-                                )}
-                            </tbody>
-                        </table>
+                                        );
+                                    })()}
+                                </span>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
 
-            {/* Batch Payment Modal */}
-            {window && (
-                <BatchPaymentModal
-                    isOpen={showPaymentModal}
-                    onClose={() => setShowPaymentModal(false)}
-                    allowedProgramIds={window.program_schedule?.map((ps: any) => ps.program.program_id) || []}
-                />
-            )}
+            {/* BATCH PAYMENT MODAL */}
+            <BatchPaymentModal
+                isOpen={isBatchPaymentOpen}
+                onClose={() => setIsBatchPaymentOpen(false)}
+                allowedProgramIds={attachedPrograms.map((p: any) => p.program_id)}
+            />
         </div>
     );
 };

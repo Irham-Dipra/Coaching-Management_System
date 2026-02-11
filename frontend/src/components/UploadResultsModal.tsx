@@ -82,47 +82,52 @@ const UploadResultsModal: React.FC<UploadResultsModalProps> = ({ isOpen, onClose
     };
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white rounded-lg shadow-xl w-full max-w-lg p-6 relative">
-                <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
+            <div className="bg-slate-900 rounded-xl shadow-2xl w-full max-w-lg p-6 relative border border-slate-700">
+                <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-white transition-colors">
                     <X size={24} />
                 </button>
 
-                <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
-                    <Upload className="text-blue-600" /> Upload Results
+                <h2 className="text-xl font-bold mb-6 text-white flex items-center gap-2">
+                    <Upload className="text-blue-400" /> Upload Results
                 </h2>
 
                 <div className="space-y-6">
                     {/* Template Download */}
-                    <div className="bg-blue-50 p-4 rounded-lg border border-blue-100 flex justify-between items-center">
+                    <div className="bg-blue-900/20 p-4 rounded-lg border border-blue-500/20 flex justify-between items-center">
                         <div>
-                            <h3 className="text-sm font-bold text-blue-800">Need a format?</h3>
-                            <p className="text-xs text-blue-600">Download the Excel template to fill marks.</p>
+                            <h3 className="text-sm font-bold text-blue-400">Need a format?</h3>
+                            <p className="text-xs text-blue-300/70">Download the Excel template to fill marks.</p>
                         </div>
-                        <button onClick={handleDownloadTemplate} className="text-xs bg-white border border-blue-200 text-blue-600 px-3 py-1.5 rounded hover:bg-blue-50 flex items-center gap-1">
+                        <button onClick={handleDownloadTemplate} className="text-xs bg-slate-800 border border-blue-500/30 text-blue-400 px-3 py-1.5 rounded-lg hover:bg-blue-500/10 flex items-center gap-1 transition-colors font-semibold">
                             <Download size={14} /> Download Template
                         </button>
                     </div>
 
                     {/* File Input */}
-                    <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:bg-gray-50 transition-colors relative">
+                    <div className="border-2 border-dashed border-slate-600 rounded-lg p-8 text-center hover:border-blue-500 transition-colors relative bg-slate-800/50 group">
                         <input
                             type="file"
                             accept=".xlsx, .xls, .csv"
                             onChange={handleFileChange}
                             className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
                         />
-                        <div className="flex flex-col items-center gap-2">
-                            <FileSpreadsheet className="text-green-500" size={40} />
-                            {file ? (
-                                <div>
-                                    <p className="font-medium text-gray-900">{file.name}</p>
-                                    <p className="text-sm text-gray-500">{previewData.length} records found</p>
+                        <div className="flex flex-col items-center gap-2 pointer-events-none">
+                            <FileSpreadsheet className="text-emerald-500 mb-2 group-hover:scale-110 transition-transform" size={48} />
+                            {isParsing ? (
+                                <div className="animate-fade-in">
+                                    <p className="font-bold text-white mb-1">Parsing File...</p>
+                                    <p className="text-sm text-slate-400">Please wait</p>
+                                </div>
+                            ) : file ? (
+                                <div className="animate-fade-in">
+                                    <p className="font-bold text-white mb-1">{file.name}</p>
+                                    <p className="text-sm text-emerald-400 font-mono">{previewData.length} records found</p>
                                 </div>
                             ) : (
                                 <div>
-                                    <p className="font-medium text-gray-700">Click to Upload Excel File</p>
-                                    <p className="text-xs text-gray-400">Supports .xlsx, .csv</p>
+                                    <p className="font-bold text-slate-300">Click to Upload Excel File</p>
+                                    <p className="text-xs text-slate-500 mt-1">Supports .xlsx, .csv</p>
                                 </div>
                             )}
                         </div>
@@ -131,20 +136,20 @@ const UploadResultsModal: React.FC<UploadResultsModalProps> = ({ isOpen, onClose
                     {/* Preview (First 3 rows) */}
                     {previewData.length > 0 && (
                         <div>
-                            <p className="text-xs font-bold text-gray-500 uppercase mb-2">Preview (First 3 rows)</p>
-                            <div className="bg-gray-50 rounded border border-gray-200 overflow-hidden text-sm">
+                            <p className="text-xs font-bold text-slate-500 uppercase mb-2">Preview (First 3 rows)</p>
+                            <div className="bg-slate-800 rounded-lg border border-slate-700 overflow-hidden text-sm">
                                 <table className="w-full text-left">
-                                    <thead className="bg-gray-100 text-gray-600">
+                                    <thead className="bg-slate-900 text-slate-400">
                                         <tr>
-                                            <th className="p-2">ID</th>
+                                            <th className="p-2 pl-3">ID</th>
                                             <th className="p-2">Written</th>
                                             <th className="p-2">MCQ</th>
                                         </tr>
                                     </thead>
-                                    <tbody>
+                                    <tbody className="divide-y divide-slate-700/50 text-slate-300">
                                         {previewData.slice(0, 3).map((row, i) => (
-                                            <tr key={i} className="border-t border-gray-200">
-                                                <td className="p-2">{row.student_id}</td>
+                                            <tr key={i} className="">
+                                                <td className="p-2 pl-3 font-mono text-emerald-400">{row.student_id}</td>
                                                 <td className="p-2">{row.written_marks}</td>
                                                 <td className="p-2">{row.mcq_marks}</td>
                                             </tr>
@@ -155,16 +160,16 @@ const UploadResultsModal: React.FC<UploadResultsModalProps> = ({ isOpen, onClose
                         </div>
                     )}
 
-                    <div className="flex justify-end pt-2">
-                        <button onClick={onClose} className="mr-3 px-4 py-2 text-gray-700 hover:bg-gray-100 rounded-md">
+                    <div className="flex justify-end pt-4 gap-3 border-t border-slate-700/50">
+                        <button onClick={onClose} className="px-4 py-2 text-slate-400 hover:text-white font-medium transition-colors">
                             Cancel
                         </button>
                         <button
                             onClick={() => uploadMutation.mutate(previewData)}
                             disabled={!file || uploadMutation.isPending || previewData.length === 0}
-                            className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 flex items-center disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-500 shadow-lg shadow-blue-500/20 flex items-center gap-2 font-bold disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none transition-all"
                         >
-                            {uploadMutation.isPending ? <Loader2 className="animate-spin mr-2" size={16} /> : <Upload className="mr-2" size={16} />}
+                            {uploadMutation.isPending ? <Loader2 className="animate-spin" size={18} /> : <Upload size={18} />}
                             Upload & Process
                         </button>
                     </div>

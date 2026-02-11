@@ -88,21 +88,21 @@ const Finance: React.FC = () => {
     }, [recentPayments, searchTerm, rollSearch, batchFilter, classFilter, programFilter]);
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-6 animate-fade-in max-w-7xl mx-auto">
             <div className="flex justify-between items-center">
-                <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-                    <DollarSign className="text-green-600" /> Finance & Accounts
+                <h1 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-400 flex items-center gap-3">
+                    <DollarSign className="text-emerald-400" /> Finance & Accounts
                 </h1>
                 <div className="flex gap-3">
                     <button
                         onClick={() => setIsBatchModalOpen(true)}
-                        className="bg-purple-600 text-white px-4 py-2 rounded-lg shadow-sm hover:bg-purple-700 flex items-center gap-2 font-medium"
+                        className="bg-indigo-600 text-white px-5 py-2.5 rounded-xl shadow-lg shadow-indigo-500/20 hover:bg-indigo-500 hover:scale-105 transition-all flex items-center gap-2 font-bold"
                     >
                         <Users size={18} /> Record Batch Payment
                     </button>
                     <button
                         onClick={() => { setEditPayment(null); setIsModalOpen(true); }}
-                        className="bg-blue-600 text-white px-4 py-2 rounded-lg shadow-sm hover:bg-blue-700 flex items-center gap-2 font-medium"
+                        className="bg-emerald-600 text-white px-5 py-2.5 rounded-xl shadow-lg shadow-emerald-500/20 hover:bg-emerald-500 hover:scale-105 transition-all flex items-center gap-2 font-bold"
                     >
                         <Plus size={18} /> Record New Payment
                     </button>
@@ -127,42 +127,46 @@ const Finance: React.FC = () => {
                 {/* 1. REVENUE CARD */}
                 <div
                     onClick={() => navigate('/admin/finance/breakdown/revenue')}
-                    className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 cursor-pointer hover:shadow-md transition-all group"
+                    className="bg-slate-800/50 backdrop-blur-md p-6 rounded-2xl shadow-lg border border-slate-700/50 cursor-pointer hover:shadow-emerald-900/20 hover:border-emerald-500/30 transition-all group relative overflow-hidden"
                 >
-                    <div className="flex justify-between items-start mb-4">
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-bl-full -mr-8 -mt-8 transition-transform group-hover:scale-110"></div>
+
+                    <div className="flex justify-between items-start mb-4 relative z-10">
                         <div>
-                            <p className="text-sm font-medium text-gray-500 uppercase tracking-wide">Revenue (This Month)</p>
-                            <h3 className="text-3xl font-bold text-gray-900 mt-1 group-hover:text-green-600 transition-colors">
+                            <p className="text-xs font-bold text-emerald-400 uppercase tracking-widest mb-1">Revenue (This Month)</p>
+                            <h3 className="text-4xl font-black text-white mt-1 group-hover:text-emerald-300 transition-colors">
                                 ৳{(stats?.revenue_this_month || 0).toLocaleString()}
                             </h3>
                         </div>
-                        <div className="bg-green-100 p-3 rounded-xl">
-                            <DollarSign className="text-green-600" size={24} />
+                        <div className="bg-emerald-500/20 p-3 rounded-xl text-emerald-400 group-hover:bg-emerald-500 group-hover:text-white transition-all shadow-lg shadow-emerald-900/20">
+                            <DollarSign size={28} />
                         </div>
                     </div>
-                    <div className="flex items-center gap-2 text-sm text-green-600 bg-green-50 px-3 py-1.5 rounded-lg w-fit">
+                    <div className="flex items-center gap-2 text-sm text-emerald-400 bg-emerald-500/10 px-3 py-1.5 rounded-lg w-fit border border-emerald-500/20">
                         <ArrowUpDown size={14} className="rotate-45" />
-                        <span className="font-medium">+{(stats?.growth_percent || 0)}% vs last month</span>
+                        <span className="font-bold">+{(stats?.growth_percent || 0)}% vs last month</span>
                     </div>
                 </div>
 
                 {/* 2. DUE THIS MONTH */}
                 <div
                     onClick={() => navigate('/admin/finance/breakdown/due_monthly')}
-                    className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 cursor-pointer hover:shadow-md transition-all group"
+                    className="bg-slate-800/50 backdrop-blur-md p-6 rounded-2xl shadow-lg border border-slate-700/50 cursor-pointer hover:shadow-amber-900/20 hover:border-amber-500/30 transition-all group relative overflow-hidden"
                 >
-                    <div className="flex justify-between items-start mb-4">
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/10 rounded-bl-full -mr-8 -mt-8 transition-transform group-hover:scale-110"></div>
+
+                    <div className="flex justify-between items-start mb-4 relative z-10">
                         <div>
-                            <p className="text-sm font-medium text-gray-500 uppercase tracking-wide">Due (This Month)</p>
-                            <h3 className="text-3xl font-bold text-gray-900 mt-1 group-hover:text-amber-600 transition-colors">
+                            <p className="text-xs font-bold text-amber-400 uppercase tracking-widest mb-1">Due (This Month)</p>
+                            <h3 className="text-4xl font-black text-white mt-1 group-hover:text-amber-300 transition-colors">
                                 ৳{(stats?.due_this_month || 0).toLocaleString()}
                             </h3>
                         </div>
-                        <div className="bg-amber-100 p-3 rounded-xl">
-                            <FileText className="text-amber-600" size={24} />
+                        <div className="bg-amber-500/20 p-3 rounded-xl text-amber-400 group-hover:bg-amber-500 group-hover:text-white transition-all shadow-lg shadow-amber-900/20">
+                            <FileText size={28} />
                         </div>
                     </div>
-                    <div className="text-xs text-gray-400 mt-2">
+                    <div className="text-xs text-slate-400 mt-2 font-medium">
                         Includes unpaid fees for current month only.
                     </div>
                 </div>
@@ -170,20 +174,22 @@ const Finance: React.FC = () => {
                 {/* 3. TOTAL ARREARS */}
                 <div
                     onClick={() => navigate('/admin/finance/breakdown/due_overall')}
-                    className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 cursor-pointer hover:shadow-md transition-all group"
+                    className="bg-slate-800/50 backdrop-blur-md p-6 rounded-2xl shadow-lg border border-slate-700/50 cursor-pointer hover:shadow-red-900/20 hover:border-red-500/30 transition-all group relative overflow-hidden"
                 >
-                    <div className="flex justify-between items-start mb-4">
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-red-500/10 rounded-bl-full -mr-8 -mt-8 transition-transform group-hover:scale-110"></div>
+
+                    <div className="flex justify-between items-start mb-4 relative z-10">
                         <div>
-                            <p className="text-sm font-medium text-gray-500 uppercase tracking-wide">Total Arrears (Overall)</p>
-                            <h3 className="text-3xl font-bold text-gray-900 mt-1 group-hover:text-red-600 transition-colors">
+                            <p className="text-xs font-bold text-red-400 uppercase tracking-widest mb-1">Total Arrears (Overall)</p>
+                            <h3 className="text-4xl font-black text-white mt-1 group-hover:text-red-300 transition-colors">
                                 ৳{(stats?.total_due || 0).toLocaleString()}
                             </h3>
                         </div>
-                        <div className="bg-red-100 p-3 rounded-xl">
-                            <AlertCircle className="text-red-600" size={24} />
+                        <div className="bg-red-500/20 p-3 rounded-xl text-red-400 group-hover:bg-red-500 group-hover:text-white transition-all shadow-lg shadow-red-900/20">
+                            <AlertCircle size={28} />
                         </div>
                     </div>
-                    <div className="text-xs text-gray-400 mt-2">
+                    <div className="text-xs text-slate-400 mt-2 font-medium">
                         Cumulative unpaid amount from all previous months.
                     </div>
                 </div>
@@ -192,25 +198,25 @@ const Finance: React.FC = () => {
             {/* HEADER ACTION ROW */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-2 gap-4">
                 <div className="flex items-center gap-4">
-                    <h2 className="text-xl font-bold text-gray-800">Recent Transactions</h2>
+                    <h2 className="text-xl font-bold text-white">Recent Transactions</h2>
                     <button
                         onClick={() => setSortDesc(!sortDesc)}
-                        className="flex items-center gap-1 text-sm text-gray-500 hover:text-blue-600 transition-colors"
+                        className="flex items-center gap-1 text-sm text-slate-400 hover:text-blue-400 transition-colors"
                     >
                         <ArrowUpDown size={14} /> {sortDesc ? 'Newest First' : 'Oldest First'}
                     </button>
-                    <span className="text-sm text-gray-400">({filteredPayments.length} found)</span>
+                    <span className="text-sm text-slate-500">({filteredPayments.length} found)</span>
                 </div>
             </div>
 
             {/* FILTERS BAR */}
-            <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200 flex flex-col md:flex-row gap-4 flex-wrap items-center">
+            <div className="bg-slate-800/50 backdrop-blur-md p-4 rounded-xl shadow-lg border border-slate-700/50 flex flex-col md:flex-row gap-4 flex-wrap items-center">
                 <div className="relative flex-1 min-w-[200px]">
-                    <Search className="absolute left-3 top-2.5 text-gray-400" size={20} />
+                    <Search className="absolute left-3 top-3 text-slate-400" size={20} />
                     <input
                         type="text"
                         placeholder="Search Name, Receipt #, Student ID..."
-                        className="pl-10 w-full rounded-lg border-gray-300 border p-2 text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        className="pl-10 w-full rounded-lg border-slate-600 border p-2.5 bg-slate-900/50 text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 placeholder-slate-500"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
@@ -221,94 +227,79 @@ const Finance: React.FC = () => {
                     <input
                         type="text"
                         placeholder="Roll No..."
-                        className="w-full rounded-lg border-gray-300 border p-2 text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        className="w-full rounded-lg border-slate-600 border p-2.5 bg-slate-900/50 text-white focus:ring-2 focus:ring-blue-500 focus:border-blue-500 placeholder-slate-500"
                         value={rollSearch}
                         onChange={(e) => setRollSearch(e.target.value)}
                     />
                 </div>
 
                 {/* Filters */}
-                <select className="rounded-lg border-gray-300 border p-2 text-gray-700 bg-white" value={classFilter} onChange={e => setClassFilter(e.target.value)}>
-                    <option value="">All Classes</option>
-                    {[...Array(12)].map((_, i) => <option key={i + 1} value={i + 1}>Class {i + 1}</option>)}
+                <select className="rounded-lg border-slate-600 border p-2.5 text-slate-300 bg-slate-900/50 focus:ring-2 focus:ring-blue-500 outline-none" value={classFilter} onChange={e => setClassFilter(e.target.value)}>
+                    <option value="" className="bg-slate-800">All Classes</option>
+                    {[...Array(12)].map((_, i) => <option key={i + 1} value={i + 1} className="bg-slate-800">Class {i + 1}</option>)}
                 </select>
 
-                <select className="rounded-lg border-gray-300 border p-2 text-gray-700 bg-white" value={batchFilter} onChange={e => setBatchFilter(e.target.value)}>
-                    <option value="">All Batches</option>
-                    {batches?.map((b: any) => <option key={b.batch_id} value={b.batch_id}>{b.batch_name}</option>)}
+                <select className="rounded-lg border-slate-600 border p-2.5 text-slate-300 bg-slate-900/50 focus:ring-2 focus:ring-blue-500 outline-none" value={batchFilter} onChange={e => setBatchFilter(e.target.value)}>
+                    <option value="" className="bg-slate-800">All Batches</option>
+                    {batches?.map((b: any) => <option key={b.batch_id} value={b.batch_id} className="bg-slate-800">{b.batch_name}</option>)}
                 </select>
 
-                <select className="rounded-lg border-gray-300 border p-2 text-gray-700 bg-white" value={programFilter} onChange={e => setProgramFilter(e.target.value)}>
-                    <option value="">All Programs</option>
-                    {allPrograms?.map((p: any) => <option key={p.program_id} value={p.program_id}>{p.program_name}</option>)}
+                <select className="rounded-lg border-slate-600 border p-2.5 text-slate-300 bg-slate-900/50 focus:ring-2 focus:ring-blue-500 outline-none" value={programFilter} onChange={e => setProgramFilter(e.target.value)}>
+                    <option value="" className="bg-slate-800">All Programs</option>
+                    {allPrograms?.map((p: any) => <option key={p.program_id} value={p.program_id} className="bg-slate-800">{p.program_name}</option>)}
                 </select>
-
-
             </div>
 
             {/* LEDGER TABLE */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                <table className="w-full text-left">
-                    <thead className="bg-gray-50 text-gray-500 text-xs uppercase font-semibold border-b">
+            <div className="bg-slate-800/50 backdrop-blur-sm rounded-xl shadow-xl border border-slate-700/50 overflow-hidden">
+                <table className="w-full text-left border-collapse">
+                    <thead className="bg-slate-900/50 text-slate-400 text-xs uppercase font-bold border-b border-slate-700">
                         <tr>
-                            <th className="p-4">Receipt #</th>
-                            <th className="p-4">Date</th>
-                            <th className="p-4">Student</th>
-                            <th className="p-4">Month/Year</th>
-                            <th className="p-4 text-right">Amount</th>
-                            <th className="p-4">Method</th>
-                            <th className="p-4 text-center">Actions</th>
+                            <th className="p-5">Receipt #</th>
+                            <th className="p-5">Date</th>
+                            <th className="p-5">Student</th>
+                            <th className="p-5">Month/Year</th>
+                            <th className="p-5 text-right">Amount</th>
+                            <th className="p-5">Method</th>
+                            <th className="p-5 text-center">Actions</th>
                         </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-100">
+                    <tbody className="divide-y divide-slate-700/50">
                         {filteredPayments?.map((p: any) => {
                             // Backend now returns 'date_display' and 'type' and 'total_amount'
                             // p.sort_id is the ID to key by
                             return (
-                                <tr key={p.sort_id || p.payment_id} className="hover:bg-gray-50">
-                                    <td className="p-4 font-mono text-gray-500">#{p.sort_id}</td>
-                                    <td className="p-4 text-gray-700 text-sm">{p.payment_date}</td>
-                                    <td className="p-4 font-medium text-gray-900">
-                                        {p.student_name}
-                                        {/* <span className="block text-xs text-gray-400">Roll: {p.roll_no || '-'}</span> */}
-                                        <span className="block text-xs text-blue-500">{p.program_name}</span>
+                                <tr key={p.sort_id || p.payment_id} className="hover:bg-slate-700/30 transition-colors group">
+                                    <td className="p-5 font-mono text-slate-500 group-hover:text-slate-300 transition-colors">#{p.sort_id}</td>
+                                    <td className="p-5 text-slate-300 text-sm">{p.payment_date}</td>
+                                    <td className="p-5">
+                                        <div className="font-bold text-white group-hover:text-emerald-400 transition-colors">{p.student_name}</div>
+                                        <div className="text-xs text-blue-400 mt-0.5">{p.program_name}</div>
                                     </td>
-                                    <td className="p-4 text-gray-800 text-sm font-medium">
+                                    <td className="p-5 text-slate-300 text-sm font-medium">
                                         {p.date_display}
                                         {p.type === 'Bulk' && (
-                                            <span className="ml-2 px-1.5 py-0.5 bg-purple-100 text-purple-700 text-xs rounded border border-purple-200">
+                                            <span className="ml-2 px-1.5 py-0.5 bg-purple-500/20 text-purple-300 text-xs rounded border border-purple-500/30">
                                                 Bulk
                                             </span>
                                         )}
                                     </td>
-                                    <td className="p-4 text-right font-bold text-green-600">৳{p.total_amount || p.paid_amount}</td>
-                                    <td className="p-4 text-gray-600 text-sm">
-                                        <span className="px-2 py-1 bg-gray-100 rounded text-xs border">{p.payment_method || 'Cash'}</span>
+                                    <td className="p-5 text-right font-bold text-emerald-400 text-lg">৳{p.total_amount || p.paid_amount}</td>
+                                    <td className="p-5 text-slate-400 text-sm">
+                                        <span className="px-2 py-1 bg-slate-700/50 rounded text-xs border border-slate-600">{p.payment_method || 'Cash'}</span>
                                     </td>
-                                    <td className="p-4 text-center flex justify-center gap-2">
+                                    <td className="p-5 text-center flex justify-center gap-2">
                                         {p.is_editable ? (
                                             <button
-                                                onClick={() => setEditPayment(p)} // We need to handle Edit for Group vs Single? Backend update_payment is for single ID.
-                                                // Wait, Phase 18 Step 3 allows editing "Entire Group".
-                                                // My 'editPayment' takes a 'payment' object.
-                                                // If I pass the group object, the modal needs to handle it.
-                                                // For now, let's allow editing the MAIN ID (sort_id) or disable if bulk?
-                                                // User said: "If Bulk, admin can edit the entire group (or any record)".
-                                                // To keep it simple: We treat it as one unit. The Modal should technically loop updates?
-                                                // LIMITATION: 'update_payment' is single ID capable.
-                                                // For Bulk rows, p.payment_ids is a list.
-                                                // Let's Disable Edit for Bulk for a moment OR allow editing just the Amount (Total)?
-                                                // "Admin can edit the entire group".
-                                                // Let's pass the whole object to EditPaymentModal and upgrade the Modal later.
-                                                // For now, let's just pass 'p'. 
-                                                className="text-gray-500 hover:text-blue-600 p-2 rounded-full hover:bg-gray-100"
+                                                onClick={() => setEditPayment(p)}
+                                                className="text-slate-400 hover:text-blue-400 p-2 rounded-full hover:bg-slate-700/50 transition-colors"
                                                 title="Edit"
                                             >
                                                 <Edit size={16} />
                                             </button>
                                         ) : (
                                             <button
-                                                className="text-gray-300 cursor-not-allowed p-2 rounded-full"
+                                                className="text-slate-700 cursor-not-allowed p-2 rounded-full"
                                                 title="Only the most recent transaction can be edited"
                                                 disabled
                                             >
@@ -318,7 +309,7 @@ const Finance: React.FC = () => {
 
                                         <button
                                             onClick={() => generatePaymentSlip(p)}
-                                            className="text-blue-600 hover:text-blue-800 p-2 rounded-full hover:bg-blue-50 transition-colors"
+                                            className="text-blue-400 hover:text-blue-300 p-2 rounded-full hover:bg-blue-500/10 transition-colors"
                                             title="Download Receipt"
                                         >
                                             <Download size={18} />
@@ -328,7 +319,7 @@ const Finance: React.FC = () => {
                             );
                         })}
                         {recentPayments?.length === 0 && (
-                            <tr><td colSpan={7} className="p-8 text-center text-gray-400">No payments recorded yet.</td></tr>
+                            <tr><td colSpan={7} className="p-16 text-center text-slate-500 italic">No payments recorded yet.</td></tr>
                         )}
                     </tbody>
                 </table>
@@ -426,18 +417,18 @@ const EditPaymentModal: React.FC<{ isOpen: boolean; onClose: () => void; payment
     if (!isOpen || !payment) return null;
 
     return (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
-                <h3 className="font-bold text-lg mb-4">Edit Payment #{payment.payment_id}</h3>
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-slate-800 rounded-2xl shadow-2xl border border-slate-700 w-full max-w-md p-6 animate-in fade-in zoom-in-95 duration-200">
+                <h3 className="font-bold text-xl text-white mb-4">Edit Payment #{payment.payment_id}</h3>
                 <form onSubmit={handleSubmit} className="space-y-4">
                     <div>
-                        <label className="block text-xs font-bold text-gray-500 mb-1">
+                        <label className="block text-xs font-bold text-emerald-400 mb-1">
                             Amount (Max: {maxCap !== Infinity ? maxCap : '...'})
                         </label>
                         <input
                             type="number"
                             required
-                            className="w-full p-2 border rounded font-bold text-green-700"
+                            className="w-full p-3 border border-slate-600 rounded-xl bg-slate-900 text-emerald-400 font-bold text-lg focus:ring-2 focus:ring-emerald-500 outline-none"
                             value={amount}
                             onWheel={(e) => (e.target as HTMLElement).blur()}
                             onChange={e => {
@@ -453,16 +444,16 @@ const EditPaymentModal: React.FC<{ isOpen: boolean; onClose: () => void; payment
                             disabled={isBulk} // Disable amount edit for bulk
                             title={isBulk ? "Cannot edit amount for bulk payments directly. Delete and re-enter if needed." : ""}
                         />
-                        {isBulk && <p className="text-xs text-orange-500 mt-1">Bulk payment amounts cannot be edited directly.</p>}
+                        {isBulk && <p className="text-xs text-amber-500 mt-1">Bulk payment amounts cannot be edited directly.</p>}
                         {maxCap !== Infinity && (
-                            <p className="text-xs text-gray-400 mt-1">
+                            <p className="text-xs text-slate-500 mt-1">
                                 Fee: {payment?.paid_amount + (maxCap - payment?.paid_amount)} | Cap reflects adjusted fee limit.
                             </p>
                         )}
                     </div>
                     <div>
-                        <label className="block text-xs font-bold text-gray-500 mb-1">Method</label>
-                        <select className="w-full p-2 border rounded" value={method} onChange={e => setMethod(e.target.value)}>
+                        <label className="block text-xs font-bold text-slate-400 mb-1">Method</label>
+                        <select className="w-full p-3 border border-slate-600 rounded-xl bg-slate-900 text-white focus:ring-2 focus:ring-blue-500 outline-none" value={method} onChange={e => setMethod(e.target.value)}>
                             <option>Cash</option>
                             <option>Bank Transfer</option>
                             <option>bKash</option>
@@ -470,12 +461,12 @@ const EditPaymentModal: React.FC<{ isOpen: boolean; onClose: () => void; payment
                         </select>
                     </div>
                     <div>
-                        <label className="block text-xs font-bold text-gray-500 mb-1">Remarks</label>
-                        <textarea className="w-full p-2 border rounded" value={remarks} onChange={e => setRemarks(e.target.value)} />
+                        <label className="block text-xs font-bold text-slate-400 mb-1">Remarks</label>
+                        <textarea className="w-full p-3 border border-slate-600 rounded-xl bg-slate-900 text-white focus:ring-2 focus:ring-blue-500 outline-none" value={remarks} onChange={e => setRemarks(e.target.value)} />
                     </div>
-                    <div className="flex justify-end gap-2 mt-4">
-                        <button type="button" onClick={onClose} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded">Cancel</button>
-                        <button type="submit" disabled={mutation.isPending} className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Save Changes</button>
+                    <div className="flex justify-end gap-3 mt-6">
+                        <button type="button" onClick={onClose} className="px-5 py-2.5 text-slate-300 hover:bg-slate-700 rounded-xl font-medium transition-colors">Cancel</button>
+                        <button type="submit" disabled={mutation.isPending} className="px-5 py-2.5 bg-blue-600 text-white rounded-xl font-bold shadow-lg shadow-blue-500/20 hover:bg-blue-500 hover:scale-105 transition-all">Save Changes</button>
                     </div>
                 </form>
             </div>
@@ -726,42 +717,41 @@ const AddPaymentModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ i
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl overflow-hidden max-h-[90vh] overflow-y-auto">
-                <div className="p-4 border-b flex justify-between items-center bg-gray-50">
-                    <h3 className="font-bold text-gray-800">Record New Payment</h3>
-                    <button onClick={onClose}><X size={20} className="text-gray-500" /></button>
+        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="bg-slate-800 rounded-2xl shadow-2xl border border-slate-700 w-full max-w-2xl overflow-hidden max-h-[90vh] overflow-y-auto animate-in fade-in zoom-in-95 duration-200">
+                <div className="p-5 border-b border-slate-700 flex justify-between items-center bg-slate-900/50">
+                    <h3 className="font-bold text-xl text-white">Record New Payment</h3>
+                    <button onClick={onClose}><X size={20} className="text-slate-400 hover:text-white transition-colors" /></button>
                 </div>
 
                 <form onSubmit={handleSubmit} className="p-6 space-y-6">
                     {/* STEP 1: STUDENT & PROGRAM */}
                     {!selectedStudent ? (
                         <div className="space-y-4">
-                            {/* Search UI (Simplified for brevity, similar to before) */}
                             {/* Filters */}
                             <div className="flex gap-2 mb-2">
-                                <select className="p-2 border rounded-lg text-sm bg-gray-50 flex-1" value={classFilter} onChange={e => setClassFilter(e.target.value)}>
-                                    <option value="">All Classes</option>
-                                    {[...Array(12)].map((_, i) => <option key={i} value={i + 1}>Class {i + 1}</option>)}
+                                <select className="p-2.5 border border-slate-600 rounded-xl text-sm bg-slate-900 text-slate-300 focus:ring-2 focus:ring-blue-500 outline-none flex-1" value={classFilter} onChange={e => setClassFilter(e.target.value)}>
+                                    <option value="" className="bg-slate-800">All Classes</option>
+                                    {[...Array(12)].map((_, i) => <option key={i} value={i + 1} className="bg-slate-800">Class {i + 1}</option>)}
                                 </select>
-                                <select className="p-2 border rounded-lg text-sm bg-gray-50 flex-1" value={batchFilter} onChange={e => setBatchFilter(e.target.value)}>
-                                    <option value="">All Batches</option>
-                                    {batches?.map((b: any) => <option key={b.batch_id} value={b.batch_id}>{b.batch_name}</option>)}
+                                <select className="p-2.5 border border-slate-600 rounded-xl text-sm bg-slate-900 text-slate-300 focus:ring-2 focus:ring-blue-500 outline-none flex-1" value={batchFilter} onChange={e => setBatchFilter(e.target.value)}>
+                                    <option value="" className="bg-slate-800">All Batches</option>
+                                    {batches?.map((b: any) => <option key={b.batch_id} value={b.batch_id} className="bg-slate-800">{b.batch_name}</option>)}
                                 </select>
-                                <select className="p-2 border rounded-lg text-sm bg-gray-50 flex-1" value={programFilter} onChange={e => setProgramFilter(e.target.value)}>
-                                    <option value="">All Programs</option>
-                                    {allPrograms?.map((p: any) => <option key={p.program_id} value={p.program_id}>{p.program_name}</option>)}
+                                <select className="p-2.5 border border-slate-600 rounded-xl text-sm bg-slate-900 text-slate-300 focus:ring-2 focus:ring-blue-500 outline-none flex-1" value={programFilter} onChange={e => setProgramFilter(e.target.value)}>
+                                    <option value="" className="bg-slate-800">All Programs</option>
+                                    {allPrograms?.map((p: any) => <option key={p.program_id} value={p.program_id} className="bg-slate-800">{p.program_name}</option>)}
                                 </select>
                             </div>
 
                             {/* Search UI */}
                             <div className="flex gap-2">
                                 <div className="relative flex-1">
-                                    <Search className="absolute left-3 top-2.5 text-gray-400" size={18} />
+                                    <Search className="absolute left-3 top-3 text-slate-500" size={18} />
                                     <input
                                         type="text"
                                         placeholder="Search Name or ID..."
-                                        className="w-full pl-10 p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                                        className="w-full pl-10 p-3 border border-slate-600 rounded-xl bg-slate-900 text-white focus:ring-2 focus:ring-blue-500 outline-none placeholder-slate-600"
                                         value={searchQuery}
                                         onChange={e => setSearchQuery(e.target.value)}
                                         autoFocus
@@ -771,7 +761,7 @@ const AddPaymentModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ i
                                     <input
                                         type="text"
                                         placeholder="Roll No..."
-                                        className="w-full p-3 border rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+                                        className="w-full p-3 border border-slate-600 rounded-xl bg-slate-900 text-white focus:ring-2 focus:ring-blue-500 outline-none placeholder-slate-600"
                                         value={rollSearch}
                                         onChange={e => setRollSearch(e.target.value)}
                                     />
@@ -779,7 +769,7 @@ const AddPaymentModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ i
                             </div>
 
                             {(searchQuery.length > 0 || rollSearch.length > 0) && (
-                                <ul className="border rounded-lg max-h-60 overflow-y-auto divide-y">
+                                <ul className="border border-slate-700 rounded-xl max-h-60 overflow-y-auto divide-y divide-slate-700 bg-slate-800">
                                     {searchResults
                                         ?.filter((s: any) => {
                                             const term = searchQuery.toLowerCase();
@@ -804,15 +794,15 @@ const AddPaymentModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ i
                                             return matchesName && matchesRoll && matchesBatch && matchesClass && matchesProgram;
                                         })
                                         .map((s: any) => (
-                                            <li key={s.student_id} onClick={() => { setSelectedStudent(s); setSearchQuery(''); setRollSearch(''); }} className="p-3 hover:bg-blue-50 cursor-pointer">
+                                            <li key={s.student_id} onClick={() => { setSelectedStudent(s); setSearchQuery(''); setRollSearch(''); }} className="p-3 hover:bg-slate-700 cursor-pointer transition-colors">
                                                 <div className="flex justify-between items-start">
                                                     <div>
-                                                        <div className="font-bold text-gray-800">{s.name}</div>
-                                                        <div className="text-xs text-gray-500">ID: {s.student_id}</div>
+                                                        <div className="font-bold text-white">{s.name}</div>
+                                                        <div className="text-xs text-slate-400">ID: {s.student_id}</div>
                                                     </div>
                                                     <div className="text-right">
                                                         {s.enrollment?.map((e: any, idx: number) => (
-                                                            <div key={idx} className="text-xs text-gray-600 bg-gray-100 px-1 rounded mb-1 inline-block ml-1">
+                                                            <div key={idx} className="text-xs text-slate-300 bg-slate-700/50 px-1.5 py-0.5 rounded mb-1 inline-block ml-1 border border-slate-600">
                                                                 <span className="font-bold">{e.roll_no || '?'}</span> - {e.program?.program_name}
                                                             </div>
                                                         ))}
@@ -825,23 +815,23 @@ const AddPaymentModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ i
                         </div>
                     ) : (
                         <div className="space-y-4">
-                            <div className="bg-blue-50 p-3 rounded-lg flex justify-between items-center">
-                                <div className="font-bold text-blue-900">{selectedStudent.name} (ID: {selectedStudent.student_id})</div>
-                                <button type="button" onClick={() => setSelectedStudent(null)} className="text-xs text-red-600 underline">Change</button>
+                            <div className="bg-blue-500/10 border border-blue-500/20 p-4 rounded-xl flex justify-between items-center">
+                                <div className="font-bold text-blue-300 text-lg">{selectedStudent.name} <span className="text-sm text-blue-400/70 ml-2">(ID: {selectedStudent.student_id})</span></div>
+                                <button type="button" onClick={() => setSelectedStudent(null)} className="text-sm text-red-400 hover:text-red-300 underline font-medium">Change</button>
                             </div>
 
                             {/* Program Select */}
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Select Program</label>
+                                <label className="block text-sm font-medium text-slate-400 mb-1">Select Program</label>
                                 <select
                                     required
-                                    className="w-full p-2 border rounded-lg"
+                                    className="w-full p-3 border border-slate-600 rounded-xl bg-slate-900 text-white focus:ring-2 focus:ring-blue-500 outline-none"
                                     value={selectedProgramId}
                                     onChange={e => setSelectedProgramId(e.target.value)}
                                 >
-                                    <option value="">-- Choose --</option>
+                                    <option value="" className="bg-slate-800">-- Choose --</option>
                                     {enrolledPrograms.map((p: any) => (
-                                        <option key={p.id} value={p.id}>{p.name} (৳{p.fee})</option>
+                                        <option key={p.id} value={p.id} className="bg-slate-800">{p.name} (৳{p.fee})</option>
                                     ))}
                                 </select>
                             </div>
@@ -852,45 +842,45 @@ const AddPaymentModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ i
                     {selectedProgram && (
                         <div className="animate-in fade-in slide-in-from-top-2">
                             {/* Status Banner */}
-                            <div className="bg-gray-100 p-3 rounded mb-4 text-sm">
+                            <div className="bg-slate-700/30 p-4 rounded-xl mb-6 border border-slate-600/50 text-sm">
                                 <div className="flex justify-between mb-2">
                                     <div>
-                                        <span className="text-gray-500 block">Paid Fully Until:</span>
-                                        <span className="font-bold text-green-700">{paymentStatus?.paid_up_to || 'None'}</span>
+                                        <span className="text-slate-400 block mb-0.5">Paid Fully Until</span>
+                                        <span className="font-bold text-emerald-400 text-lg">{paymentStatus?.paid_up_to || 'None'}</span>
                                     </div>
                                     <div className="text-right">
-                                        <span className="text-gray-500 block">Total Arrears:</span>
-                                        <span className="font-bold text-red-600">৳{paymentStatus?.total_due || 0}</span>
+                                        <span className="text-slate-400 block mb-0.5">Total Arrears</span>
+                                        <span className="font-bold text-red-500 text-lg">৳{paymentStatus?.total_due || 0}</span>
                                     </div>
                                 </div>
 
                                 {paymentStatus?.enrollment_date && (
-                                    <div className="text-xs text-gray-500 border-t border-gray-200 pt-2 mb-2">
+                                    <div className="text-xs text-slate-500 border-t border-slate-600/50 pt-2 mb-2">
                                         Joined: {new Date(paymentStatus.enrollment_date).toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' })}
                                     </div>
                                 )}
 
                                 {paymentStatus?.fum && paymentStatus.fum.status === 'Partial' && (
-                                    <div className="bg-yellow-100 text-yellow-800 p-2 rounded text-xs border border-yellow-200">
-                                        <strong>⚠️ Partial Payment Detected:</strong> {new Date(0, paymentStatus.fum.month - 1).toLocaleString('default', { month: 'long' })} {paymentStatus.fum.year} is partially paid.
-                                        You must clear the remaining ৳{paymentStatus.fum.due} before proceeding.
+                                    <div className="bg-amber-500/10 text-amber-400 p-3 rounded-lg text-xs border border-amber-500/20 mt-2">
+                                        <strong>⚠️ Partial Payment:</strong> {new Date(0, paymentStatus.fum.month - 1).toLocaleString('default', { month: 'long' })} {paymentStatus.fum.year} is partially paid.
+                                        Clear remaining ৳{paymentStatus.fum.due} first.
                                     </div>
                                 )}
                             </div>
 
                             {/* Mode Tabs */}
-                            <div className="flex border-b mb-4">
+                            <div className="flex border-b border-slate-700 mb-6">
                                 <button
                                     type="button"
                                     onClick={() => setMode('single')}
-                                    className={`flex-1 py-2 text-sm font-bold ${mode === 'single' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500'}`}
+                                    className={`flex-1 py-3 text-sm font-bold transition-all border-b-2 ${mode === 'single' ? 'border-blue-500 text-blue-400' : 'border-transparent text-slate-500 hover:text-slate-300'}`}
                                 >
                                     Single Month
                                 </button>
                                 <button
                                     type="button"
                                     onClick={() => setMode('bulk')}
-                                    className={`flex-1 py-2 text-sm font-bold ${mode === 'bulk' ? 'border-b-2 border-blue-600 text-blue-600' : 'text-gray-500'}`}
+                                    className={`flex-1 py-3 text-sm font-bold transition-all border-b-2 ${mode === 'bulk' ? 'border-blue-500 text-blue-400' : 'border-transparent text-slate-500 hover:text-slate-300'}`}
                                 >
                                     Bulk / Advance
                                 </button>
@@ -898,25 +888,25 @@ const AddPaymentModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ i
 
                             {/* SINGLE MODE */}
                             {mode === 'single' && (
-                                <div className="space-y-4">
-                                    <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg">
-                                        <label className="block text-xs font-bold text-blue-800 mb-1 uppercase tracking-wide">Paying For (Locked)</label>
-                                        <div className="text-lg font-bold text-blue-900">
+                                <div className="space-y-4 animate-in fade-in">
+                                    <div className="bg-blue-500/10 border border-blue-500/20 p-4 rounded-xl">
+                                        <label className="block text-xs font-bold text-blue-400 mb-1 uppercase tracking-wide">Paying For (Locked)</label>
+                                        <div className="text-2xl font-bold text-white">
                                             {new Date(0, singleMonth - 1).toLocaleString('default', { month: 'long' })} {singleYear}
                                         </div>
-                                        <div className="text-xs text-blue-600 mt-1">
+                                        <div className="text-xs text-blue-300/70 mt-1">
                                             Strict Sequencing Active: You must clear the earliest unpaid month first.
                                         </div>
                                     </div>
 
                                     <div>
-                                        <label className="block text-xs font-bold text-gray-500 mb-1">
+                                        <label className="block text-xs font-bold text-slate-400 mb-1">
                                             Amount (৳) - Max: {paymentStatus?.fum?.due}
                                         </label>
                                         <input
                                             type="number"
                                             required
-                                            className="w-full p-2 border rounded font-bold text-green-700 text-lg"
+                                            className="w-full p-3 border border-slate-600 rounded-xl bg-slate-900 text-emerald-400 font-bold text-lg focus:ring-2 focus:ring-emerald-500 outline-none placeholder-slate-600"
                                             value={singleAmount}
                                             onChange={e => {
                                                 const val = parseFloat(e.target.value);
@@ -932,7 +922,7 @@ const AddPaymentModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ i
                                             max={paymentStatus?.fum?.due}
                                             onWheel={(e) => (e.target as HTMLElement).blur()}
                                         />
-                                        <p className="text-xs text-gray-400 mt-1">
+                                        <p className="text-xs text-slate-500 mt-1">
                                             Enter amount to pay. Cannot exceed remaining due for this month.
                                         </p>
                                     </div>
@@ -941,24 +931,24 @@ const AddPaymentModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ i
 
                             {/* BULK MODE */}
                             {mode === 'bulk' && (
-                                <div className="space-y-4 bg-blue-50 p-4 rounded-lg">
+                                <div className="space-y-4 bg-blue-500/5 p-5 rounded-xl border border-blue-500/10 animate-in fade-in">
                                     <div className="flex justify-between items-center text-sm">
                                         <div>
-                                            <span className="block text-gray-500">Start Month:</span>
-                                            <span className="font-bold">{new Date(0, bulkStart.month - 1).toLocaleString('default', { month: 'long' })} {bulkStart.year}</span>
+                                            <span className="block text-slate-500 text-xs uppercase font-bold tracking-wider mb-1">Start Month</span>
+                                            <span className="font-bold text-white text-lg">{new Date(0, bulkStart.month - 1).toLocaleString('default', { month: 'long' })} {bulkStart.year}</span>
                                         </div>
                                         <div className="text-right">
-                                            <span className="block text-gray-500">End Month:</span>
-                                            <div className="flex gap-1">
+                                            <span className="block text-slate-500 text-xs uppercase font-bold tracking-wider mb-1">End Month</span>
+                                            <div className="flex gap-2">
                                                 <select
-                                                    className="p-1 border rounded text-sm"
+                                                    className="p-2 border border-slate-600 rounded-lg bg-slate-900 text-white text-sm outline-none focus:border-blue-500"
                                                     value={bulkEndMonth}
                                                     onChange={e => setBulkEndMonth(Number(e.target.value))}
                                                 >
                                                     {Array.from({ length: 12 }, (_, i) => i + 1).map(m => {
                                                         const isDisabled = (bulkEndYear < bulkStart.year) || (bulkEndYear === bulkStart.year && m < bulkStart.month);
                                                         return (
-                                                            <option key={m} value={m} disabled={isDisabled} className={isDisabled ? "text-gray-300" : ""}>
+                                                            <option key={m} value={m} disabled={isDisabled} className={isDisabled ? "text-slate-600 bg-slate-800" : "bg-slate-800"}>
                                                                 {new Date(0, m - 1).toLocaleString('default', { month: 'short' })}
                                                             </option>
                                                         );
@@ -966,7 +956,7 @@ const AddPaymentModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ i
                                                 </select>
                                                 <input
                                                     type="number"
-                                                    className="w-16 p-1 border rounded text-sm"
+                                                    className="w-20 p-2 border border-slate-600 rounded-lg bg-slate-900 text-white text-sm outline-none focus:border-blue-500"
                                                     value={bulkEndYear}
                                                     min={bulkStart.year}
                                                     onChange={e => {
@@ -979,44 +969,44 @@ const AddPaymentModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ i
                                             </div>
                                         </div>
                                     </div>
-                                    <div className="pt-2 border-t border-blue-100 flex justify-between items-center">
-                                        <span className="font-bold text-blue-900">Total Payable:</span>
-                                        <span className="text-xl font-bold text-blue-700">৳{calculateBulkTotal()}</span>
+                                    <div className="pt-4 border-t border-blue-500/20 flex justify-between items-center">
+                                        <span className="font-bold text-blue-300">Total Payable</span>
+                                        <span className="text-2xl font-black text-blue-400">৳{calculateBulkTotal()}</span>
                                     </div>
-                                    <p className="text-xs text-blue-600 italic">* Bulk payments must be paid in full.</p>
+                                    <p className="text-xs text-blue-400/60 italic">* Bulk payments must be paid in full.</p>
                                 </div>
                             )}
 
                             {/* COMMON FIELDS */}
-                            <div className="mt-4 grid grid-cols-2 gap-4">
+                            <div className="mt-6 grid grid-cols-2 gap-4">
                                 <div>
-                                    <label className="block text-xs font-bold text-gray-500 mb-1">Date</label>
-                                    <input type="date" required className="w-full p-2 border rounded" value={date} onChange={e => setDate(e.target.value)} />
+                                    <label className="block text-xs font-bold text-slate-400 mb-1">Date</label>
+                                    <input type="date" required className="w-full p-3 border border-slate-600 rounded-xl bg-slate-900 text-white outline-none focus:ring-2 focus:ring-blue-500" value={date} onChange={e => setDate(e.target.value)} />
                                 </div>
                                 <div>
-                                    <label className="block text-xs font-bold text-gray-500 mb-1">Method</label>
-                                    <select className="w-full p-2 border rounded" value={paymentMethod} onChange={e => setPaymentMethod(e.target.value)}>
-                                        <option>Cash</option>
-                                        <option>Bank Transfer</option>
-                                        <option>bKash</option>
-                                        <option>Nagad</option>
+                                    <label className="block text-xs font-bold text-slate-400 mb-1">Method</label>
+                                    <select className="w-full p-3 border border-slate-600 rounded-xl bg-slate-900 text-white outline-none focus:ring-2 focus:ring-blue-500" value={paymentMethod} onChange={e => setPaymentMethod(e.target.value)}>
+                                        <option className="bg-slate-800">Cash</option>
+                                        <option className="bg-slate-800">Bank Transfer</option>
+                                        <option className="bg-slate-800">bKash</option>
+                                        <option className="bg-slate-800">Nagad</option>
                                     </select>
                                 </div>
                             </div>
                             <div className="mt-4">
-                                <label className="block text-xs font-bold text-gray-500 mb-1">Remarks</label>
-                                <textarea className="w-full p-2 border rounded" rows={2} value={remarks} onChange={e => setRemarks(e.target.value)}></textarea>
+                                <label className="block text-xs font-bold text-slate-400 mb-1">Remarks</label>
+                                <textarea className="w-full p-3 border border-slate-600 rounded-xl bg-slate-900 text-white outline-none focus:ring-2 focus:ring-blue-500 placeholder-slate-600" rows={2} value={remarks} onChange={e => setRemarks(e.target.value)}></textarea>
                             </div>
                         </div>
                     )}
 
                     {/* FOOTER */}
-                    <div className="pt-4 border-t flex justify-end gap-3">
-                        <button type="button" onClick={onClose} className="px-5 py-2 text-gray-600 hover:bg-gray-100 rounded">Cancel</button>
+                    <div className="pt-6 border-t border-slate-700 flex justify-end gap-3">
+                        <button type="button" onClick={onClose} className="px-5 py-2.5 text-slate-300 hover:bg-slate-700 rounded-xl font-medium transition-colors">Cancel</button>
                         <button
                             type="submit"
                             disabled={mutation.isPending || !selectedStudent || !selectedProgram || (mode === 'bulk' && !isBulkRangeValid())}
-                            className={`px-6 py-2 bg-green-600 text-white rounded font-bold shadow hover:bg-green-700 ${mutation.isPending || (mode === 'bulk' && !isBulkRangeValid()) ? 'opacity-50' : ''}`}
+                            className={`px-6 py-2.5 bg-emerald-600 text-white rounded-xl font-bold shadow-lg shadow-emerald-500/20 hover:bg-emerald-500 hover:scale-105 transition-all ${mutation.isPending || (mode === 'bulk' && !isBulkRangeValid()) ? 'opacity-50 cursor-not-allowed' : ''}`}
                         >
                             {mutation.isPending ? 'Processing...' : `Pay ${mode === 'bulk' ? '৳' + calculateBulkTotal() : ''}`}
                         </button>

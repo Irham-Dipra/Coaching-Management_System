@@ -149,59 +149,57 @@ const CreateExamModal: React.FC<CreateExamModalProps> = ({ isOpen, onClose, prog
     };
 
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-lg shadow-xl w-full max-w-lg p-6 relative max-h-[90vh] overflow-y-auto">
-                <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 z-10">
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
+            <div className="bg-slate-900 rounded-xl shadow-2xl w-full max-w-lg p-6 relative max-h-[90vh] overflow-y-auto border border-slate-700 custom-scrollbar">
+                <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-white transition-colors z-10">
                     <X size={24} />
                 </button>
 
-                <h2 className="text-xl font-bold mb-4">
+                <h2 className="text-xl font-bold mb-6 text-white border-b border-slate-700/50 pb-4">
                     {isEditing ? 'Edit Exam Details' : 'Schedule New Exam'}
                 </h2>
 
-                <form onSubmit={handleSubmit} className="space-y-4">
+                <form onSubmit={handleSubmit} className="space-y-5">
 
-                    {/* Program Selector (Collapsible Dropdown) - Always show now to allow editing */}
+                    {/* Program Selector (Collapsible Dropdown) */}
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">Select Programs / Batches</label>
+                        <label className="block text-sm font-bold text-slate-300 mb-2">Select Programs / Batches <span className="text-red-400">*</span></label>
 
                         <button
                             type="button"
                             onClick={() => setIsProgramDropdownOpen(!isProgramDropdownOpen)}
-                            className="w-full flex justify-between items-center px-4 py-2 border rounded-md bg-white text-left text-sm text-gray-700 hover:bg-gray-50"
+                            className="w-full flex justify-between items-center px-4 py-3 border border-slate-600 rounded-lg bg-slate-800 text-left text-sm text-slate-200 hover:border-blue-500/50 transition-colors"
                         >
-                            <span>
+                            <span className="truncate">
                                 {selectedProgramIds.length === 0
                                     ? "Select Programs..."
                                     : `${selectedProgramIds.length} Program(s) Selected`}
                             </span>
-                            <span className="text-xs text-gray-500">{isProgramDropdownOpen ? '▲' : '▼'}</span>
+                            <span className="text-xs text-slate-400 ml-2">{isProgramDropdownOpen ? '▲' : '▼'}</span>
                         </button>
 
                         {isProgramDropdownOpen && (
-                            <div className="mt-2 border rounded-md max-h-60 overflow-y-auto p-2 bg-gray-50 grid grid-cols-1 gap-1 shadow-inner">
+                            <div className="mt-2 border border-slate-700 rounded-lg max-h-60 overflow-y-auto p-2 bg-slate-800 grid grid-cols-1 gap-1 shadow-xl z-20 custom-scrollbar">
                                 {programs?.map((p: any) => (
-                                    <label key={p.program_id} className="flex items-center gap-2 p-1.5 hover:bg-white rounded cursor-pointer">
+                                    <label key={p.program_id} className="flex items-center gap-3 p-2 hover:bg-slate-700/50 rounded-lg cursor-pointer transition-colors">
                                         <input
                                             type="checkbox"
-                                            className="w-4 h-4 text-blue-600 rounded"
+                                            className="w-4 h-4 text-blue-500 rounded border-slate-600 bg-slate-700 focus:ring-offset-slate-800"
                                             checked={selectedProgramIds.some(id => String(id) === String(p.program_id))}
                                             onChange={() => toggleProgram(String(p.program_id))}
                                         />
-                                        <span className="text-sm text-gray-700">{p.program_name} <span className="text-xs text-gray-500">({p.batch?.batch_name})</span></span>
+                                        <span className="text-sm text-slate-200">{p.program_name} <span className="text-xs text-slate-400">({p.batch?.batch_name})</span></span>
                                     </label>
                                 ))}
                             </div>
                         )}
-
-                        {selectedProgramIds.length === 0 && <p className="text-xs text-red-500 mt-1">Required*</p>}
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-gray-700">Exam Title</label>
+                        <label className="block text-sm font-bold text-slate-300 mb-2">Exam Title</label>
                         <input
                             name="exam_name" type="text" required
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border text-gray-900 bg-white"
+                            className="block w-full rounded-lg border-slate-600 bg-slate-800 p-2.5 text-white placeholder-slate-500 focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
                             placeholder="e.g. Physics Weekly Test 5"
                             value={formData.exam_name} onChange={handleChange}
                         />
@@ -209,10 +207,10 @@ const CreateExamModal: React.FC<CreateExamModalProps> = ({ isOpen, onClose, prog
 
                     <div className="grid grid-cols-2 gap-4">
                         <div>
-                            <label className="block text-sm font-medium text-gray-700">Type</label>
+                            <label className="block text-sm font-bold text-slate-300 mb-2">Type</label>
                             <select
                                 name="exam_type"
-                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border text-gray-900 bg-white"
+                                className="block w-full rounded-lg border-slate-600 bg-slate-800 p-2.5 text-white focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
                                 value={formData.exam_type} onChange={handleChange}
                             >
                                 <option value="Weekly">Weekly</option>
@@ -221,49 +219,49 @@ const CreateExamModal: React.FC<CreateExamModalProps> = ({ isOpen, onClose, prog
                             </select>
                         </div>
                         <div>
-                            <label className="block text-sm font-medium text-gray-700">Total Marks</label>
+                            <label className="block text-sm font-bold text-slate-300 mb-2">Total Marks</label>
                             <input
                                 name="total_marks" type="number" required
-                                className="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border text-gray-900 bg-white"
+                                className="block w-full rounded-lg border-slate-600 bg-slate-800 p-2.5 text-white focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
                                 value={formData.total_marks} onChange={handleChange}
                             />
                         </div>
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-gray-700">Date</label>
+                        <label className="block text-sm font-bold text-slate-300 mb-2">Date</label>
                         <input
                             name="exam_date" type="date"
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border text-gray-900 bg-white"
+                            className="block w-full rounded-lg border-slate-600 bg-slate-800 p-2.5 text-white focus:border-blue-500 focus:ring-blue-500 sm:text-sm [color-scheme:dark]"
                             value={formData.exam_date} onChange={handleChange}
                         />
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-gray-700">Subject (Optional)</label>
+                        <label className="block text-sm font-bold text-slate-300 mb-2">Subject (Optional)</label>
                         <input
                             name="subject" type="text"
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border text-gray-900 bg-white"
+                            className="block w-full rounded-lg border-slate-600 bg-slate-800 p-2.5 text-white placeholder-slate-500 focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
                             value={formData.subject} onChange={handleChange}
                         />
                     </div>
 
                     {/* Link Fields */}
                     <div>
-                        <label className="block text-sm font-medium text-gray-700">Question Paper Link (Google Drive)</label>
+                        <label className="block text-sm font-bold text-slate-300 mb-2">Question Paper Link (Google Drive)</label>
                         <input
                             name="question_link" type="url"
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border text-gray-900 bg-white"
+                            className="block w-full rounded-lg border-slate-600 bg-slate-800 p-2.5 text-white placeholder-slate-500 focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
                             placeholder="https://..."
                             value={formData.question_link} onChange={handleChange}
                         />
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-gray-700">Solution Link (Google Drive)</label>
+                        <label className="block text-sm font-bold text-slate-300 mb-2">Solution Link (Google Drive)</label>
                         <input
                             name="solution_link" type="url"
-                            className="mt-1 block w-full rounded-md border-gray-300 shadow-sm p-2 border text-gray-900 bg-white"
+                            className="block w-full rounded-lg border-slate-600 bg-slate-800 p-2.5 text-white placeholder-slate-500 focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
                             placeholder="https://..."
                             value={formData.solution_link} onChange={handleChange}
                         />
@@ -271,7 +269,7 @@ const CreateExamModal: React.FC<CreateExamModalProps> = ({ isOpen, onClose, prog
 
                     <button
                         type="submit"
-                        className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 shadow-sm font-medium"
+                        className="w-full bg-blue-600 text-white py-3 px-4 rounded-lg hover:bg-blue-500 shadow-lg shadow-blue-500/20 font-bold transition-all mt-6"
                     >
                         {isEditing ? 'Update Exam' : 'Schedule Exam'}
                     </button>

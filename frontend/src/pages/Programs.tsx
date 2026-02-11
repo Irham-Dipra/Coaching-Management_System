@@ -26,22 +26,24 @@ const Programs: React.FC = () => {
         queryFn: ProgramRepository.getAllPrograms,
     });
 
-    if (isLoading) return <div className="p-8 text-center text-gray-500">Loading academic programs...</div>;
-    if (error) return <div className="p-8 text-center text-red-500">Failed to load programs.</div>;
+    if (isLoading) return <div className="p-8 text-center text-slate-400 animate-pulse">Loading academic programs...</div>;
+    if (error) return <div className="p-8 text-center text-red-400">Failed to load programs.</div>;
 
     const programList = programs || [];
 
     return (
         <div>
             {/* HEADER */}
-            <div className="flex justify-between items-center mb-6">
+            <div className="flex justify-between items-center mb-6 animate-fade-in">
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-800">Academic Programs</h1>
-                    <p className="text-gray-500 text-sm">Manage your courses, batches, and fees.</p>
+                    <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-400">
+                        Academic Programs
+                    </h1>
+                    <p className="text-slate-400 text-sm mt-1">Manage your courses, batches, and fees.</p>
                 </div>
                 <button
                     onClick={() => setIsModalOpen(true)}
-                    className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-blue-700 transition-colors"
+                    className="bg-blue-600 text-white px-4 py-2 rounded-xl flex items-center gap-2 hover:bg-blue-500 shadow-lg shadow-blue-500/20 transition-all hover:-translate-y-0.5"
                 >
                     <Plus size={18} />
                     <span>New Program</span>
@@ -50,22 +52,26 @@ const Programs: React.FC = () => {
 
             {/* GRID LAYOUT */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {programList.map((program: Program) => (
-                    <div key={program.program_id} className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md transition-shadow">
+                {programList.map((program: Program, index: number) => (
+                    <div
+                        key={program.program_id}
+                        className="bg-slate-800/50 backdrop-blur-md rounded-2xl border border-slate-700 p-6 hover:shadow-xl hover:shadow-blue-500/5 transition-all duration-300 hover:-translate-y-1 group animate-slide-up"
+                        style={{ animationDelay: `${index * 50}ms` }}
+                    >
                         <div className="flex justify-between items-start mb-4">
-                            <div className="p-2 bg-blue-50 text-blue-600 rounded-lg">
+                            <div className="p-3 bg-blue-500/10 text-blue-400 rounded-xl group-hover:bg-blue-500/20 transition-colors">
                                 <BookOpen size={24} />
                             </div>
-                            <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded text-xs font-semibold">
+                            <span className="bg-slate-700/50 text-slate-300 px-3 py-1 rounded-full text-xs font-medium border border-slate-600">
                                 {program.batch ? program.batch.batch_name : 'No Batch'}
                             </span>
                         </div>
 
-                        <h3 className="text-lg font-bold text-gray-900 mb-2">{program.program_name}</h3>
+                        <h3 className="text-xl font-bold text-white mb-2 group-hover:text-blue-400 transition-colors">{program.program_name}</h3>
 
-                        <div className="space-y-2 mb-4">
-                            <div className="flex items-center text-gray-500 text-sm">
-                                <Users size={16} className="mr-2" />
+                        <div className="space-y-3 mb-6">
+                            <div className="flex items-center text-slate-400 text-sm">
+                                <Users size={16} className="mr-2 text-slate-500" />
                                 <span className="font-medium">
                                     {program.student_count && program.student_count > 0
                                         ? `${program.student_count} Students Enrolled`
@@ -74,14 +80,14 @@ const Programs: React.FC = () => {
                             </div>
                         </div>
 
-                        <div className="pt-4 border-t border-gray-100 flex justify-between items-center">
+                        <div className="pt-4 border-t border-slate-700/50 flex justify-between items-center">
                             <div>
-                                <p className="text-xs text-gray-500 uppercase">Monthly Fee</p>
-                                <p className="text-lg font-bold text-gray-900">৳{program.monthly_fee}</p>
+                                <p className="text-xs text-slate-500 uppercase font-semibold tracking-wider">Monthly Fee</p>
+                                <p className="text-lg font-bold text-emerald-400">৳{program.monthly_fee}</p>
                             </div>
                             <Link
                                 to={`/programs/${program.program_id}`}
-                                className="text-blue-600 text-sm font-medium hover:underline"
+                                className="px-4 py-2 bg-slate-700/50 hover:bg-slate-700 text-slate-200 text-sm font-medium rounded-lg transition-colors"
                             >
                                 View Details
                             </Link>
@@ -92,8 +98,10 @@ const Programs: React.FC = () => {
 
             {/* EMPTY STATE */}
             {programList.length === 0 && (
-                <div className="text-center py-12 bg-gray-50 rounded-lg border border-dashed border-gray-300">
-                    <p className="text-gray-500">No programs found. Create your first one!</p>
+                <div className="text-center py-16 bg-slate-800/30 rounded-2xl border border-dashed border-slate-700">
+                    <BookOpen size={48} className="mx-auto text-slate-600 mb-4" />
+                    <p className="text-slate-400 text-lg">No programs found.</p>
+                    <p className="text-slate-500 text-sm">Create your first program to get started.</p>
                 </div>
             )}
 

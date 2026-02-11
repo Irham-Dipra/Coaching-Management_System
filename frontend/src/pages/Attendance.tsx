@@ -53,16 +53,7 @@ const Attendance: React.FC = () => {
         if (!selectedProgramId) return;
         const records = attendanceData.map(item => ({
             enrollment_id: item.enrollment_id,
-            status: item.status, // Allow null/undefined to go if we want, but usually we save specifically marked ones.
-            // Actually, if we want to save "Not Recorded", we probably just skip it or dont send it?
-            // But if user clicks 'Save', they probably intend to save what they see.
-            // If they haven't touched it, it's null.
-            // If they want to save partial attendance, we filter out nulls? 
-            // Or we assume if they save, they want to save 'Present' or 'Absent'. 
-            // If it's null, we probably shouldn't save it as a record unless we want to clear it.
-            // For now, let's filter out items with no status to avoid overwriting existing data with empty, 
-            // OR if we want to support 'unmarking', we might need logic.
-            // Simpler: Only send records that have a status.
+            status: item.status,
             attendance_id: item.attendance_id,
             date: date
         })).filter(r => r.status); // Only save marked records
@@ -77,34 +68,34 @@ const Attendance: React.FC = () => {
     const unrecorded = total - present - absent;
 
     return (
-        <div className="space-y-6">
-            <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-                <Calendar className="text-blue-600" /> Daily Attendance
+        <div className="space-y-6 animate-fade-in max-w-7xl mx-auto">
+            <h1 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-400 flex items-center gap-3">
+                <Calendar className="text-blue-400" /> Daily Attendance
             </h1>
 
             {/* CONTROLS */}
-            <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 flex flex-wrap gap-6 items-end">
-                <div className="flex-1 min-w-[200px]">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Select Program (Batch)</label>
+            <div className="bg-slate-800/50 backdrop-blur-md p-6 rounded-xl shadow-lg border border-slate-700/50 flex flex-wrap gap-6 items-end">
+                <div className="flex-1 min-w-[250px]">
+                    <label className="block text-sm font-bold text-slate-300 mb-2">Select Program (Batch)</label>
                     <select
-                        className="w-full p-2 border rounded-lg bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none"
+                        className="w-full p-3 border border-slate-600 rounded-lg bg-slate-800 text-white focus:ring-2 focus:ring-blue-500 outline-none transition-all placeholder-slate-400"
                         value={selectedProgramId}
                         onChange={(e) => setSelectedProgramId(e.target.value)}
                     >
-                        <option value="">-- Choose a Program --</option>
+                        <option value="" className="bg-slate-800 text-slate-400">-- Choose a Program --</option>
                         {programs?.map((p: any) => (
-                            <option key={p.program_id} value={p.program_id}>
+                            <option key={p.program_id} value={p.program_id} className="bg-slate-800">
                                 {p.program_name} ({p.batch?.batch_name})
                             </option>
                         ))}
                     </select>
                 </div>
 
-                <div className="min-w-[150px]">
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Date</label>
+                <div className="min-w-[200px]">
+                    <label className="block text-sm font-bold text-slate-300 mb-2">Date</label>
                     <input
                         type="date"
-                        className="w-full p-2 border rounded-lg bg-gray-50 focus:ring-2 focus:ring-blue-500 outline-none"
+                        className="w-full p-3 border border-slate-600 rounded-lg bg-slate-800 text-white focus:ring-2 focus:ring-blue-500 outline-none transition-all"
                         value={date}
                         onChange={(e) => setDate(e.target.value)}
                     />
@@ -113,78 +104,81 @@ const Attendance: React.FC = () => {
                 <button
                     onClick={handleSave}
                     disabled={!selectedProgramId || attendanceMutation.isPending}
-                    className="bg-green-600 text-white px-6 py-2 rounded-lg font-medium hover:bg-green-700 shadow-sm disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                    className="bg-emerald-600 text-white px-8 py-3 rounded-lg font-bold hover:bg-emerald-500 shadow-lg shadow-emerald-500/20 disabled:opacity-50 disabled:shadow-none disabled:cursor-not-allowed flex items-center gap-2 transition-all hover:scale-105 active:scale-95"
                 >
-                    <Save size={18} /> {attendanceMutation.isPending ? 'Saving...' : 'Save Attendance'}
+                    <Save size={20} /> {attendanceMutation.isPending ? 'Saving...' : 'Save Attendance'}
                 </button>
             </div>
 
             {selectedProgramId ? (
-                <div className="bg-white border rounded-xl overflow-hidden shadow-sm">
+                <div className="bg-slate-800/50 backdrop-blur-sm border border-slate-700/50 rounded-xl overflow-hidden shadow-xl">
                     {/* STATS BAR */}
-                    <div className="bg-gray-50 border-b p-4 flex gap-6 text-sm">
-                        <span className="font-medium text-gray-600">Total: <b className="text-gray-900">{total}</b></span>
-                        <span className="font-medium text-green-600">Present: <b>{present}</b></span>
-                        <span className="font-medium text-red-600">Absent: <b>{absent}</b></span>
-                        {unrecorded > 0 && <span className="font-medium text-amber-600">Not Recorded: <b>{unrecorded}</b></span>}
+                    <div className="bg-slate-800/80 border-b border-slate-700 p-4 flex gap-8 text-sm overflow-x-auto">
+                        <span className="font-medium text-slate-400 flex items-center gap-2">Total: <b className="text-white text-lg">{total}</b></span>
+                        <span className="font-medium text-emerald-400 flex items-center gap-2">Present: <b className="text-emerald-300 text-lg">{present}</b></span>
+                        <span className="font-medium text-red-400 flex items-center gap-2">Absent: <b className="text-red-300 text-lg">{absent}</b></span>
+                        {unrecorded > 0 && <span className="font-medium text-amber-400 flex items-center gap-2">Not Recorded: <b className="text-amber-300 text-lg">{unrecorded}</b></span>}
                     </div>
 
-                    <table className="w-full text-left">
-                        <thead className="bg-white text-gray-500 text-xs uppercase font-semibold border-b">
-                            <tr>
-                                <th className="p-4">Student Name</th>
-                                <th className="p-4 text-center">Status</th>
-                            </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-100">
-                            {attendanceData.map((student: any) => (
-                                <tr key={student.enrollment_id} className="hover:bg-gray-50 border-b last:border-0 transition-colors">
-                                    <td className="p-4">
-                                        <div className="flex items-center gap-3">
-                                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${student.status === 'Absent' ? 'bg-red-100 text-red-600' :
-                                                student.status === 'Present' ? 'bg-blue-100 text-blue-600' :
-                                                    'bg-gray-100 text-gray-500'
-                                                }`}>
-                                                {student.name.charAt(0)}
-                                            </div>
-                                            <div>
-                                                <p className="font-medium text-gray-900">{student.name}</p>
-                                                <p className="text-xs text-gray-500">Roll: {student.roll_no}</p>
-                                            </div>
-                                        </div>
-                                    </td>
-                                    <td className="p-4 flex justify-end items-center gap-3">
-                                        {!student.status && (
-                                            <span className="text-xs font-bold text-amber-700 bg-amber-100 px-3 py-1.5 rounded-full border border-amber-200 uppercase tracking-wide shadow-sm animate-pulse">
-                                                Not Recorded
-                                            </span>
-                                        )}
-                                        {['Present', 'Absent'].map((status) => (
-                                            <button
-                                                key={status}
-                                                onClick={() => handleStatusChange(student.enrollment_id, status)}
-                                                className={`px-4 py-1.5 text-sm rounded-full border transition-all ${student.status === status
-                                                    ? status === 'Absent' ? 'bg-red-600 text-white border-red-600 font-medium shadow-md scale-105'
-                                                        : 'bg-green-600 text-white border-green-600 font-medium shadow-md scale-105'
-                                                    : 'text-gray-500 bg-white border-gray-200 hover:bg-gray-50'
-                                                    }`}
-                                            >
-                                                {status}
-                                            </button>
-                                        ))}
-                                    </td>
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left border-collapse">
+                            <thead className="bg-slate-900/50 text-slate-400 text-xs uppercase font-bold border-b border-slate-700">
+                                <tr>
+                                    <th className="p-5">Student Name</th>
+                                    <th className="p-5 text-right">Status</th>
                                 </tr>
-                            ))}
-                            {attendanceData.length === 0 && (
-                                <tr><td colSpan={2} className="p-12 text-center text-gray-400">No students found in this program.</td></tr>
-                            )}
-                        </tbody>
-                    </table>
+                            </thead>
+                            <tbody className="divide-y divide-slate-700/50">
+                                {attendanceData.map((student: any) => (
+                                    <tr key={student.enrollment_id} className="hover:bg-slate-700/30 transition-colors group">
+                                        <td className="p-5">
+                                            <div className="flex items-center gap-4">
+                                                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold shadow-md transition-colors ${student.status === 'Absent' ? 'bg-red-500/20 text-red-500 border border-red-500/30' :
+                                                    student.status === 'Present' ? 'bg-emerald-500/20 text-emerald-500 border border-emerald-500/30' :
+                                                        'bg-slate-700 text-slate-400 border border-slate-600'
+                                                    }`}>
+                                                    {student.name.charAt(0)}
+                                                </div>
+                                                <div>
+                                                    <p className="font-bold text-slate-200 group-hover:text-white transition-colors">{student.name}</p>
+                                                    <p className="text-xs text-slate-500 font-mono">Roll: {student.roll_no}</p>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td className="p-5 flex justify-end items-center gap-3">
+                                            {!student.status && (
+                                                <span className="text-xs font-bold text-amber-500 bg-amber-500/10 px-3 py-1 rounded-full border border-amber-500/20 uppercase tracking-wide animate-pulse">
+                                                    Not Recorded
+                                                </span>
+                                            )}
+                                            {['Present', 'Absent'].map((status) => (
+                                                <button
+                                                    key={status}
+                                                    onClick={() => handleStatusChange(student.enrollment_id, status)}
+                                                    className={`px-5 py-2 text-sm rounded-lg border transition-all font-bold ${student.status === status
+                                                        ? status === 'Absent' ? 'bg-red-600 text-white border-red-500 shadow-lg shadow-red-600/20 scale-105'
+                                                            : 'bg-emerald-600 text-white border-emerald-500 shadow-lg shadow-emerald-600/20 scale-105'
+                                                        : 'text-slate-400 bg-slate-800/50 border-slate-700 hover:bg-slate-700 hover:text-white hover:border-slate-600'
+                                                        }`}
+                                                >
+                                                    {status}
+                                                </button>
+                                            ))}
+                                        </td>
+                                    </tr>
+                                ))}
+                                {attendanceData.length === 0 && (
+                                    <tr><td colSpan={2} className="p-16 text-center text-slate-500 italic">No students found in this program.</td></tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             ) : (
-                <div className="text-center py-20 bg-gray-50 rounded-xl border-dashed border-2 border-gray-200 text-gray-400">
-                    <Users size={48} className="mx-auto mb-4 opacity-50" />
-                    <p>Select a program above to load the student list.</p>
+                <div className="text-center py-24 bg-slate-800/30 rounded-xl border-2 border-dashed border-slate-700/50 text-slate-500 flex flex-col items-center justify-center">
+                    <Users size={64} className="mb-6 opacity-30 text-blue-400" />
+                    <p className="text-xl font-medium text-slate-400">Select a program above</p>
+                    <p className="text-sm">to load the student list and mark attendance.</p>
                 </div>
             )}
         </div>

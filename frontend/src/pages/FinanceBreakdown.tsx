@@ -40,29 +40,29 @@ const FinanceBreakdown: React.FC = () => {
     });
 
     if (!type || (!isRevenue && !isDueMonthly && !isDueOverall)) {
-        return <div className="p-8 text-center text-red-500">Invalid Breakdown Type</div>;
+        return <div className="min-h-screen pt-20 text-center text-red-400 bg-slate-950">Invalid Breakdown Type</div>;
     }
 
     return (
-        <div className="space-y-6 animate-in fade-in duration-300">
+        <div className="space-y-6 animate-in fade-in duration-300 p-6">
             {/* HEADER */}
             <div className="flex items-center gap-4">
                 <button
                     onClick={() => navigate('/finance')}
-                    className="p-2 hover:bg-gray-100 rounded-full text-gray-500 transition-colors"
+                    className="p-3 hover:bg-slate-800 rounded-full text-slate-400 hover:text-white transition-colors border border-transparent hover:border-slate-700"
                 >
                     <ArrowLeft size={24} />
                 </button>
                 <div>
-                    <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-                        {isRevenue ? <DollarSign className="text-green-600" /> : <AlertCircle className="text-red-600" />}
+                    <h1 className="text-3xl font-bold text-white flex items-center gap-3">
+                        {isRevenue ? <DollarSign className="text-emerald-400" size={32} /> : <AlertCircle className="text-red-500" size={32} />}
                         {title}
                     </h1>
                     {isRevenue && data && (
-                        <p className="text-sm text-gray-500">Showing data for {data.month}</p>
+                        <p className="text-slate-400 mt-1">Showing data for <span className="text-white font-medium">{data.month}</span></p>
                     )}
                     {!isRevenue && (
-                        <p className="text-sm text-gray-500">
+                        <p className="text-slate-400 mt-1">
                             {isDueMonthly
                                 ? "List of students with unpaid fees for the current month."
                                 : "List of students with total accumulated arrears."}
@@ -72,59 +72,65 @@ const FinanceBreakdown: React.FC = () => {
             </div>
 
             {isLoading ? (
-                <div className="text-center py-20 text-gray-500">Loading details...</div>
+                <div className="text-center py-20 text-slate-500 animate-pulse">Loading finance details...</div>
             ) : error ? (
-                <div className="text-center py-20 text-red-500">Error loading data.</div>
+                <div className="bg-red-500/10 border border-red-500/20 text-center py-10 rounded-xl text-red-400">
+                    <AlertCircle className="inline-block mb-2" size={32} />
+                    <p>Error loading data. Please try again.</p>
+                </div>
             ) : (
                 <>
                     {/* 1. PROGRAM SUMMARY CARDS */}
                     <div>
-                        <h4 className="font-bold text-gray-700 mb-3 text-sm uppercase tracking-wide">Program Summary</h4>
+                        <h4 className="font-bold text-slate-400 mb-4 text-xs uppercase tracking-wider">Program Summary</h4>
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                             {data?.program_summary?.map((prog: any, idx: number) => (
                                 <Link
                                     to={`/admin/finance/program/${prog.program_id}?view=${type}`}
                                     key={idx}
-                                    className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm flex justify-between items-center hover:shadow-md hover:border-blue-200 transition-all cursor-pointer group"
+                                    className="bg-slate-800/50 backdrop-blur-sm p-5 rounded-xl border border-slate-700/50 hover:bg-slate-800 hover:border-blue-500/50 hover:shadow-lg hover:shadow-blue-500/10 transition-all cursor-pointer group flex justify-between items-center"
                                 >
-                                    <span className="font-medium text-gray-700 truncate pr-2 group-hover:text-blue-600" title={prog.name}>
+                                    <span className="font-medium text-slate-300 truncate pr-4 group-hover:text-blue-400 transition-colors" title={prog.name}>
                                         {prog.name}
                                     </span>
-                                    <span className={`font-bold font-mono ${isRevenue ? 'text-green-600' : 'text-red-500'}`}>
+                                    <span className={`font-bold font-mono text-lg ${isRevenue ? 'text-emerald-400' : 'text-red-400'}`}>
                                         ৳{prog.amount.toLocaleString()}
                                     </span>
                                 </Link>
                             ))}
                             {(!data?.program_summary || data.program_summary.length === 0) && (
-                                <div className="col-span-full text-center text-gray-400 py-4 italic">No data available.</div>
+                                <div className="col-span-full text-center text-slate-500 py-8 italic bg-slate-800/30 rounded-xl border border-slate-700/30">No program data available.</div>
                             )}
                         </div>
                     </div>
 
                     {/* 2. DETAILED TABLE */}
-                    <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                        <div className="px-6 py-4 border-b border-gray-100 bg-white">
-                            <h4 className="font-bold text-gray-800">
+                    <div className="bg-slate-800 rounded-2xl shadow-xl border border-slate-700 overflow-hidden">
+                        <div className="px-6 py-5 border-b border-slate-700 bg-slate-900/50 flex justify-between items-center">
+                            <h4 className="font-bold text-slate-200">
                                 {isRevenue ? 'Transaction History' : 'Student Due List'}
                             </h4>
+                            <span className="text-xs text-slate-500 bg-slate-800 px-2 py-1 rounded border border-slate-700">
+                                {(isRevenue ? data.transactions : data.students)?.length || 0} Records
+                            </span>
                         </div>
                         <div className="overflow-x-auto">
                             <table className="w-full text-left">
-                                <thead className="bg-gray-50 text-gray-500 text-xs uppercase font-semibold">
+                                <thead className="bg-slate-900/80 text-slate-400 text-xs uppercase font-semibold tracking-wider">
                                     <tr>
                                         {isRevenue ? (
                                             <>
-                                                <th className="p-4">Receipt #</th>
+                                                <th className="p-4 pl-6">Receipt #</th>
                                                 <th className="p-4">Date</th>
                                                 <th className="p-4">Student</th>
                                                 <th className="p-4">Month/Year</th>
                                                 <th className="p-4 text-right">Amount</th>
                                                 <th className="p-4">Method</th>
-                                                <th className="p-4 text-center">Actions</th>
+                                                <th className="p-4 text-center pr-6">Actions</th>
                                             </>
                                         ) : (
                                             <>
-                                                <th className="p-4">Student</th>
+                                                <th className="p-4 pl-6">Student</th>
                                                 <th className="p-4">Program</th>
                                                 <th className="p-4 text-right">Amount</th>
                                                 <th className="p-4 w-1/3">Status Detail</th>
@@ -132,33 +138,35 @@ const FinanceBreakdown: React.FC = () => {
                                         )}
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-gray-50">
+                                <tbody className="divide-y divide-slate-700/50">
                                     {(isRevenue ? data.transactions : data.students)?.map((row: any, i: number) => (
-                                        <tr key={i} className="hover:bg-gray-50 transition-colors">
+                                        <tr key={i} className="hover:bg-slate-700/30 transition-colors group">
                                             {isRevenue ? (
                                                 <>
-                                                    <td className="p-4 font-mono text-gray-500">#{row.payment_id}</td>
-                                                    <td className="p-4 text-gray-700 text-sm">{row.payment_date}</td>
-                                                    <td className="p-4 font-medium text-gray-900">
-                                                        {row.student_name}
-                                                        <span className="block text-xs text-blue-500">{row.program_name}</span>
+                                                    <td className="p-4 pl-6 font-mono text-slate-500 group-hover:text-slate-300">#{row.payment_id}</td>
+                                                    <td className="p-4 text-slate-300 text-sm">{row.payment_date}</td>
+                                                    <td className="p-4">
+                                                        <div className="font-medium text-white">{row.student_name}</div>
+                                                        <span className="text-xs text-blue-400 block mt-0.5">{row.program_name}</span>
                                                     </td>
-                                                    <td className="p-4 text-gray-800 text-sm font-medium">
-                                                        {row.date_display}
-                                                        {row.type === 'Bulk' && (
-                                                            <span className="ml-2 px-1.5 py-0.5 bg-purple-100 text-purple-700 text-xs rounded border border-purple-200">
-                                                                Bulk
-                                                            </span>
-                                                        )}
+                                                    <td className="p-4 text-slate-300 text-sm font-medium">
+                                                        <div className="flex items-center gap-2">
+                                                            {row.date_display}
+                                                            {row.type === 'Bulk' && (
+                                                                <span className="px-1.5 py-0.5 bg-purple-500/20 text-purple-300 text-[10px] rounded border border-purple-500/30 uppercase tracking-wide">
+                                                                    Bulk
+                                                                </span>
+                                                            )}
+                                                        </div>
                                                     </td>
-                                                    <td className="p-4 text-right font-bold text-green-600">৳{(row.amount).toLocaleString()}</td>
-                                                    <td className="p-4 text-gray-600 text-sm">
-                                                        <span className="px-2 py-1 bg-gray-100 rounded text-xs border">{row.payment_method || 'Cash'}</span>
+                                                    <td className="p-4 text-right font-bold text-emerald-400 font-mono">৳{(row.amount).toLocaleString()}</td>
+                                                    <td className="p-4">
+                                                        <span className="px-2 py-1 bg-slate-700 rounded text-xs border border-slate-600 text-slate-300">{row.payment_method || 'Cash'}</span>
                                                     </td>
-                                                    <td className="p-4 text-center flex justify-center gap-2">
+                                                    <td className="p-4 pr-6 text-center flex justify-center gap-2">
                                                         <button
                                                             onClick={() => generatePaymentSlip(row)}
-                                                            className="text-blue-600 hover:text-blue-800 p-2 rounded-full hover:bg-blue-50 transition-colors"
+                                                            className="text-blue-400 hover:text-white p-2 rounded-full hover:bg-blue-600 transition-colors"
                                                             title="Download Receipt"
                                                         >
                                                             <Download size={18} />
@@ -167,20 +175,22 @@ const FinanceBreakdown: React.FC = () => {
                                                 </>
                                             ) : (
                                                 <>
-                                                    <td className="p-4 font-medium text-gray-900">{row.student_name}</td>
-                                                    <td className="p-4 text-gray-600 text-sm">{row.program_name}</td>
-                                                    <td className="p-4 text-right font-mono font-bold text-red-500">
+                                                    <td className="p-4 pl-6 font-medium text-white">{row.student_name}</td>
+                                                    <td className="p-4 text-slate-400 text-sm">{row.program_name}</td>
+                                                    <td className="p-4 text-right font-mono font-bold text-red-400">
                                                         ৳{(row.total_due).toLocaleString()}
                                                     </td>
-                                                    <td className="p-4 text-gray-700 text-sm font-medium">
-                                                        {row.status_detail.split(', ').map((part: string, idx: number) => (
-                                                            <span key={idx} className={`inline-block mr-2 mb-1 px-2 py-0.5 rounded text-xs border ${part.includes('Full')
-                                                                ? 'bg-red-50 text-red-700 border-red-100'
-                                                                : 'bg-amber-50 text-amber-700 border-amber-100'
-                                                                }`}>
-                                                                {part}
-                                                            </span>
-                                                        ))}
+                                                    <td className="p-4">
+                                                        <div className="flex flex-wrap gap-2">
+                                                            {row.status_detail.split(', ').map((part: string, idx: number) => (
+                                                                <span key={idx} className={`inline-block px-2 py-0.5 rounded text-xs border ${part.includes('Full')
+                                                                    ? 'bg-red-500/10 text-red-400 border-red-500/20'
+                                                                    : 'bg-amber-500/10 text-amber-400 border-amber-500/20'
+                                                                    }`}>
+                                                                    {part}
+                                                                </span>
+                                                            ))}
+                                                        </div>
                                                     </td>
                                                 </>
                                             )}
@@ -188,8 +198,8 @@ const FinanceBreakdown: React.FC = () => {
                                     ))}
                                     {(isRevenue ? data.transactions : data.students)?.length === 0 && (
                                         <tr>
-                                            <td colSpan={7} className="p-8 text-center text-gray-400">
-                                                No records found.
+                                            <td colSpan={7} className="p-12 text-center text-slate-500 italic">
+                                                No records found for this period.
                                             </td>
                                         </tr>
                                     )}

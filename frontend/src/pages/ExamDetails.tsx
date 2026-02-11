@@ -328,38 +328,38 @@ const ExamDetails: React.FC = () => {
     };
 
     return (
-        <div className="space-y-6">
+        <div className="space-y-6 animate-fade-in">
             {/* HEADER */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div className="bg-slate-800/50 backdrop-blur-md rounded-xl shadow-lg border border-slate-700/50 p-6">
                 <div className="flex justify-between items-start">
                     <div>
-                        <div className="flex items-center gap-2 mb-1">
-                            <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded uppercase tracking-wider">{exam?.exam_type}</span>
+                        <div className="flex items-center gap-2 mb-2">
+                            <span className="text-xs font-bold text-blue-400 bg-blue-500/10 border border-blue-500/20 px-2 py-0.5 rounded uppercase tracking-wider">{exam?.exam_type}</span>
                             {exam.program_exam && exam.program_exam.length > 0 && (
                                 <>
-                                    <span className="text-xs text-gray-400">|</span>
-                                    <span className="text-xs text-gray-500">
+                                    <span className="text-xs text-slate-600">|</span>
+                                    <span className="text-xs text-slate-400">
                                         {exam.program_exam.map((pe: any) => pe.program?.program_name).join(', ')}
                                     </span>
                                 </>
                             )}
                         </div>
-                        <h1 className="text-3xl font-bold text-gray-900 mt-1">{exam?.exam_name}</h1>
-                        <p className="text-gray-500 mt-1 flex gap-4">
+                        <h1 className="text-3xl font-bold text-white mt-1">{exam?.exam_name}</h1>
+                        <p className="text-slate-400 mt-2 flex gap-4 text-sm">
                             <span>Held on: {exam?.exam_date || 'N/A'}</span>
                             {exam.subject && <span>Subject: {exam.subject}</span>}
                         </p>
 
-                        <div className="flex gap-4 mt-3">
+                        <div className="flex gap-4 mt-4">
                             {exam.question_link && (
                                 <div className="flex items-center gap-2">
                                     <button
                                         onClick={() => setViewDoc({ url: getEmbedLink(exam.question_link), title: "Question Paper" })}
-                                        className="text-sm text-blue-600 hover:underline flex items-center gap-1 bg-blue-50 px-2 py-1 rounded"
+                                        className="text-sm text-blue-400 hover:text-blue-300 flex items-center gap-1 bg-blue-500/10 px-3 py-1.5 rounded-lg border border-blue-500/20 transition-all hover:bg-blue-500/20"
                                     >
                                         <FileText size={14} /> View Question
                                     </button>
-                                    <a href={exam.question_link} target="_blank" rel="noreferrer" className="text-gray-400 hover:text-blue-600">
+                                    <a href={exam.question_link} target="_blank" rel="noreferrer" className="text-slate-500 hover:text-white transition-colors p-1.5 hover:bg-slate-700 rounded-lg">
                                         <Download size={14} />
                                     </a>
                                 </div>
@@ -368,11 +368,11 @@ const ExamDetails: React.FC = () => {
                                 <div className="flex items-center gap-2">
                                     <button
                                         onClick={() => setViewDoc({ url: getEmbedLink(exam.solution_link), title: "Solution" })}
-                                        className="text-sm text-green-600 hover:underline flex items-center gap-1 bg-green-50 px-2 py-1 rounded"
+                                        className="text-sm text-emerald-400 hover:text-emerald-300 flex items-center gap-1 bg-emerald-500/10 px-3 py-1.5 rounded-lg border border-emerald-500/20 transition-all hover:bg-emerald-500/20"
                                     >
                                         <FileText size={14} /> View Solution
                                     </button>
-                                    <a href={exam.solution_link} target="_blank" rel="noreferrer" className="text-gray-400 hover:text-green-600">
+                                    <a href={exam.solution_link} target="_blank" rel="noreferrer" className="text-slate-500 hover:text-white transition-colors p-1.5 hover:bg-slate-700 rounded-lg">
                                         <Download size={14} />
                                     </a>
                                 </div>
@@ -380,14 +380,14 @@ const ExamDetails: React.FC = () => {
                         </div>
 
                     </div>
-                    <div className="text-right flex flex-col items-end gap-2">
+                    <div className="text-right flex flex-col items-end gap-3">
                         <div>
-                            <p className="text-sm text-gray-500 uppercase">Total Marks</p>
-                            <p className="text-3xl font-bold text-blue-600">{exam?.total_marks}</p>
+                            <p className="text-xs text-slate-500 uppercase font-bold tracking-wider">Total Marks</p>
+                            <p className="text-3xl font-bold text-blue-400">{exam?.total_marks}</p>
                         </div>
                         <button
                             onClick={() => setIsEditModalOpen(true)}
-                            className="text-sm text-gray-500 hover:text-blue-600 flex items-center gap-1 border px-2 py-1 rounded hover:bg-gray-50"
+                            className="text-sm text-slate-400 hover:text-white flex items-center gap-1 border border-slate-600 px-3 py-1.5 rounded-lg hover:bg-slate-700 transition-colors"
                         >
                             <Edit size={14} /> Edit Details
                         </button>
@@ -396,59 +396,58 @@ const ExamDetails: React.FC = () => {
 
                 {/* ANALYTICS */}
                 {analytics && (
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-8 pt-6 border-t border-gray-100">
-                        <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
-                            <h3 className="text-blue-800 font-semibold mb-2 flex items-center gap-2">
-                                <AlignLeft size={18} /> Averages
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-8 pt-6 border-t border-slate-700/50">
+                        <div className="bg-blue-500/10 p-4 rounded-xl border border-blue-500/20 backdrop-blur-sm">
+                            <h3 className="text-blue-400 font-bold mb-3 flex items-center gap-2 text-sm uppercase tracking-wide">
+                                <AlignLeft size={16} /> Averages
                             </h3>
-                            <div className="text-sm text-blue-700 space-y-1">
-                                <p className="flex justify-between"><span>Written:</span> <b>{analytics?.averages?.written}</b></p>
-                                <p className="flex justify-between"><span>MCQ:</span> <b>{analytics?.averages?.mcq}</b></p>
-                                <p className="flex justify-between mt-1"><span>Total:</span> <b>{analytics?.averages?.total}</b></p>
+                            <div className="text-sm text-blue-200/80 space-y-1.5">
+                                <p className="flex justify-between"><span>Written:</span> <b className="text-white">{analytics?.averages?.written}</b></p>
+                                <p className="flex justify-between"><span>MCQ:</span> <b className="text-white">{analytics?.averages?.mcq}</b></p>
+                                <p className="flex justify-between mt-1 pt-1 border-t border-blue-500/20"><span>Total:</span> <b className="text-white">{analytics?.averages?.total}</b></p>
                             </div>
                         </div>
 
-                        <div className="bg-purple-50 p-4 rounded-lg border border-purple-100">
-                            <h3 className="text-purple-800 font-semibold mb-2 flex items-center gap-2">
-                                <Trophy size={18} /> Top Scores
+                        <div className="bg-purple-500/10 p-4 rounded-xl border border-purple-500/20 backdrop-blur-sm">
+                            <h3 className="text-purple-400 font-bold mb-3 flex items-center gap-2 text-sm uppercase tracking-wide">
+                                <Trophy size={16} /> Top Scores
                             </h3>
-                            <div className="text-sm text-purple-700 space-y-1">
-                                {/* Removed border-t classes to avoid implication of sum */}
-                                <p className="flex justify-between"><span>Highest Written:</span> <b>{analytics?.highest?.written}</b></p>
-                                <p className="flex justify-between"><span>Highest MCQ:</span> <b>{analytics?.highest?.mcq}</b></p>
-                                <p className="flex justify-between mt-1"><span>Highest Total:</span> <b>{analytics?.highest?.total}</b></p>
+                            <div className="text-sm text-purple-200/80 space-y-1.5">
+                                <p className="flex justify-between"><span>Highest Written:</span> <b className="text-white">{analytics?.highest?.written}</b></p>
+                                <p className="flex justify-between"><span>Highest MCQ:</span> <b className="text-white">{analytics?.highest?.mcq}</b></p>
+                                <p className="flex justify-between mt-1 pt-1 border-t border-purple-500/20"><span>Highest Total:</span> <b className="text-white">{analytics?.highest?.total}</b></p>
                             </div>
                         </div>
 
-                        <div className="bg-gray-50 p-4 rounded-lg border border-gray-200 flex flex-col justify-center items-center text-center">
-                            <p className="text-gray-500">Total Participants</p>
-                            <p className="text-4xl font-bold text-gray-800 mt-2">{analytics?.total_students}</p>
+                        <div className="bg-slate-700/30 p-4 rounded-xl border border-slate-600/30 flex flex-col justify-center items-center text-center backdrop-blur-sm">
+                            <p className="text-slate-400 text-sm font-bold uppercase tracking-wide">Participants</p>
+                            <p className="text-4xl font-bold text-white mt-2">{analytics?.total_students}</p>
                         </div>
                     </div>
                 )}
             </div>
 
             {/* ACTIONS */}
-            <div className="flex justify-between items-center bg-white p-4 rounded-xl shadow-sm border border-gray-200">
+            <div className="flex justify-between items-center bg-slate-800/50 backdrop-blur-md p-4 rounded-xl shadow-lg border border-slate-700/50">
                 <div className="flex gap-4">
                     <button
                         onClick={() => setIsUploadModalOpen(true)}
-                        className="flex items-center gap-2 text-gray-600 hover:text-blue-600 font-medium"
+                        className="flex items-center gap-2 text-slate-300 hover:text-white hover:bg-slate-700/50 px-3 py-2 rounded-lg transition-colors font-medium"
                     >
                         <Upload size={18} /> Upload Excel
                     </button>
-                    <div className="h-6 w-px bg-gray-300 mx-2"></div>
+                    <div className="h-6 w-px bg-slate-700 mx-2 self-center"></div>
                     {isEditing ? (
                         <>
                             <button
                                 onClick={handleSaveManual}
-                                className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded shadow-sm hover:bg-green-700 font-medium"
+                                className="flex items-center gap-2 bg-emerald-600 text-white px-4 py-2 rounded-lg shadow-lg shadow-emerald-500/20 hover:bg-emerald-500 font-bold transition-all"
                             >
                                 <Save size={18} /> Save Changes
                             </button>
                             <button
                                 onClick={() => setIsEditing(false)}
-                                className="flex items-center gap-2 text-gray-500 hover:text-gray-700 px-4 py-2"
+                                className="flex items-center gap-2 text-slate-400 hover:text-white px-4 py-2 hover:bg-slate-700/50 rounded-lg transition-colors"
                             >
                                 <X size={18} /> Cancel
                             </button>
@@ -456,7 +455,7 @@ const ExamDetails: React.FC = () => {
                     ) : (
                         <button
                             onClick={() => setIsEditing(true)}
-                            className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded shadow-sm hover:bg-blue-700 font-medium"
+                            className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg shadow-lg shadow-blue-500/20 hover:bg-blue-500 font-bold transition-all"
                         >
                             <Edit size={18} /> Enter Marks Manually
                         </button>
@@ -465,14 +464,14 @@ const ExamDetails: React.FC = () => {
                 <div className="flex gap-2">
                     <button
                         onClick={exportResultTemplate}
-                        className="flex items-center gap-2 text-green-700 bg-green-50 border border-green-200 px-3 py-2 rounded-lg hover:bg-green-100 transition-colors text-sm font-medium"
+                        className="flex items-center gap-2 text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-3 py-2 rounded-lg hover:bg-emerald-500/20 transition-colors text-sm font-bold"
                         title="Download Excel Template for Data Entry"
                     >
                         <Download size={16} /> Excel Template
                     </button>
                     <button
                         onClick={exportMeritListPDF}
-                        className="flex items-center gap-2 text-white bg-red-600 border border-red-700 px-3 py-2 rounded-lg hover:bg-red-700 transition-colors shadow-sm text-sm font-medium"
+                        className="flex items-center gap-2 text-white bg-red-600 border border-red-500 px-3 py-2 rounded-lg hover:bg-red-500 transition-colors shadow-lg shadow-red-500/20 text-sm font-bold"
                         title="Download Professional Merit List"
                     >
                         <FileText size={16} /> Merit List
@@ -481,117 +480,123 @@ const ExamDetails: React.FC = () => {
             </div>
 
             {/* TABLE */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                <div className="p-4 border-b border-gray-100 bg-gray-50 font-bold text-gray-700 flex justify-between items-center">
+            <div className="bg-slate-800/50 backdrop-blur-md rounded-xl shadow-lg border border-slate-700/50 overflow-hidden">
+                <div className="p-4 border-b border-slate-700/50 bg-slate-900/30 font-bold text-slate-200 flex justify-between items-center">
                     <span>Student List</span>
-                    <span className="text-xs text-gray-400 font-normal">Click headers to sort</span>
+                    <span className="text-xs text-slate-500 font-normal">Click headers to sort</span>
                 </div>
-                <table className="w-full text-left border-collapse">
-                    <thead className="bg-white text-gray-500 text-xs uppercase font-semibold border-b border-gray-200">
-                        <tr>
-                            <th className="p-4 cursor-pointer hover:bg-gray-50" onClick={() => handleSort('student_id')}>
-                                <div className="flex items-center gap-1">
-                                    Student {sortConfig.key === 'student_id' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
-                                </div>
-                            </th>
-                            <th className="p-4">Programs</th>
-                            <th className="p-4 text-right cursor-pointer hover:bg-gray-50" onClick={() => handleSort('written')}>
-                                <div className="flex items-center justify-end gap-1">
-                                    Written {sortConfig.key === 'written' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
-                                </div>
-                            </th>
-                            <th className="p-4 text-right cursor-pointer hover:bg-gray-50" onClick={() => handleSort('mcq')}>
-                                <div className="flex items-center justify-end gap-1">
-                                    MCQ {sortConfig.key === 'mcq' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
-                                </div>
-                            </th>
-                            <th className="p-4 text-right cursor-pointer hover:bg-gray-50" onClick={() => handleSort('total')}>
-                                <div className="flex items-center justify-end gap-1">
-                                    Total Score {sortConfig.key === 'total' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
-                                </div>
-                            </th>
-                        </tr>
-                    </thead>
-                    <tbody className="divide-y divide-gray-50">
-                        {sortedCandidates?.map((g: any, index: number) => {
-                            const editData = g.editData;
+                <div className="overflow-x-auto custom-scrollbar">
+                    <table className="w-full text-left border-collapse">
+                        <thead className="bg-slate-900/50 text-slate-400 text-xs uppercase font-bold border-b border-slate-700/50">
+                            <tr>
+                                <th className="p-4 cursor-pointer hover:bg-slate-800/50 transition-colors" onClick={() => handleSort('student_id')}>
+                                    <div className="flex items-center gap-1">
+                                        Student {sortConfig.key === 'student_id' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                                    </div>
+                                </th>
+                                <th className="p-4">Programs</th>
+                                <th className="p-4 text-right cursor-pointer hover:bg-slate-800/50 transition-colors" onClick={() => handleSort('written')}>
+                                    <div className="flex items-center justify-end gap-1">
+                                        Written {sortConfig.key === 'written' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                                    </div>
+                                </th>
+                                <th className="p-4 text-right cursor-pointer hover:bg-slate-800/50 transition-colors" onClick={() => handleSort('mcq')}>
+                                    <div className="flex items-center justify-end gap-1">
+                                        MCQ {sortConfig.key === 'mcq' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                                    </div>
+                                </th>
+                                <th className="p-4 text-right cursor-pointer hover:bg-slate-800/50 transition-colors" onClick={() => handleSort('total')}>
+                                    <div className="flex items-center justify-end gap-1">
+                                        Total Score {sortConfig.key === 'total' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                                    </div>
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody className="divide-y divide-slate-700/50 text-slate-300">
+                            {sortedCandidates?.map((g: any, index: number) => {
+                                const editData = g.editData;
 
-                            return (
-                                <tr key={g.student?.student_id || index} className={isEditing ? "bg-blue-50/30" : "hover:bg-gray-50"}>
-                                    <td className="p-4 font-medium text-gray-900">
-                                        <Link to={`/students/${g.student?.student_id}`} className="hover:text-blue-600 hover:underline">
-                                            {g.student?.name || 'Unknown'}
-                                        </Link>
-                                    </td>
-                                    <td className="p-4 text-xs text-gray-600 max-w-xs">
-                                        {g.enrollments.map((e: any, i: number) => (
-                                            <div key={i} className="mb-1 last:mb-0">
-                                                <Link to={`/programs/${e.program_id}`} className="hover:text-blue-600 hover:underline font-medium">
-                                                    {e.program_name}
-                                                </Link>
-                                                <span className="text-gray-500 ml-1">(Roll: {e.roll_no || '-'})</span>
-                                            </div>
-                                        ))}
-                                    </td>
+                                return (
+                                    <tr key={g.student?.student_id || index} className={isEditing ? "bg-blue-500/5" : "hover:bg-slate-700/30 transition-colors"}>
+                                        <td className="p-4 font-medium text-white">
+                                            <Link to={`/students/${g.student?.student_id}`} className="hover:text-blue-400 hover:underline flex items-center gap-2">
+                                                <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-xs font-bold text-slate-300">
+                                                    {g.student?.name?.charAt(0) || '?'}
+                                                </div>
+                                                {g.student?.name || 'Unknown'}
+                                            </Link>
+                                        </td>
+                                        <td className="p-4 text-xs text-slate-400 max-w-xs">
+                                            {g.enrollments.map((e: any, i: number) => (
+                                                <div key={i} className="mb-1 last:mb-0 flex items-center gap-2">
+                                                    <span className="w-1.5 h-1.5 rounded-full bg-slate-600"></span>
+                                                    <Link to={`/programs/${e.program_id}`} className="hover:text-blue-400 hover:underline">
+                                                        {e.program_name}
+                                                    </Link>
+                                                    <span className="text-slate-500 text-[10px] bg-slate-800 px-1.5 rounded border border-slate-700">Roll: {e.roll_no || '-'}</span>
+                                                </div>
+                                            ))}
+                                        </td>
 
-                                    {isEditing ? (
-                                        <>
-                                            <td className="p-4 text-right">
-                                                <input
-                                                    type="number"
-                                                    className="w-20 p-1 border rounded text-right bg-white border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500 font-bold [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                                    value={editData.written}
-                                                    placeholder="0"
-                                                    onChange={(e) => g.student?.student_id && handleMarkChange(g.student.student_id, 'written', e.target.value)}
-                                                    onWheel={(e) => e.currentTarget.blur()}
-                                                />
-                                            </td>
-                                            <td className="p-4 text-right">
-                                                <input
-                                                    type="number"
-                                                    className="w-20 p-1 border rounded text-right bg-white border-blue-300 focus:outline-none focus:ring-2 focus:ring-blue-500 font-bold [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                                                    value={editData.mcq}
-                                                    placeholder="0"
-                                                    onChange={(e) => g.student?.student_id && handleMarkChange(g.student.student_id, 'mcq', e.target.value)}
-                                                    onWheel={(e) => e.currentTarget.blur()}
-                                                />
-                                            </td>
-                                            <td className="p-4 text-right text-gray-400 text-sm">
-                                                {(Number(editData.written) || 0) + (Number(editData.mcq) || 0)}
-                                            </td>
-                                        </>
-                                    ) : (
-                                        <>
-                                            <td className="p-4 text-right font-mono text-gray-600">{g.result_written}</td>
-                                            <td className="p-4 text-right font-mono text-gray-600">{g.result_mcq}</td>
-                                            <td className="p-4 text-right font-bold text-blue-600 text-lg">{g.result_total}</td>
-                                        </>
-                                    )}
-                                </tr>
-                            );
-                        })}
+                                        {isEditing ? (
+                                            <>
+                                                <td className="p-4 text-right">
+                                                    <input
+                                                        type="number"
+                                                        className="w-20 p-1.5 border border-slate-600 rounded-lg text-right bg-slate-800 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 font-bold [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none transition-all"
+                                                        value={editData.written}
+                                                        placeholder="0"
+                                                        onChange={(e) => g.student?.student_id && handleMarkChange(g.student.student_id, 'written', e.target.value)}
+                                                        onWheel={(e) => e.currentTarget.blur()}
+                                                    />
+                                                </td>
+                                                <td className="p-4 text-right">
+                                                    <input
+                                                        type="number"
+                                                        className="w-20 p-1.5 border border-slate-600 rounded-lg text-right bg-slate-800 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 font-bold [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none transition-all"
+                                                        value={editData.mcq}
+                                                        placeholder="0"
+                                                        onChange={(e) => g.student?.student_id && handleMarkChange(g.student.student_id, 'mcq', e.target.value)}
+                                                        onWheel={(e) => e.currentTarget.blur()}
+                                                    />
+                                                </td>
+                                                <td className="p-4 text-right text-slate-500 text-sm font-mono">
+                                                    {(Number(editData.written) || 0) + (Number(editData.mcq) || 0)}
+                                                </td>
+                                            </>
+                                        ) : (
+                                            <>
+                                                <td className="p-4 text-right font-mono text-slate-400">{g.result_written}</td>
+                                                <td className="p-4 text-right font-mono text-slate-400">{g.result_mcq}</td>
+                                                <td className="p-4 text-right font-bold text-blue-400 text-lg">{g.result_total}</td>
+                                            </>
+                                        )}
+                                    </tr>
+                                );
+                            })}
 
-                        {!sortedCandidates || sortedCandidates.length === 0 && (
-                            <tr><td colSpan={5} className="p-8 text-center text-gray-400">No students enrolled or results published.</td></tr>
-                        )}
-                    </tbody>
-                </table>
+                            {!sortedCandidates || sortedCandidates.length === 0 && (
+                                <tr><td colSpan={5} className="p-12 text-center text-slate-500 italic">No students enrolled or results published.</td></tr>
+                            )}
+                        </tbody>
+                    </table>
+                </div>
             </div>
 
             {/* Document Viewer Modal using simple overlay for now */}
             {viewDoc && (
-                <div className="fixed inset-0 bg-black bg-opacity-80 z-50 flex flex-col items-center justify-center p-4">
-                    <div className="bg-white w-full h-full max-w-5xl rounded-lg shadow-2xl flex flex-col overflow-hidden">
-                        <div className="flex justify-between items-center p-4 border-b">
-                            <h3 className="font-bold text-lg">{viewDoc.title}</h3>
-                            <button onClick={() => setViewDoc(null)} className="text-gray-500 hover:text-black">
+                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex flex-col items-center justify-center p-4 animate-fade-in">
+                    <div className="bg-slate-900 w-full h-full max-w-5xl rounded-xl shadow-2xl flex flex-col overflow-hidden border border-slate-700">
+                        <div className="flex justify-between items-center p-4 border-b border-slate-700 bg-slate-800">
+                            <h3 className="font-bold text-lg text-white">{viewDoc.title}</h3>
+                            <button onClick={() => setViewDoc(null)} className="text-slate-400 hover:text-white transition-colors">
                                 <X size={24} />
                             </button>
                         </div>
-                        <div className="flex-1 bg-gray-100 p-2 relative">
+                        <div className="flex-1 bg-slate-900 p-2 relative">
                             <iframe
                                 src={viewDoc.url}
-                                className="w-full h-full border-none rounded"
+                                className="w-full h-full border-none rounded bg-white"
                                 title="Document Viewer"
                             />
                         </div>

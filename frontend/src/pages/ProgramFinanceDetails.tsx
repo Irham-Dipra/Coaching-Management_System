@@ -113,43 +113,43 @@ const ProgramFinanceDetails: React.FC = () => {
     }
 
     return (
-        <div className="space-y-6 animate-in fade-in duration-300">
+        <div className="space-y-6 animate-in fade-in duration-300 p-6">
             {/* HEADER */}
             <div className="flex items-center gap-4">
                 <button
                     onClick={() => navigate(-1)}
-                    className="p-2 hover:bg-gray-100 rounded-full text-gray-500 transition-colors"
+                    className="p-3 hover:bg-slate-800 rounded-full text-slate-400 hover:text-white transition-colors border border-transparent hover:border-slate-700"
                 >
                     <ArrowLeft size={24} />
                 </button>
                 <div className="flex-1">
-                    <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-                        {viewMode === 'revenue' ? <DollarSign className="text-green-600" /> : <Users className="text-blue-600" />}
-                        {program?.program_name || 'Program'} - {title}
+                    <h1 className="text-3xl font-bold text-white flex items-center gap-3">
+                        {viewMode === 'revenue' ? <DollarSign className="text-emerald-400" size={32} /> : <Users className="text-blue-500" size={32} />}
+                        {program?.program_name || 'Program'} <span className="text-slate-500 text-2xl font-light">|</span> <span className="text-slate-200 font-medium">{title}</span>
                     </h1>
-                    <p className="text-sm text-gray-500">{subtitle}</p>
+                    <p className="text-slate-400 mt-1">{subtitle}</p>
                 </div>
 
                 {/* DATE CONTROLS (Hide for Overall Due?) */}
                 {viewMode !== 'due_overall' && (
-                    <div className="flex gap-2 bg-white p-2 rounded-lg shadow-sm border border-gray-200">
+                    <div className="flex gap-2 bg-slate-800/50 backdrop-blur-sm p-1.5 rounded-xl border border-slate-700/50">
                         <select
                             value={month}
                             onChange={(e) => setMonth(parseInt(e.target.value))}
-                            className="border-none bg-gray-50 rounded px-2 py-1 text-sm focus:ring-2 focus:ring-blue-500"
+                            className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:ring-2 focus:ring-blue-500 outline-none hover:bg-slate-700 transition-colors cursor-pointer"
                         >
                             {Array.from({ length: 12 }, (_, i) => (
-                                <option key={i + 1} value={i + 1}>{new Date(0, i).toLocaleString('default', { month: 'short' })}</option>
+                                <option key={i + 1} value={i + 1} className="bg-slate-800">{new Date(0, i).toLocaleString('default', { month: 'short' })}</option>
                             ))}
                         </select>
                         <select
                             value={year}
                             onChange={(e) => setYear(parseInt(e.target.value))}
-                            className="border-none bg-gray-50 rounded px-2 py-1 text-sm focus:ring-2 focus:ring-blue-500"
+                            className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:ring-2 focus:ring-blue-500 outline-none hover:bg-slate-700 transition-colors cursor-pointer"
                         >
-                            <option value={2024}>2024</option>
-                            <option value={2025}>2025</option>
-                            <option value={2026}>2026</option>
+                            <option value={2024} className="bg-slate-800">2024</option>
+                            <option value={2025} className="bg-slate-800">2025</option>
+                            <option value={2026} className="bg-slate-800">2026</option>
                         </select>
                     </div>
                 )}
@@ -159,137 +159,154 @@ const ProgramFinanceDetails: React.FC = () => {
             <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
                 {viewMode === 'revenue' && (
                     <>
-                        <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm col-span-2">
-                            <p className="text-xs text-gray-500 uppercase font-bold">Total Revenue</p>
-                            <p className="text-3xl font-bold text-green-600">৳{stats.total.toLocaleString()}</p>
+                        <div className="bg-slate-800/50 backdrop-blur-sm p-5 rounded-2xl border border-slate-700/50 shadow-lg col-span-2 relative overflow-hidden group">
+                            <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                                <DollarSign size={80} />
+                            </div>
+                            <p className="text-xs text-slate-400 uppercase font-bold tracking-wider mb-1">Total Revenue</p>
+                            <p className="text-4xl font-black text-emerald-400">৳{stats.total.toLocaleString()}</p>
                         </div>
-                        <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm col-span-2">
-                            <p className="text-xs text-blue-500 uppercase font-bold">Transactions</p>
-                            <p className="text-3xl font-bold text-blue-600">{stats.volume}</p>
+                        <div className="bg-slate-800/50 backdrop-blur-sm p-5 rounded-2xl border border-slate-700/50 shadow-lg col-span-2 relative overflow-hidden group">
+                            <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
+                                <Users size={80} />
+                            </div>
+                            <p className="text-xs text-blue-400 uppercase font-bold tracking-wider mb-1">Transactions</p>
+                            <p className="text-4xl font-black text-blue-500">{stats.volume}</p>
                         </div>
                     </>
                 )}
                 {viewMode === 'due_overall' && (
                     <>
-                        <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm col-span-2">
-                            <p className="text-xs text-gray-500 uppercase font-bold">Total Arrears</p>
-                            <p className="text-3xl font-bold text-red-600">৳{stats.total_arrears.toLocaleString()}</p>
+                        <div className="bg-slate-800/50 backdrop-blur-sm p-5 rounded-2xl border border-slate-700/50 shadow-lg col-span-2">
+                            <p className="text-xs text-slate-400 uppercase font-bold tracking-wider mb-1">Total Arrears</p>
+                            <p className="text-4xl font-black text-red-500">৳{stats.total_arrears.toLocaleString()}</p>
                         </div>
-                        <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm col-span-2">
-                            <p className="text-xs text-blue-500 uppercase font-bold">Students with Dues</p>
-                            <p className="text-3xl font-bold text-blue-600">{stats.count}</p>
+                        <div className="bg-slate-800/50 backdrop-blur-sm p-5 rounded-2xl border border-slate-700/50 shadow-lg col-span-2">
+                            <p className="text-xs text-blue-400 uppercase font-bold tracking-wider mb-1">Students with Dues</p>
+                            <p className="text-4xl font-black text-blue-500">{stats.count}</p>
                         </div>
                     </>
                 )}
                 {(viewMode === 'due_monthly' || viewMode === 'due') && (
                     <>
-                        <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
-                            <p className="text-xs text-gray-500 uppercase font-bold">Total Students</p>
-                            <p className="text-2xl font-bold text-gray-800">{stats.total}</p>
+                        <div className="bg-slate-800/50 backdrop-blur-sm p-5 rounded-2xl border border-slate-700/50 shadow-lg">
+                            <p className="text-xs text-slate-400 uppercase font-bold tracking-wider mb-1">Total Students</p>
+                            <p className="text-3xl font-bold text-white">{stats.total}</p>
                         </div>
-                        <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
-                            <p className="text-xs text-green-600 uppercase font-bold">Collected</p>
-                            <p className="text-2xl font-bold text-green-700">৳{stats.collected.toLocaleString()}</p>
+                        <div className="bg-slate-800/50 backdrop-blur-sm p-5 rounded-2xl border border-slate-700/50 shadow-lg">
+                            <p className="text-xs text-emerald-400 uppercase font-bold tracking-wider mb-1">Collected</p>
+                            <p className="text-3xl font-bold text-emerald-500">৳{stats.collected.toLocaleString()}</p>
                         </div>
-                        <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
-                            <p className="text-xs text-red-500 uppercase font-bold">Due Amount</p>
-                            <p className="text-2xl font-bold text-red-600">৳{stats.due.toLocaleString()}</p>
+                        <div className="bg-slate-800/50 backdrop-blur-sm p-5 rounded-2xl border border-slate-700/50 shadow-lg">
+                            <p className="text-xs text-red-400 uppercase font-bold tracking-wider mb-1">Due Amount</p>
+                            <p className="text-3xl font-bold text-red-500">৳{stats.due.toLocaleString()}</p>
                         </div>
-                        <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm flex flex-col justify-center gap-1">
-                            <div className="flex justify-between text-xs"><span className="text-green-600 font-bold">Paid: {stats.paid}</span></div>
-                            <div className="flex justify-between text-xs"><span className="text-amber-600 font-bold">Partial: {stats.partial}</span></div>
-                            <div className="flex justify-between text-xs"><span className="text-red-600 font-bold">Unpaid: {stats.unpaid}</span></div>
+                        <div className="bg-slate-800/50 backdrop-blur-sm p-4 rounded-2xl border border-slate-700/50 shadow-lg flex flex-col justify-center gap-1.5">
+                            <div className="flex justify-between text-xs items-center">
+                                <span className="text-emerald-400 font-bold uppercase tracking-wide">Paid</span>
+                                <span className="bg-emerald-500/20 text-emerald-300 px-2 py-0.5 rounded-full font-mono">{stats.paid}</span>
+                            </div>
+                            <div className="flex justify-between text-xs items-center">
+                                <span className="text-amber-400 font-bold uppercase tracking-wide">Partial</span>
+                                <span className="bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded-full font-mono">{stats.partial}</span>
+                            </div>
+                            <div className="flex justify-between text-xs items-center">
+                                <span className="text-red-400 font-bold uppercase tracking-wide">Unpaid</span>
+                                <span className="bg-red-500/20 text-red-300 px-2 py-0.5 rounded-full font-mono">{stats.unpaid}</span>
+                            </div>
                         </div>
                     </>
                 )}
             </div>
 
             {/* TABLE */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-                <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
-                    <h3 className="font-bold text-gray-700">
+            <div className="bg-slate-800 rounded-2xl shadow-xl border border-slate-700 overflow-hidden">
+                <div className="p-5 border-b border-slate-700 flex justify-between items-center bg-slate-900/50">
+                    <h3 className="font-bold text-slate-200">
                         {viewMode === 'revenue' ? 'Recent Transactions' : viewMode === 'due_overall' ? 'Arrears List' : 'Student List'}
                     </h3>
 
                     {(viewMode === 'due_monthly' || viewMode === 'due') && (
-                        <div className="flex items-center gap-2">
-                            <Filter size={16} className="text-gray-400" />
+                        <div className="flex items-center gap-2 bg-slate-800 p-1 rounded-lg border border-slate-700">
+                            <Filter size={16} className="text-slate-400 ml-2" />
                             <select
                                 value={filterStatus}
                                 onChange={(e) => setFilterStatus(e.target.value)}
-                                className="bg-white border text-sm rounded-lg px-2 py-1 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                                className="bg-transparent border-none text-sm text-white px-2 py-1 focus:ring-0 outline-none cursor-pointer"
                             >
-                                <option value="All">All Status</option>
-                                <option value="Paid">Paid</option>
-                                <option value="Unpaid">Unpaid</option>
-                                <option value="Partial">Partial</option>
+                                <option value="All" className="bg-slate-800">All Status</option>
+                                <option value="Paid" className="bg-slate-800 text-emerald-400">Paid</option>
+                                <option value="Unpaid" className="bg-slate-800 text-red-400">Unpaid</option>
+                                <option value="Partial" className="bg-slate-800 text-amber-400">Partial</option>
                             </select>
                         </div>
                     )}
                 </div>
 
                 {isLoading ? (
-                    <div className="p-12 text-center text-gray-500">Loading data...</div>
+                    <div className="p-12 text-center text-slate-500 animate-pulse">Loading data...</div>
                 ) : (
                     <div className="overflow-x-auto">
                         <table className="w-full text-left">
-                            <thead className="bg-gray-50 text-gray-500 text-xs uppercase font-semibold border-b">
+                            <thead className="bg-slate-900/80 text-slate-400 text-xs uppercase font-semibold border-b border-slate-700/50">
                                 <tr>
                                     {viewMode === 'revenue' ? (
                                         <>
-                                            <th className="p-4">Receipt #</th>
+                                            <th className="p-4 pl-6">Receipt #</th>
                                             <th className="p-4">Date</th>
                                             <th className="p-4">Student</th>
                                             <th className="p-4">Period</th>
                                             <th className="p-4 text-right">Amount</th>
                                             <th className="p-4">Method</th>
-                                            <th className="p-4 text-center">Action</th>
+                                            <th className="p-4 text-center pr-6">Action</th>
                                         </>
                                     ) : viewMode === 'due_overall' ? (
                                         <>
-                                            <th className="p-4">Student</th>
+                                            <th className="p-4 pl-6">Student</th>
                                             <th className="p-4">Total Due</th>
                                             <th className="p-4 w-1/2">Details</th>
-                                            <th className="p-4 text-center">Action</th>
+                                            <th className="p-4 text-center pr-6">Action</th>
                                         </>
                                     ) : (
                                         <>
-                                            <th className="p-4">Student</th>
+                                            <th className="p-4 pl-6">Student</th>
                                             <th className="p-4 text-center">Status</th>
                                             <th className="p-4 text-right">Fee</th>
                                             <th className="p-4 text-right">Paid</th>
                                             <th className="p-4 text-right">Due</th>
-                                            <th className="p-4 text-center">Action</th>
+                                            <th className="p-4 text-center pr-6">Action</th>
                                         </>
                                     )}
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-gray-100">
+                            <tbody className="divide-y divide-slate-700/50">
                                 {/* REVENUE ROWS */}
                                 {viewMode === 'revenue' && transactions.map((row: any, i: number) => (
-                                    <tr key={i} className="hover:bg-gray-50">
-                                        <td className="p-4 font-mono text-gray-500">#{row.payment_id}</td>
-                                        <td className="p-4 text-gray-700 text-sm">{row.payment_date}</td>
-                                        <td className="p-4 font-medium text-gray-900">
-                                            {row.student_name}
-                                            <div className="text-xs text-gray-400">ID: {row.student_id}</div>
+                                    <tr key={i} className="hover:bg-slate-700/30 transition-colors group">
+                                        <td className="p-4 pl-6 font-mono text-slate-500 group-hover:text-slate-300">#{row.payment_id}</td>
+                                        <td className="p-4 text-slate-300 text-sm">{row.payment_date}</td>
+                                        <td className="p-4">
+                                            <div className="font-medium text-white">{row.student_name}</div>
+                                            <div className="text-xs text-slate-500">ID: {row.student_id}</div>
                                         </td>
-                                        <td className="p-4 text-gray-800 text-sm font-medium">
-                                            {row.date_display}
-                                            {row.type === 'Bulk' && (
-                                                <span className="ml-2 px-1.5 py-0.5 bg-purple-100 text-purple-700 text-xs rounded border border-purple-200">
-                                                    Bulk
-                                                </span>
-                                            )}
+                                        <td className="p-4 text-slate-300 text-sm font-medium">
+                                            <div className="flex items-center gap-2">
+                                                {row.date_display}
+                                                {row.type === 'Bulk' && (
+                                                    <span className="px-1.5 py-0.5 bg-purple-500/20 text-purple-300 text-[10px] rounded border border-purple-500/30 uppercase tracking-wide">
+                                                        Bulk
+                                                    </span>
+                                                )}
+                                            </div>
                                         </td>
-                                        <td className="p-4 text-right font-bold text-green-600">৳{(row.amount).toLocaleString()}</td>
-                                        <td className="p-4 text-gray-600 text-sm">
-                                            <span className="px-2 py-1 bg-gray-100 rounded text-xs border">{row.payment_method || 'Cash'}</span>
+                                        <td className="p-4 text-right font-bold text-emerald-400 font-mono">৳{(row.amount).toLocaleString()}</td>
+                                        <td className="p-4">
+                                            <span className="px-2 py-1 bg-slate-700 rounded text-xs border border-slate-600 text-slate-300">{row.payment_method || 'Cash'}</span>
                                         </td>
-                                        <td className="p-4 text-center">
+                                        <td className="p-4 pr-6 text-center">
                                             <button
                                                 onClick={() => generatePaymentSlip(row)}
-                                                className="text-blue-600 hover:text-blue-800 p-2 rounded-full hover:bg-blue-50 transition-colors"
+                                                className="text-blue-400 hover:text-white p-2 rounded-full hover:bg-blue-600 transition-colors"
                                                 title="Download Receipt"
                                             >
                                                 <Download size={18} />
@@ -300,19 +317,19 @@ const ProgramFinanceDetails: React.FC = () => {
 
                                 {/* OVERALL DUE ROWS */}
                                 {viewMode === 'due_overall' && overallStudents.map((s: any, i: number) => (
-                                    <tr key={i} className="hover:bg-gray-50">
-                                        <td className="p-4">
-                                            <div className="font-medium text-gray-900">{s.student_name}</div>
-                                            <div className="text-xs text-gray-500">Roll: {s.roll_no || '-'}</div>
+                                    <tr key={i} className="hover:bg-slate-700/30 transition-colors">
+                                        <td className="p-4 pl-6">
+                                            <div className="font-medium text-white">{s.student_name}</div>
+                                            <div className="text-xs text-slate-500">Roll: {s.roll_no || '-'}</div>
                                         </td>
-                                        <td className="p-4 font-bold text-red-600">
+                                        <td className="p-4 font-bold text-red-500 font-mono">
                                             ৳{s.total_due.toLocaleString()}
                                         </td>
-                                        <td className="p-4 text-sm text-gray-600">
+                                        <td className="p-4 text-sm text-slate-400">
                                             {s.status_detail}
                                         </td>
-                                        <td className="p-4 text-center">
-                                            <button className="text-blue-600 hover:underline text-xs" onClick={() => navigate(`/students/${s.student_id}`)}>
+                                        <td className="p-4 pr-6 text-center">
+                                            <button className="text-blue-400 hover:text-white hover:underline text-xs" onClick={() => navigate(`/students/${s.student_id}`)}>
                                                 View Profile
                                             </button>
                                         </td>
@@ -321,15 +338,15 @@ const ProgramFinanceDetails: React.FC = () => {
 
                                 {/* MONTHLY DUE ROWS */}
                                 {(viewMode === 'due_monthly' || viewMode === 'due') && filteredMonthlyStudents.map((s: any) => (
-                                    <tr key={s.enrollment_id} className="hover:bg-gray-50">
-                                        <td className="p-4">
-                                            <div className="font-medium text-gray-900">{s.name}</div>
-                                            <div className="text-xs text-gray-500">Roll: {s.roll_no || '-'}</div>
+                                    <tr key={s.enrollment_id} className="hover:bg-slate-700/30 transition-colors">
+                                        <td className="p-4 pl-6">
+                                            <div className="font-medium text-white">{s.name}</div>
+                                            <div className="text-xs text-slate-500">Roll: {s.roll_no || '-'}</div>
                                         </td>
                                         <td className="p-4 text-center">
-                                            <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium border ${s.status === 'Paid' ? 'bg-green-100 text-green-800 border-green-200' :
-                                                    s.status === 'Unpaid' ? 'bg-red-100 text-red-800 border-red-200' :
-                                                        'bg-amber-100 text-amber-800 border-amber-200'
+                                            <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border ${s.status === 'Paid' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
+                                                s.status === 'Unpaid' ? 'bg-red-500/10 text-red-400 border-red-500/20' :
+                                                    'bg-amber-500/10 text-amber-400 border-amber-500/20'
                                                 }`}>
                                                 {s.status === 'Paid' && <CheckCircle size={12} />}
                                                 {s.status === 'Unpaid' && <XCircle size={12} />}
@@ -337,13 +354,13 @@ const ProgramFinanceDetails: React.FC = () => {
                                                 {s.status}
                                             </span>
                                         </td>
-                                        <td className="p-4 text-right font-mono text-gray-600">৳{(s.monthly_fee || 0).toLocaleString()}</td>
-                                        <td className="p-4 text-right font-mono text-green-600 font-medium">৳{(s.paid_amount || 0).toLocaleString()}</td>
-                                        <td className="p-4 text-right font-mono text-red-600 font-bold">
+                                        <td className="p-4 text-right font-mono text-slate-400">৳{(s.monthly_fee || 0).toLocaleString()}</td>
+                                        <td className="p-4 text-right font-mono text-emerald-400 font-medium">৳{(s.paid_amount || 0).toLocaleString()}</td>
+                                        <td className="p-4 text-right font-mono text-red-400 font-bold">
                                             {s.due_amount > 0 ? `৳${s.due_amount.toLocaleString()}` : '-'}
                                         </td>
-                                        <td className="p-4 text-center">
-                                            <button className="text-blue-600 hover:underline text-xs" onClick={() => navigate(`/students/${s.student_id}`)}>
+                                        <td className="p-4 pr-6 text-center">
+                                            <button className="text-blue-400 hover:text-white hover:underline text-xs transition-colors" onClick={() => navigate(`/students/${s.student_id}`)}>
                                                 View Profile
                                             </button>
                                         </td>
@@ -354,7 +371,7 @@ const ProgramFinanceDetails: React.FC = () => {
                                     (viewMode === 'due_overall' && overallStudents.length === 0) ||
                                     ((viewMode === 'due_monthly' || viewMode === 'due') && filteredMonthlyStudents.length === 0)) && (
                                         <tr>
-                                            <td colSpan={7} className="p-8 text-center text-gray-400 italic">No records found.</td>
+                                            <td colSpan={7} className="p-12 text-center text-slate-500 italic">No records found.</td>
                                         </tr>
                                     )}
                             </tbody>

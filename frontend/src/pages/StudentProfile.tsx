@@ -5,7 +5,7 @@ import { StudentRepository } from '../repositories/StudentRepository';
 import { ProgramRepository } from '../repositories/ProgramRepository';
 import StudentFinancialStatus from '../components/StudentFinancialStatus';
 import WithdrawalModal from '../components/WithdrawalModal';
-import { User, BookOpen, CreditCard, Edit2, Save, Trash2 } from 'lucide-react';
+import { User, BookOpen, CreditCard, Edit2, Save, Trash2, Plus } from 'lucide-react';
 import jsPDF from 'jspdf';
 
 const StudentProfile: React.FC = () => {
@@ -66,13 +66,13 @@ const StudentProfile: React.FC = () => {
                 alert("Student enrolled successfully.");
             }
         },
-        onError: (err) => {
+        onError: (err: any) => {
             alert(err.message);
         }
     });
 
-    if (isLoading) return <div className="p-8">Loading profile...</div>;
-    if (!student) return <div className="p-8">Student not found</div>;
+    if (isLoading) return <div className="p-8 text-center text-slate-400 animate-pulse">Loading profile...</div>;
+    if (!student) return <div className="p-8 text-center text-red-400">Student not found</div>;
 
     const handleEditToggle = () => {
         setEditForm(student);
@@ -201,26 +201,26 @@ const StudentProfile: React.FC = () => {
     };
 
     return (
-        <div className="max-w-5xl mx-auto">
+        <div className="max-w-5xl mx-auto animate-fade-in">
             {/* HEADER CARD */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 mb-6">
-                <div className="flex justify-between items-start">
-                    <div className="flex gap-4">
-                        <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center text-gray-400">
-                            <User size={40} />
+            <div className="bg-slate-800/50 backdrop-blur-md rounded-2xl shadow-xl border border-slate-700 p-8 mb-8">
+                <div className="flex flex-col md:flex-row justify-between items-start gap-6">
+                    <div className="flex gap-6 items-center">
+                        <div className="w-24 h-24 bg-slate-700/50 rounded-full flex items-center justify-center text-slate-400 border border-slate-600 shadow-inner">
+                            <User size={48} />
                         </div>
                         <div>
                             {isEditing ? (
-                                <div className="space-y-2">
+                                <div className="space-y-3">
                                     <input
-                                        className="block w-full border p-1 rounded font-bold text-xl text-gray-900 bg-white"
+                                        className="block w-full border border-slate-600 p-2 rounded-lg font-bold text-xl text-white bg-slate-900/50 focus:ring-2 focus:ring-blue-500/50 focus:outline-none"
                                         value={editForm.name}
                                         onChange={e => setEditForm({ ...editForm, name: e.target.value })}
                                         placeholder="Full Name"
                                     />
-                                    <div className="flex gap-2">
+                                    <div className="flex gap-3">
                                         <input
-                                            className="border p-1 rounded text-sm text-gray-900 bg-white w-20" placeholder="Class"
+                                            className="border border-slate-600 p-2 rounded-lg text-sm text-white bg-slate-900/50 w-24 focus:ring-2 focus:ring-blue-500/50 focus:outline-none" placeholder="Class"
                                             value={editForm.class || ''}
                                             onChange={e => {
                                                 const val = e.target.value;
@@ -228,169 +228,172 @@ const StudentProfile: React.FC = () => {
                                             }}
                                         />
                                         <select
-                                            className="border p-1 rounded text-sm text-gray-900 bg-white min-w-[120px]"
+                                            className="border border-slate-600 p-2 rounded-lg text-sm text-white bg-slate-900/50 min-w-[140px] focus:ring-2 focus:ring-blue-500/50 focus:outline-none"
                                             value={editForm.batch_id || ''}
                                             onChange={e => setEditForm({ ...editForm, batch_id: e.target.value ? parseInt(e.target.value) : null })}
                                         >
-                                            <option value="">No Batch</option>
+                                            <option value="" className="bg-slate-900">No Batch</option>
                                             {batches?.map((b: any) => (
-                                                <option key={b.batch_id} value={b.batch_id}>{b.batch_name}</option>
+                                                <option key={b.batch_id} value={b.batch_id} className="bg-slate-900">{b.batch_name}</option>
                                             ))}
                                         </select>
                                     </div>
                                 </div>
                             ) : (
                                 <>
-                                    <h1 className="text-2xl font-bold text-gray-900">{student.name}</h1>
-                                    <div className="flex gap-2 text-gray-500 items-center">
-                                        <span>Class {student.class}</span>
+                                    <h1 className="text-3xl font-bold text-white mb-2">{student.name}</h1>
+                                    <div className="flex gap-3 text-slate-400 items-center">
+                                        <span className="bg-slate-700/50 px-3 py-1 rounded-full text-sm border border-slate-600">Class {student.class}</span>
                                         {student.batch && (
-                                            <span className="bg-purple-100 text-purple-700 px-2 py-0.5 rounded text-xs font-bold uppercase">
+                                            <span className="bg-purple-500/10 text-purple-400 px-3 py-1 rounded-full text-sm font-bold uppercase border border-purple-500/20 shadow-[0_0_10px_rgba(168,85,247,0.1)]">
                                                 {student.batch.batch_name}
                                             </span>
                                         )}
                                     </div>
-                                    <p className="text-sm text-gray-400 mt-1">Student ID: #{student.student_id}</p>
+                                    <p className="text-sm text-slate-500 mt-2 font-mono">Student ID: #{student.student_id}</p>
                                 </>
                             )}
                         </div>
                     </div>
-                    <div className="flex gap-2 items-center">
+                    <div className="flex gap-3 items-center w-full md:w-auto">
                         <button
                             onClick={generateIDCard}
-                            className="bg-gray-800 text-white px-4 py-2 rounded hover:bg-gray-900 font-medium text-sm flex items-center gap-2"
+                            className="bg-slate-700 text-slate-200 px-4 py-2.5 rounded-xl hover:bg-slate-600 font-medium text-sm flex items-center gap-2 border border-slate-600 shadow-lg transition-all flex-1 md:flex-none justify-center"
                         >
-                            <CreditCard size={16} /> Download ID Card
+                            <CreditCard size={18} /> <span className="hidden sm:inline">Download ID</span>
                         </button>
                         {isEditing ? (
-                            <button onClick={handleSave} className="bg-green-600 text-white px-4 py-2 rounded flex items-center gap-2">
-                                <Save size={16} /> Save
+                            <button onClick={handleSave} className="bg-emerald-600 text-white px-6 py-2.5 rounded-xl flex items-center gap-2 hover:bg-emerald-500 shadow-lg shadow-emerald-500/20 transition-all flex-1 md:flex-none justify-center font-bold">
+                                <Save size={18} /> Save
                             </button>
                         ) : (
-                            <button onClick={handleEditToggle} className="border border-gray-300 px-4 py-2 rounded flex items-center gap-2 hover:bg-gray-50 text-gray-700">
-                                <Edit2 size={16} /> Edit Profile
+                            <button onClick={handleEditToggle} className="bg-blue-600 text-white px-6 py-2.5 rounded-xl flex items-center gap-2 hover:bg-blue-500 shadow-lg shadow-blue-500/20 transition-all flex-1 md:flex-none justify-center font-bold">
+                                <Edit2 size={18} /> Edit
                             </button>
                         )}
                     </div>
                 </div>
 
                 {/* DETAILS GRID */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8 pt-6 border-t border-gray-100">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mt-8 pt-8 border-t border-slate-700/50">
                     <div>
-                        <label className="text-xs font-bold text-gray-400 uppercase">Father's Name</label>
+                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">Father's Name</label>
                         {isEditing ? (
                             <input
-                                className="block w-full border p-1 rounded text-gray-900 bg-white"
+                                className="block w-full border border-slate-600 p-2 rounded-lg text-white bg-slate-900/50 focus:ring-2 focus:ring-blue-500/50 focus:outline-none"
                                 value={editForm.fathers_name || ''}
                                 onChange={e => setEditForm({ ...editForm, fathers_name: e.target.value })}
                             />
                         ) : (
-                            <p className="text-gray-800 font-medium">{student.fathers_name || '-'}</p>
+                            <p className="text-slate-200 font-medium text-lg">{student.fathers_name || '-'}</p>
                         )}
                     </div>
                     <div>
-                        <label className="text-xs font-bold text-gray-400 uppercase">School/College</label>
+                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">School/College</label>
                         {isEditing ? (
                             <input
-                                className="block w-full border p-1 rounded text-gray-900 bg-white"
+                                className="block w-full border border-slate-600 p-2 rounded-lg text-white bg-slate-900/50 focus:ring-2 focus:ring-blue-500/50 focus:outline-none"
                                 value={editForm.school || ''}
                                 onChange={e => setEditForm({ ...editForm, school: e.target.value })}
                             />
                         ) : (
-                            <p className="text-gray-800 font-medium">{student.school || '-'}</p>
+                            <p className="text-slate-200 font-medium text-lg">{student.school || '-'}</p>
                         )}
                     </div>
                     <div>
-                        <label className="text-xs font-bold text-gray-400 uppercase">Contact</label>
+                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-1 block">Contact</label>
                         {isEditing ? (
                             <input
-                                className="block w-full border p-1 rounded text-gray-900 bg-white"
+                                className="block w-full border border-slate-600 p-2 rounded-lg text-white bg-slate-900/50 focus:ring-2 focus:ring-blue-500/50 focus:outline-none"
                                 value={editForm.contact || ''}
                                 onChange={e => setEditForm({ ...editForm, contact: e.target.value })}
                             />
                         ) : (
-                            <p className="text-gray-800 font-medium">{student.contact || '-'}</p>
+                            <p className="text-slate-200 font-medium text-lg font-mono">{student.contact || '-'}</p>
                         )}
                     </div>
                 </div>
             </div>
 
-            <div className="flex flex-col gap-6">
+            <div className="flex flex-col gap-8">
 
                 {/* MAIN CONTENT: Enrollments & Finance */}
-                <div className="space-y-6">
+                <div className="space-y-8">
                     {/* FINANCIAL STATUS */}
                     <StudentFinancialStatus studentId={id!} />
 
-                    <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                        <div className="flex justify-between items-center mb-4">
-                            <h3 className="font-bold text-gray-800 flex items-center gap-2">
-                                <BookOpen size={20} className="text-blue-600" />
+                    <div className="bg-slate-800/50 backdrop-blur-md rounded-2xl shadow-xl border border-slate-700 p-8">
+                        <div className="flex justify-between items-center mb-6">
+                            <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                                <BookOpen size={24} className="text-blue-400" />
                                 Enrolled Programs
                             </h3>
                             <button
                                 onClick={() => setShowEnrollModal(true)}
-                                className="text-sm bg-blue-50 text-blue-600 px-3 py-1 rounded-full font-medium hover:bg-blue-100"
+                                className="text-sm bg-blue-500/10 text-blue-400 px-4 py-2 rounded-lg font-bold hover:bg-blue-500/20 border border-blue-500/20 transition-all flex items-center gap-1"
                             >
-                                + Enroll
+                                <Plus size={16} /> Enroll
                             </button>
                         </div>
 
                         {showEnrollModal && (
-                            <div className="bg-blue-50 p-4 rounded-lg mb-4 border border-blue-100">
-                                <p className="text-sm font-bold text-blue-800 mb-2">Select Program to Enroll</p>
-                                <div className="flex gap-2">
+                            <div className="bg-slate-900/50 p-6 rounded-xl mb-6 border border-slate-700 animate-fade-in">
+                                <p className="text-sm font-bold text-blue-400 mb-3">Select Program to Enroll</p>
+                                <div className="flex flex-col md:flex-row gap-3">
                                     <select
-                                        className="flex-1 border p-2 rounded text-gray-900 bg-white"
+                                        className="flex-1 border border-slate-600 p-2.5 rounded-lg text-white bg-slate-800 focus:ring-2 focus:ring-blue-500/50 focus:outline-none"
                                         value={selectedProgramId}
                                         onChange={e => setSelectedProgramId(e.target.value)}
                                     >
-                                        <option value="">Choose a Program...</option>
+                                        <option value="" className="bg-slate-800">Choose a Program...</option>
                                         {allPrograms?.map((p: any) => (
-                                            <option key={p.program_id} value={p.program_id}>
+                                            <option key={p.program_id} value={p.program_id} className="bg-slate-800">
                                                 {p.program_name} (Batch: {p.batch?.batch_name})
                                             </option>
                                         ))}
                                     </select>
-                                    <button
-                                        onClick={() => enrollMutation.mutate(parseInt(selectedProgramId))}
-                                        className="bg-blue-600 text-white px-4 py-2 rounded shadow-sm hover:bg-blue-700"
-                                        disabled={!selectedProgramId}
-                                    >
-                                        Confirm
-                                    </button>
-                                    <button onClick={() => setShowEnrollModal(false)} className="text-gray-500 px-2">Cancel</button>
+                                    <div className="flex gap-2">
+                                        <button
+                                            onClick={() => enrollMutation.mutate(parseInt(selectedProgramId))}
+                                            className="bg-blue-600 text-white px-6 py-2.5 rounded-lg shadow-lg hover:bg-blue-500 transition-all font-bold disabled:opacity-50 disabled:cursor-not-allowed"
+                                            disabled={!selectedProgramId}
+                                        >
+                                            Confirm
+                                        </button>
+                                        <button onClick={() => setShowEnrollModal(false)} className="text-slate-400 px-4 hover:text-white transition-colors">Cancel</button>
+                                    </div>
                                 </div>
                             </div>
                         )}
 
-                        <div className="space-y-3">
+                        <div className="space-y-4">
                             {enrollments?.map((enroll: any) => (
-                                <div key={enroll.enrollment_id} className="border border-gray-100 p-4 rounded-lg flex justify-between items-center hover:bg-gray-50 group">
+                                <div key={enroll.enrollment_id} className="bg-slate-900/30 border border-slate-700/50 p-5 rounded-xl flex justify-between items-center hover:bg-slate-800/50 transition-colors group">
                                     <div>
-                                        <p className="font-bold text-gray-900">{enroll.program?.program_name || 'Unknown Program'}</p>
-                                        <div className="flex gap-3 mt-1 text-sm text-gray-500">
-                                            <span className="font-mono bg-gray-100 px-2 rounded text-gray-700 font-bold">Roll: {enroll.roll_no || 'N/A'}</span>
+                                        <p className="font-bold text-lg text-slate-200">{enroll.program?.program_name || 'Unknown Program'}</p>
+                                        <div className="flex gap-4 mt-2 text-sm text-slate-400 items-center">
+                                            <span className="font-mono bg-slate-800 px-2 py-0.5 rounded text-blue-400 font-bold border border-slate-700">Roll: {enroll.roll_no || 'N/A'}</span>
                                             <span>Joined: {enroll.enrollment_date || 'N/A'}</span>
+                                            {enroll.status === 'Withdrawn' && <span className="text-red-400 bg-red-500/10 px-2 rounded border border-red-500/20">Withdrawn</span>}
                                         </div>
                                     </div>
                                     <button
                                         onClick={() => setWithdrawEnrollment(enroll)}
-                                        className="text-red-400 hover:text-red-600 p-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                                        className="text-red-400 hover:text-red-300 p-2 opacity-0 group-hover:opacity-100 transition-opacity bg-red-500/10 rounded-lg hover:bg-red-500/20"
                                         title="Withdraw / Delete Enrollment"
                                     >
-                                        <Trash2 size={18} />
+                                        <Trash2 size={20} />
                                     </button>
                                 </div>
                             ))}
                             {(!student.enrollment || student.enrollment.length === 0) && (
-                                <p className="text-gray-500 italic">No active enrollments.</p>
+                                <div className="text-center py-8 border-2 border-dashed border-slate-700 rounded-xl">
+                                    <p className="text-slate-500 italic">No active enrollments.</p>
+                                </div>
                             )}
                         </div>
                     </div>
                 </div>
-
-
 
             </div>
 

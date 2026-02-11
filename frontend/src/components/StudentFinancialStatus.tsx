@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { StudentRepository } from '../repositories/StudentRepository'; // For Summary
 import { PaymentRepository } from '../repositories/PaymentRepository'; // For History
-import { DollarSign, AlertCircle, FileText, ChevronDown, ChevronUp, Clock, Calendar } from 'lucide-react';
+import { DollarSign, AlertCircle, FileText, ChevronDown, ChevronUp, Calendar } from 'lucide-react';
 
 interface StudentFinancialStatusProps {
     studentId: string;
@@ -31,33 +31,33 @@ const StudentFinancialStatus: React.FC<StudentFinancialStatusProps> = ({ student
 
     return (
         <div className="space-y-6">
-            <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
-                <DollarSign size={20} className="text-gray-500" />
+            <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                <DollarSign size={20} className="text-slate-400" />
                 Financial Overview
             </h3>
 
             {/* SUMMARY CARDS */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Total Paid */}
-                <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex items-center justify-between">
+                <div className="bg-slate-800/50 backdrop-blur-md p-5 rounded-xl border border-slate-700 shadow-sm flex items-center justify-between">
                     <div>
-                        <p className="text-gray-500 text-xs font-bold uppercase tracking-wider">Total Paid</p>
-                        <p className="text-2xl font-bold text-green-600 mt-1">৳{summary.total_paid?.toLocaleString()}</p>
+                        <p className="text-slate-500 text-xs font-bold uppercase tracking-wider">Total Paid</p>
+                        <p className="text-2xl font-bold text-emerald-400 mt-1">৳{summary.total_paid?.toLocaleString()}</p>
                     </div>
-                    <div className="p-3 bg-green-50 rounded-full text-green-600">
+                    <div className="p-3 bg-emerald-500/10 rounded-full text-emerald-400 border border-emerald-500/20">
                         <FileText size={24} />
                     </div>
                 </div>
 
                 {/* Total Outstanding */}
-                <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex items-center justify-between">
+                <div className="bg-slate-800/50 backdrop-blur-md p-5 rounded-xl border border-slate-700 shadow-sm flex items-center justify-between">
                     <div>
-                        <p className="text-gray-500 text-xs font-bold uppercase tracking-wider">Total Outstanding Balance</p>
-                        <p className={`text-2xl font-bold mt-1 ${summary.total_due > 0 ? 'text-red-600' : 'text-gray-800'}`}>
+                        <p className="text-slate-500 text-xs font-bold uppercase tracking-wider">Total Outstanding Balance</p>
+                        <p className={`text-2xl font-bold mt-1 ${summary.total_due > 0 ? 'text-red-400' : 'text-slate-200'}`}>
                             ৳{summary.total_due?.toLocaleString()}
                         </p>
                     </div>
-                    <div className={`p-3 rounded-full ${summary.total_due > 0 ? 'bg-red-50 text-red-600' : 'bg-gray-100 text-gray-400'}`}>
+                    <div className={`p-3 rounded-full border ${summary.total_due > 0 ? 'bg-red-500/10 text-red-400 border-red-500/20' : 'bg-slate-700 text-slate-400 border-slate-600'}`}>
                         <AlertCircle size={24} />
                     </div>
                 </div>
@@ -67,58 +67,60 @@ const StudentFinancialStatus: React.FC<StudentFinancialStatusProps> = ({ student
             <div className="flex gap-4">
                 <button
                     onClick={() => setShowBreakdown(true)}
-                    className="text-sm font-medium text-blue-600 hover:text-blue-800 flex items-center gap-1"
+                    className="text-sm font-medium text-blue-400 hover:text-blue-300 flex items-center gap-1 transition-colors"
                 >
                     View Detailed Breakdown
                 </button>
             </div>
 
             {/* PAYMENT HISTORY TOGGLE */}
-            <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
+            <div className="bg-slate-800/30 rounded-xl border border-slate-700 overflow-hidden">
                 <button
                     onClick={() => setShowHistory(!showHistory)}
-                    className="w-full flex justify-between items-center p-4 bg-gray-50 hover:bg-gray-100 transition-colors"
+                    className="w-full flex justify-between items-center p-4 bg-slate-800/50 hover:bg-slate-800 transition-colors"
                 >
-                    <span className="font-semibold text-gray-700">Payment History</span>
-                    {showHistory ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
+                    <span className="font-semibold text-slate-200">Payment History</span>
+                    {showHistory ? <ChevronUp size={18} className="text-slate-400" /> : <ChevronDown size={18} className="text-slate-400" />}
                 </button>
 
                 {showHistory && (
                     <div className="p-0">
                         {isLoadingHistory ? (
-                            <div className="p-4 text-center text-gray-400">Loading history...</div>
+                            <div className="p-4 text-center text-slate-500">Loading history...</div>
                         ) : history?.length === 0 ? (
-                            <div className="p-8 text-center text-gray-400">No payments recorded yet.</div>
+                            <div className="p-8 text-center text-slate-500">No payments recorded yet.</div>
                         ) : (
-                            <table className="w-full text-left text-sm">
-                                <thead className="bg-gray-50 border-b border-gray-100 text-gray-500 uppercase text-xs">
-                                    <tr>
-                                        <th className="p-3">Date</th>
-                                        <th className="p-3">Receipt #</th>
-                                        <th className="p-3">Program</th>
-                                        <th className="p-3">Months</th>
-                                        <th className="p-3 text-right">Amount</th>
-                                        <th className="p-3 text-center">Type</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-gray-100">
-                                    {history?.map((p: any) => (
-                                        <tr key={p.raw_group_id || p.sort_id} className="hover:bg-gray-50">
-                                            <td className="p-3 text-gray-600">{p.payment_date}</td>
-                                            <td className="p-3 font-mono text-xs text-gray-400">#{p.sort_id}</td>
-                                            <td className="p-3 font-medium text-gray-800">{p.program_name}</td>
-                                            <td className="p-3 text-gray-600">{p.date_display || '-'}</td>
-                                            <td className="p-3 text-right font-bold text-gray-700">৳{p.total_amount?.toLocaleString()}</td>
-                                            <td className="p-3 text-center">
-                                                <span className={`px-2 py-0.5 rounded text-[10px] uppercase font-bold border ${p.type === 'Bulk' ? 'bg-purple-50 text-purple-600 border-purple-100' : 'bg-gray-100 text-gray-600 border-gray-200'
-                                                    }`}>
-                                                    {p.type}
-                                                </span>
-                                            </td>
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-left text-sm">
+                                    <thead className="bg-slate-900/50 border-b border-slate-700 text-slate-400 uppercase text-xs">
+                                        <tr>
+                                            <th className="p-3">Date</th>
+                                            <th className="p-3">Receipt #</th>
+                                            <th className="p-3">Program</th>
+                                            <th className="p-3">Months</th>
+                                            <th className="p-3 text-right">Amount</th>
+                                            <th className="p-3 text-center">Type</th>
                                         </tr>
-                                    ))}
-                                </tbody>
-                            </table>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-700/50">
+                                        {history?.map((p: any) => (
+                                            <tr key={p.raw_group_id || p.sort_id} className="hover:bg-slate-700/30 transition-colors">
+                                                <td className="p-3 text-slate-300">{p.payment_date}</td>
+                                                <td className="p-3 font-mono text-xs text-slate-500">#{p.sort_id}</td>
+                                                <td className="p-3 font-medium text-slate-200">{p.program_name}</td>
+                                                <td className="p-3 text-slate-400">{p.date_display || '-'}</td>
+                                                <td className="p-3 text-right font-bold text-slate-200">৳{p.total_amount?.toLocaleString()}</td>
+                                                <td className="p-3 text-center">
+                                                    <span className={`px-2 py-0.5 rounded text-[10px] uppercase font-bold border ${p.type === 'Bulk' ? 'bg-purple-500/10 text-purple-400 border-purple-500/20' : 'bg-slate-700 text-slate-400 border-slate-600'
+                                                        }`}>
+                                                        {p.type}
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
                         )}
                     </div>
                 )}
@@ -126,38 +128,38 @@ const StudentFinancialStatus: React.FC<StudentFinancialStatusProps> = ({ student
 
             {/* BREAKDOWN MODAL */}
             {showBreakdown && (
-                <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-                    <div className="bg-white rounded-xl shadow-xl max-w-2xl w-full p-6">
+                <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
+                    <div className="bg-slate-900 rounded-xl shadow-2xl border border-slate-700 max-w-2xl w-full p-6">
                         <div className="flex justify-between items-center mb-6">
-                            <h2 className="text-xl font-bold flex items-center gap-2">
-                                <FileText className="text-blue-600" /> Due Breakdown
+                            <h2 className="text-xl font-bold flex items-center gap-2 text-white">
+                                <FileText className="text-blue-500" /> Due Breakdown
                             </h2>
-                            <button onClick={() => setShowBreakdown(false)} className="text-gray-400 hover:text-gray-600">
+                            <button onClick={() => setShowBreakdown(false)} className="text-slate-400 hover:text-white transition-colors">
                                 ✕
                             </button>
                         </div>
 
-                        <div className="space-y-4">
+                        <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
                             {summary.breakdown.map((item: any, idx: number) => (
-                                <div key={idx} className="border border-gray-200 rounded-lg p-4 hover:border-blue-200 transition-colors">
+                                <div key={idx} className="border border-slate-700 rounded-lg p-4 hover:border-blue-500/50 transition-colors bg-slate-800/30">
                                     <div className="flex justify-between items-start mb-2">
                                         <div>
-                                            <h4 className="font-bold text-gray-900">{item.program_name}</h4>
-                                            <p className="text-xs text-gray-500 flex items-center gap-1 mt-1">
+                                            <h4 className="font-bold text-slate-200">{item.program_name}</h4>
+                                            <p className="text-xs text-slate-500 flex items-center gap-1 mt-1">
                                                 <Calendar size={12} /> Joined: {new Date(item.enrollment_date).toLocaleDateString()}
                                             </p>
                                         </div>
                                         <div className="text-right">
-                                            <span className={`block font-bold ${item.due_amount > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                                            <span className={`block font-bold ${item.due_amount > 0 ? 'text-red-400' : 'text-emerald-400'}`}>
                                                 {item.due_amount > 0 ? `Due: ৳${item.due_amount}` : 'Clear'}
                                             </span>
-                                            <span className="text-xs text-gray-400">Fee: ৳{item.monthly_fee}/mo</span>
+                                            <span className="text-xs text-slate-500">Fee: ৳{item.monthly_fee}/mo</span>
                                         </div>
                                     </div>
 
-                                    <div className="bg-gray-50 p-3 rounded text-sm flex justify-between items-center">
-                                        <span className="text-gray-600">Paid Up To:</span>
-                                        <span className="font-medium text-gray-900">{item.paid_up_to || 'None'}</span>
+                                    <div className="bg-slate-900 border border-slate-700 p-3 rounded text-sm flex justify-between items-center">
+                                        <span className="text-slate-400">Paid Up To:</span>
+                                        <span className="font-medium text-slate-200">{item.paid_up_to || 'None'}</span>
                                     </div>
                                 </div>
                             ))}
@@ -166,7 +168,7 @@ const StudentFinancialStatus: React.FC<StudentFinancialStatusProps> = ({ student
                         <div className="mt-6 flex justify-end">
                             <button
                                 onClick={() => setShowBreakdown(false)}
-                                className="px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 font-medium"
+                                className="px-4 py-2 bg-slate-700 text-slate-200 rounded-lg hover:bg-slate-600 font-medium transition-colors"
                             >
                                 Close
                             </button>

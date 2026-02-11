@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ProgramRepository } from '../repositories/ProgramRepository';
-import StudentList from '../components/StudentList'; // Reuse existing
+import StudentList from '../components/StudentList';
 import { ArrowLeft, Edit, Save, Calendar, Users, Briefcase } from 'lucide-react';
 
 const BatchDetails: React.FC = () => {
@@ -40,110 +40,117 @@ const BatchDetails: React.FC = () => {
         updateMutation.mutate(editName);
     };
 
-    if (isLoading) return <div className="p-8">Loading details...</div>;
+    if (isLoading) return <div className="p-8 text-slate-400">Loading details...</div>;
     if (error || !batch) return <div className="p-8 text-red-500">Batch not found.</div>;
 
     return (
-        <div className="space-y-6 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="space-y-6 max-w-7xl mx-auto animate-in fade-in duration-300">
             {/* Header / Breadcrumb */}
-            <div className="flex items-center gap-4 text-gray-500">
-                <Link to="/batches" className="hover:text-gray-900 flex items-center gap-1 transition-colors">
+            <div className="flex items-center gap-4 text-slate-500">
+                <Link to="/admin/batches" className="hover:text-white flex items-center gap-1 transition-colors">
                     <ArrowLeft size={16} /> Back to Batches
                 </Link>
             </div>
 
             {/* Title & Actions */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 flex justify-between items-center">
+            <div className="bg-slate-800/50 backdrop-blur-xl rounded-xl shadow-lg border border-slate-700 p-6 flex justify-between items-center">
                 <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-purple-50 text-purple-600 rounded-lg flex items-center justify-center">
-                        <Calendar size={24} />
+                    <div className="w-12 h-12 bg-blue-500/20 text-blue-400 rounded-lg flex items-center justify-center border border-blue-500/20">
+                        <Briefcase size={24} />
                     </div>
                     <div>
                         {isEditing ? (
-                            <div className="flex items-center gap-2">
-                                <input
-                                    className="text-2xl font-bold text-gray-900 border-b-2 border-purple-500 outline-none"
-                                    value={editName}
-                                    onChange={e => setEditName(e.target.value)}
-                                    autoFocus
-                                />
-                            </div>
+                            <input
+                                className="text-2xl font-bold text-white bg-slate-900 border-b-2 border-blue-500 outline-none w-64 px-2 py-1 rounded-t"
+                                value={editName}
+                                onChange={e => setEditName(e.target.value)}
+                                autoFocus
+                                placeholder="Batch Name"
+                            />
                         ) : (
-                            <h1 className="text-2xl font-bold text-gray-900">{batch.batch_name}</h1>
+                            <div>
+                                <h1 className="text-2xl font-bold text-white">{batch.batch_name}</h1>
+                                <p className="text-slate-400 text-sm flex items-center gap-2">
+                                    <span className="bg-slate-700 px-2 py-0.5 rounded text-xs border border-slate-600">ID: {batch.batch_id}</span>
+                                </p>
+                            </div>
                         )}
-                        <p className="text-gray-500 text-sm">Batch ID: #{batch.batch_id}</p>
                     </div>
                 </div>
 
                 {isEditing ? (
                     <div className="flex gap-2">
-                        <button onClick={() => setIsEditing(false)} className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg">Cancel</button>
+                        <button onClick={() => setIsEditing(false)} className="px-4 py-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition-colors">Cancel</button>
                         <button
                             onClick={handleSave}
                             disabled={updateMutation.isPending}
-                            className="bg-purple-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-purple-700 shadow-sm"
+                            className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-blue-500 shadow-lg shadow-blue-900/20 border border-blue-500/50 transition-all font-medium"
                         >
-                            <Save size={18} /> Save
+                            <Save size={18} /> Save Changes
                         </button>
                     </div>
                 ) : (
                     <button
                         onClick={() => setIsEditing(true)}
-                        className="flex items-center gap-2 text-gray-500 hover:text-purple-600 px-4 py-2 rounded-lg hover:bg-purple-50 transition-colors"
+                        className="flex items-center gap-2 text-slate-400 hover:text-blue-400 px-4 py-2 rounded-lg hover:bg-blue-500/10 border border-transparent hover:border-blue-500/20 transition-all"
                     >
-                        <Edit size={18} /> Edit Name
+                        <Edit size={18} /> Edit Batch
                     </button>
                 )}
             </div>
 
-            {/* Programs Section */}
-            <div>
-                <h2 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-                    <Briefcase size={20} className="text-gray-400" />
-                    Programs in this Batch
-                </h2>
+            {/* Content Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {batch.program?.map((prog: any) => (
-                        <Link
-                            to={`/programs/${prog.program_id}`}
-                            key={prog.program_id}
-                            className="block bg-white border border-gray-200 rounded-lg p-4 hover:border-purple-300 hover:shadow-md transition-all group"
-                        >
-                            <h3 className="font-bold text-gray-800 group-hover:text-purple-700">{prog.program_name}</h3>
-                            <div className="mt-2 flex justify-between text-sm text-gray-500">
-                                <span>{prog.type || 'Academic'}</span>
-                                {prog.monthly_fee > 0 ? (
-                                    <span className="text-green-600 font-medium">৳ {prog.monthly_fee}/mo</span>
-                                ) : (
-                                    <span className="text-blue-600">Free</span>
-                                )}
-                            </div>
-                        </Link>
-                    ))}
-
-                    {(!batch.program || batch.program.length === 0) && (
-                        <div className="col-span-full border-2 border-dashed border-gray-200 rounded-lg p-6 text-center text-gray-400 italic">
-                            No programs assigned to this batch yet.
+                {/* Left Column: Programs */}
+                <div className="lg:col-span-1 space-y-6">
+                    <div className="bg-slate-800/50 backdrop-blur-xl rounded-xl shadow-lg border border-slate-700 p-6">
+                        <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                            <Calendar size={20} className="text-purple-400" /> Programs
+                        </h2>
+                        <div className="space-y-3">
+                            {batch.programs && batch.programs.length > 0 ? (
+                                batch.programs.map((prog: any) => (
+                                    <Link key={prog.program_id} to={`/admin/programs/${prog.program_id}`} className="block">
+                                        <div className="p-3 rounded-lg bg-slate-900/50 border border-slate-700 hover:border-purple-500/50 hover:bg-slate-800 transition-all group">
+                                            <h3 className="font-semibold text-slate-200 group-hover:text-purple-400 transition-colors">{prog.program_name}</h3>
+                                            <div className="flex justify-between items-center mt-2">
+                                                <span className="text-xs text-slate-500">
+                                                    Starts: {prog.start_date ? new Date(prog.start_date).toLocaleDateString() : 'TBD'}
+                                                </span>
+                                                <span className="text-xs bg-purple-500/10 text-purple-400 px-2 py-0.5 rounded border border-purple-500/20">
+                                                    View
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </Link>
+                                ))
+                            ) : (
+                                <p className="text-slate-500 italic text-sm text-center py-4">No programs in this batch yet.</p>
+                            )}
                         </div>
-                    )}
-                </div>
-            </div>
-
-            {/* Students Section (Reusing Filtered List) */}
-            <div>
-                <h2 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-                    <Users size={20} className="text-gray-400" />
-                    Students in this Batch
-                </h2>
-                <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-1">
-                    {/* Reuse StudentList with locked Filter */}
-                    <div className="p-4">
-                        <StudentList fixedBatchId={id} />
                     </div>
                 </div>
-            </div>
 
+                {/* Right Column: Students */}
+                <div className="lg:col-span-2">
+                    <div className="bg-slate-800/50 backdrop-blur-xl rounded-xl shadow-lg border border-slate-700 overflow-hidden flex flex-col h-full">
+                        <div className="p-6 border-b border-slate-700 flex justify-between items-center bg-slate-800/80">
+                            <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                                <Users size={20} className="text-emerald-400" /> Batch Students
+                            </h2>
+                            <span className="text-xs text-slate-400 bg-slate-900 px-2 py-1 rounded border border-slate-700">
+                                Auto-filtered by Batch ID
+                            </span>
+                        </div>
+                        <div className="p-4 flex-1 bg-slate-900/30">
+                            {/* Reusing StudentList with fixedBatchId prop */}
+                            <StudentList fixedBatchId={id} />
+                        </div>
+                    </div>
+                </div>
+
+            </div>
         </div>
     );
 };

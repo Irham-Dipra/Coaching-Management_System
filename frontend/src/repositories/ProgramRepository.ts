@@ -75,5 +75,11 @@ export const ProgramRepository = {
         const response = await fetch(`${API_BASE_URL}/programs/${id}/analytics`);
         if (!response.ok) throw new Error("Failed to fetch analytics");
         return await response.json();
+    },
+
+    async getBatchAnalytics(id: string) {
+        const response = await fetch(`${API_BASE_URL}/batches/${id}/analytics`);
+        if (!response.ok) throw new Error("Failed to fetch batch analytics");
+        return await response.json();
     }
 };

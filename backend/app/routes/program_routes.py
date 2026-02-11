@@ -36,6 +36,16 @@ def update_batch(batch_id: int, batch_update: BatchCreate):
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
+@router.get("/batches/{batch_id}/analytics")
+def get_batch_analytics(batch_id: int):
+    data = repo.get_batch_analytics(batch_id)
+    if not data:
+        return {
+            "exams": [],
+            "attendance_trend": []
+        }
+    return data
+
 # ==========================================
 # PROGRAM ENDPOINTS
 # ==========================================

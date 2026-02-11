@@ -316,3 +316,159 @@ class ProgramRepository:
             "exams": exam_analytics,
             "attendance_trend": att_graph_data
         }
+
+    def get_batch_analytics(self, batch_id: int):
+        """Aggregate analytics across all programs in a batch (batch -> program -> exam)."""
+
+        # 1. Get all programs for this batch
+        programs = supabase.table("program")\
+            .select("program_id")\
+            .eq("batch_id", batch_id)\
+            .execute().data
+
+        if not programs:
+            return None
+
+        program_ids = [p['program_id'] for p in programs]
+
+        # 2. Get all enrollments across these programs
+        all_enrollments = []
+        for pid in program_ids:
+            enrollments = supabase.table("enrollment")\
+                .select("enrollment_id, student_id")\
+                .eq("program_id", pid)\
+                .execute().data
+            all_enrollments.extend(enrollments or [])
+
+        if not all_enrollments:
+            return None
+
+        enrollment_ids = [e['enrollment_id'] for e in all_enrollments]
+        student_ids = list(set([e['student_id'] for e in all_enrollments]))
+
+        # 3. Get all linked exams across all programs
+        all_linked_exams = []
+        for pid in program_ids:
+            linked = supabase.table("program_exam")\
+                .select("exam_id, exam(total_marks, exam_date, exam_name)")\
+                .eq("program_id", pid)\
+                .execute().data
+            all_linked_exams.extend(linked or [])
+
+        # Deduplicate exams (same exam could be linked to multiple programs)
+        seen_exam_ids = set()
+        unique_linked_exams = []
+        for e in all_linked_exams:
+            if e['exam_id'] not in seen_exam_ids:
+                seen_exam_ids.add(e['exam_id'])
+                unique_linked_exams.append(e)
+
+        exam_ids = [e['exam_id'] for e in unique_linked_exams]
+        exam_map = {e['exam_id']: e['exam'] for e in unique_linked_exams if e.get('exam')}
+
+        # 4. Fetch results
+        if not exam_ids:
+            results = []
+        else:
+            raw_results = supabase.table("student_individual_result")\
+                .select("*")\
+                .in_("exam_id", exam_ids)\
+                .execute().data
+            results = [r for r in raw_results if r['student_id'] in student_ids]
+
+        # 5. Fetch attendance
+        if not enrollment_ids:
+            attendance_records = []
+        else:
+            attendance_records = supabase.table("attendance")\
+                .select("status, date")\
+                .in_("enrollment_id", enrollment_ids)\
+                .execute().data
+
+        # 6. Process per-exam metrics (same logic as get_program_analytics)
+        exam_analytics = []
+
+        for eid, exam_meta in exam_map.items():
+            exam_results = [r for r in results if r['exam_id'] == eid]
+            count = len(exam_results)
+
+            if count == 0:
+                continue
+
+            total_sum = 0
+            written_sum = 0
+            mcq_sum = 0
+            highest = 0
+            lowest = 1000
+
+            dist = {
+                "0-40%": 0,
+                "41-60%": 0,
+                "61-80%": 0,
+                "81-100%": 0
+            }
+
+            max_marks = exam_meta.get('total_marks', 100) or 100
+
+            for r in exam_results:
+                score = r.get('total_score', 0) or 0
+                w_score = r.get('written_marks', 0) or r.get('obt_written_mark', 0) or 0
+                m_score = r.get('mcq_marks', 0) or r.get('obt_mcq_mark', 0) or 0
+
+                total_sum += score
+                written_sum += w_score
+                mcq_sum += m_score
+
+                if score > highest: highest = score
+                if score < lowest: lowest = score
+
+                pct = (score / max_marks) * 100
+                if pct <= 40: dist["0-40%"] += 1
+                elif pct <= 60: dist["41-60%"] += 1
+                elif pct <= 80: dist["61-80%"] += 1
+                else: dist["81-100%"] += 1
+
+            avg_total = total_sum / count
+            avg_written = written_sum / count
+            avg_mcq = mcq_sum / count
+
+            exam_analytics.append({
+                "exam_id": eid,
+                "exam_name": exam_meta.get('exam_name', 'Unknown'),
+                "date": exam_meta.get('exam_date', ''),
+                "total_marks": max_marks,
+                "metrics": {
+                    "avg_total": round(avg_total, 1),
+                    "avg_written": round(avg_written, 1),
+                    "avg_mcq": round(avg_mcq, 1),
+                    "highest": highest,
+                    "lowest": lowest,
+                    "student_count": count
+                },
+                "distribution": [
+                    {"name": "0-40%", "value": dist["0-40%"]},
+                    {"name": "41-60%", "value": dist["41-60%"]},
+                    {"name": "61-80%", "value": dist["61-80%"]},
+                    {"name": "81-100%", "value": dist["81-100%"]}
+                ]
+            })
+
+        exam_analytics.sort(key=lambda x: x['date'] if x['date'] else '')
+
+        # 7. Attendance trend
+        att_map = {}
+        for a in attendance_records:
+            d = a['date']
+            if d not in att_map: att_map[d] = {'p': 0, 't': 0}
+            att_map[d]['t'] += 1
+            if a['status'] == 'Present': att_map[d]['p'] += 1
+
+        att_graph_data = []
+        for d in sorted(att_map.keys()):
+            pct = (att_map[d]['p'] / att_map[d]['t']) * 100
+            att_graph_data.append({"date": d, "percentage": round(pct, 1)})
+
+        return {
+            "exams": exam_analytics,
+            "attendance_trend": att_graph_data
+        }

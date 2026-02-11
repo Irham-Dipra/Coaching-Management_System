@@ -88,14 +88,18 @@ const StudentProfile: React.FC = () => {
     const generateIDCard = () => {
         if (!student) return;
 
-        // 1. Setup PDF (A4 Portrait)
         const doc = new jsPDF({
             orientation: 'portrait',
             unit: 'mm',
             format: 'a4'
         });
 
-        // 2. Identify Batch
+        const pageWidth = 210;
+        const marginLeft = 25;
+        const marginRight = 25;
+        const contentWidth = pageWidth - marginLeft - marginRight;
+
+        // Identify Batch
         let batchName = student.batch?.batch_name;
         if (!batchName && enrollments && enrollments.length > 0) {
             const active = enrollments.find((e: any) => e.status !== 'Withdrawn');
@@ -105,98 +109,134 @@ const StudentProfile: React.FC = () => {
         }
         batchName = batchName || 'General';
 
-        // 3. Header
-        doc.setFillColor(41, 128, 185); // Professional Blue
-        doc.rect(0, 0, 210, 40, 'F');
+        // ── HEADER ──────────────────────────────────────────
+        doc.setDrawColor(0, 0, 0);
+        doc.setLineWidth(0.8);
+        doc.line(marginLeft, 18, pageWidth - marginRight, 18);
 
-        doc.setTextColor(255, 255, 255);
-        doc.setFontSize(24);
-        doc.setFont('helvetica', 'bold');
-        doc.text("Science Point", 105, 18, { align: 'center' });
-        doc.setFontSize(12);
-        doc.setFont('helvetica', 'normal');
-        doc.text("by Dr. Talha", 105, 26, { align: 'center' });
-
-        // 4. Student Information Section
         doc.setTextColor(0, 0, 0);
-        let y = 60;
+        doc.setFontSize(22);
+        doc.setFont('helvetica', 'bold');
+        doc.text("SCIENCE POINT", pageWidth / 2, 28, { align: 'center' });
 
-        // Helper to add data row (Centered)
-        const addRow = (label: string, value: string | number | undefined | null) => {
-            if (!value) return;
-            doc.setFont('helvetica', 'bold'); // Label Bold
-            doc.text(`${label}:`, 103, y, { align: 'right' });
-            doc.setFont('helvetica', 'normal'); // Value Normal
-            doc.text(`${value}`, 107, y, { align: 'left' });
-            y += 10;
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
+        doc.text("by Dr. Talha", pageWidth / 2, 34, { align: 'center' });
+
+        doc.setLineWidth(0.3);
+        doc.line(marginLeft, 38, pageWidth - marginRight, 38);
+
+        // ── DOCUMENT TITLE ──────────────────────────────────
+        doc.setFontSize(13);
+        doc.setFont('helvetica', 'bold');
+        doc.text("STUDENT PROFILE", pageWidth / 2, 48, { align: 'center' });
+
+        doc.setLineWidth(0.15);
+        doc.line(80, 50, 130, 50);
+
+        // ── PERSONAL INFORMATION ────────────────────────────
+        let y = 62;
+
+        doc.setFontSize(11);
+        doc.setFont('helvetica', 'bold');
+        doc.text("Personal Information", marginLeft, y);
+        doc.setLineWidth(0.2);
+        doc.line(marginLeft, y + 2, marginLeft + contentWidth, y + 2);
+        y += 12;
+
+        // Two-column key-value layout
+        const addField = (label: string, value: string | number | undefined | null) => {
+            if (!value && value !== 0) return;
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(9);
+            doc.setTextColor(80, 80, 80);
+            doc.text(`${label}`, marginLeft, y);
+
+            doc.setFont('helvetica', 'normal');
+            doc.setFontSize(10);
+            doc.setTextColor(0, 0, 0);
+            doc.text(`${value}`, marginLeft + 45, y);
+            y += 8;
         };
 
-        doc.setFontSize(14);
+        addField("Student ID", String(student.student_id));
+        addField("Full Name", student.name);
+        addField("Father's Name", student.fathers_name || '—');
+        addField("School / College", student.school || '—');
+        addField("Class", student.class ? String(student.class) : '—');
+        addField("Batch", batchName);
+        addField("Contact", student.contact || '—');
+
+        // ── ENROLLED PROGRAMS ───────────────────────────────
+        y += 8;
+        doc.setFontSize(11);
         doc.setFont('helvetica', 'bold');
-        doc.setTextColor(41, 128, 185);
-        doc.text("Personal Information", 105, 50, { align: 'center' });
         doc.setTextColor(0, 0, 0);
-
-        doc.setFontSize(11); // Reset font size for rows
-
-        addRow("Student ID", String(student.student_id));
-        addRow("Full Name", student.name);
-        addRow("Father's Name", student.fathers_name || '-');
-        addRow("School / College", student.school || '-');
-        addRow("Class", student.class ? String(student.class) : '-');
-        addRow("Batch", batchName);
-
-        // 5. Enrolled Programs Section
-        y += 10;
-        doc.setFontSize(14);
-        doc.setFont('helvetica', 'bold');
-        doc.setTextColor(41, 128, 185);
-        doc.text("Enrolled Programs", 20, y);
-        doc.line(20, y + 2, 190, y + 2); // Underline
-        doc.setTextColor(0, 0, 0);
+        doc.text("Enrolled Programs", marginLeft, y);
+        doc.setLineWidth(0.2);
+        doc.line(marginLeft, y + 2, marginLeft + contentWidth, y + 2);
         y += 10;
 
         if (enrollments && enrollments.length > 0) {
-            // Table Header
-            doc.setFillColor(240, 240, 240);
-            doc.rect(20, y, 170, 10, 'F');
-            doc.setFontSize(10);
-            doc.setFont('helvetica', 'bold');
-            doc.text("Program Name", 25, y + 7);
-            doc.text("Date Joined", 120, y + 7);
-            doc.text("Status", 160, y + 7);
-            y += 15;
+            // Table header
+            const col1 = marginLeft;
+            const col2 = marginLeft + 95;
+            const col3 = marginLeft + 135;
 
-            // Table Rows
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(9);
+            doc.setTextColor(60, 60, 60);
+            doc.text("Program", col1, y);
+            doc.text("Date Joined", col2, y);
+            doc.text("Status", col3, y);
+            y += 2;
+            doc.setLineWidth(0.1);
+            doc.line(marginLeft, y, marginLeft + contentWidth, y);
+            y += 6;
+
+            // Table rows
             doc.setFont('helvetica', 'normal');
+            doc.setFontSize(9);
+            doc.setTextColor(0, 0, 0);
+
             enrollments.forEach((enroll: any) => {
                 const pName = enroll.program?.program_name || 'Unknown Program';
-                const date = enroll.enrollment_date || '-';
+                const date = enroll.enrollment_date || '—';
                 const status = enroll.status || 'Active';
 
-                doc.text(pName, 25, y);
-                doc.text(date, 120, y);
-                doc.text(status, 160, y);
-                y += 8;
+                doc.text(pName, col1, y);
+                doc.text(date, col2, y);
+                doc.text(status, col3, y);
+                y += 7;
+
+                // Subtle row separator
+                doc.setDrawColor(200, 200, 200);
+                doc.setLineWidth(0.05);
+                doc.line(marginLeft, y - 2, marginLeft + contentWidth, y - 2);
+                doc.setDrawColor(0, 0, 0);
             });
         } else {
             doc.setFont('helvetica', 'italic');
-            doc.setFontSize(11);
-            doc.text("No active enrollments found.", 20, y + 5);
+            doc.setFontSize(10);
+            doc.setTextColor(120, 120, 120);
+            doc.text("No active enrollments.", marginLeft, y);
         }
 
-        // 6. Footer
+        // ── FOOTER ──────────────────────────────────────────
         const pageHeight = doc.internal.pageSize.height;
-        doc.setDrawColor(200, 200, 200);
-        doc.line(20, pageHeight - 20, 190, pageHeight - 20);
 
-        doc.setFontSize(8);
-        doc.setTextColor(150, 150, 150);
-        doc.text("Generated by Science Point Management System", 105, pageHeight - 15, { align: 'center' });
-        doc.text(new Date().toLocaleString(), 105, pageHeight - 10, { align: 'center' });
+        doc.setDrawColor(0, 0, 0);
+        doc.setLineWidth(0.3);
+        doc.line(marginLeft, pageHeight - 22, pageWidth - marginRight, pageHeight - 22);
 
-        // 7. Save
-        doc.save(`${student.student_id}_Profile.pdf`);
+        doc.setFontSize(7);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(120, 120, 120);
+        doc.text("Science Point Management System", marginLeft, pageHeight - 17);
+        doc.text(`Generated: ${new Date().toLocaleDateString()}`, pageWidth - marginRight, pageHeight - 17, { align: 'right' });
+
+        // Save
+        doc.save(`${student.student_id}_${student.name?.replace(/\s+/g, '_')}_Profile.pdf`);
     };
 
     return (

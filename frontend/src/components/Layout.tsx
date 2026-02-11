@@ -3,11 +3,9 @@ import { Outlet, Link, useLocation } from 'react-router-dom';
 import {
     LayoutDashboard,
     GraduationCap,
-    Users,
     BookOpen,
     ClipboardCheck,
     CreditCard,
-    Settings,
     Calendar,
     Layers,
     UserPlus
@@ -33,8 +31,6 @@ const Layout: React.FC = () => {
         { label: 'Scheduling', path: '/admin/scheduling', icon: <Calendar size={20} /> },
         { label: 'Attendance', path: '/attendance', icon: <ClipboardCheck size={20} /> },
         { label: 'Finance', path: '/finance', icon: <CreditCard size={20} /> },
-        { type: 'divider', label: 'System' },
-        { label: 'Settings', path: '/settings', icon: <Settings size={20} /> },
     ];
 
     // Fallback display name logic

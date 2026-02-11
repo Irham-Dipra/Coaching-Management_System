@@ -1,30 +1,28 @@
 # ==========================================
 # The Entry Point (The "Reception Desk")
 # ==========================================
-# This file is where the application starts. 
-# When you run the server, it looks for 'app' inside this file.
 
+import os
 from fastapi import FastAPI
 from app.routes.student_routes import router as student_router
 
-# 1. Initialize the Application
-#    This creates the main object that will receive ALL web requests.
 app = FastAPI()
 
 # ==========================================
-# 4. CORS Details (Security Gate)
+# CORS Configuration
 # ==========================================
-# Browsers block requests between different ports (5173 vs 8000) by default.
-# We need to explicitly allow our Frontend URL.
 from fastapi.middleware.cors import CORSMiddleware
+
+# Read allowed origins from environment variable, fallback to localhost for dev
+origins_str = os.environ.get("ALLOWED_ORIGINS", "http://localhost:5173,http://localhost:5174")
+allowed_origins = [origin.strip() for origin in origins_str.split(",")]
 
 app.add_middleware(
     CORSMiddleware,
-    # Allow the React App running on this Port:
-    allow_origins=["http://localhost:5173", "http://localhost:5174"], 
+    allow_origins=allowed_origins,
     allow_credentials=True,
-    allow_methods=["*"], # Allow all methods (GET, POST, etc.)
-    allow_headers=["*"], # Allow all headers
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # 2. Base Endpoint (Health Check)

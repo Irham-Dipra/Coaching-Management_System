@@ -146,5 +146,12 @@ export const StudentRepository = {
     const response = await fetch(`${API_BASE_URL}/students/${studentId}/financial-summary`);
     if (!response.ok) throw new Error("Failed to fetch financial summary");
     return await response.json();
+  },
+
+  // 12. Get Student Analytics
+  async getStudentAnalytics(studentId: string) {
+    const response = await fetch(`${API_BASE_URL}/students/${studentId}/analytics`);
+    if (!response.ok) throw new Error("Failed to fetch student analytics");
+    return await response.json();
   }
 }

@@ -4,8 +4,9 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { StudentRepository } from '../repositories/StudentRepository';
 import { ProgramRepository } from '../repositories/ProgramRepository';
 import StudentFinancialStatus from '../components/StudentFinancialStatus';
+import StudentPerformance from './StudentPerformance';
 import WithdrawalModal from '../components/WithdrawalModal';
-import { User, BookOpen, CreditCard, Edit2, Save, Trash2, Plus } from 'lucide-react';
+import { User, BookOpen, CreditCard, Edit2, Save, Trash2, Plus, TrendingUp } from 'lucide-react';
 import jsPDF from 'jspdf';
 
 const StudentProfile: React.FC = () => {
@@ -16,6 +17,7 @@ const StudentProfile: React.FC = () => {
     const [showEnrollModal, setShowEnrollModal] = useState(false);
     const [selectedProgramId, setSelectedProgramId] = useState('');
     const [withdrawEnrollment, setWithdrawEnrollment] = useState<any>(null);
+    const [activeTab, setActiveTab] = useState<'overview' | 'performance'>('overview');
 
     // 1. Fetch Student Details
     const { data: student, isLoading } = useQuery({
@@ -114,7 +116,6 @@ const StudentProfile: React.FC = () => {
         doc.setFontSize(12);
         doc.setFont('helvetica', 'normal');
         doc.text("by Dr. Talha", 105, 26, { align: 'center' });
-        // Header "STUDENT PROFILE" removed as per request
 
         // 4. Student Information Section
         doc.setTextColor(0, 0, 0);
@@ -134,7 +135,6 @@ const StudentProfile: React.FC = () => {
         doc.setFont('helvetica', 'bold');
         doc.setTextColor(41, 128, 185);
         doc.text("Personal Information", 105, 50, { align: 'center' });
-        // doc.line(20, 52, 190, 52); // Underline removed for cleaner center look
         doc.setTextColor(0, 0, 0);
 
         doc.setFontSize(11); // Reset font size for rows
@@ -145,7 +145,6 @@ const StudentProfile: React.FC = () => {
         addRow("School / College", student.school || '-');
         addRow("Class", student.class ? String(student.class) : '-');
         addRow("Batch", batchName);
-        // Contact Number EXCLUDED as per request
 
         // 5. Enrolled Programs Section
         y += 10;
@@ -315,86 +314,119 @@ const StudentProfile: React.FC = () => {
                 </div>
             </div>
 
-            <div className="flex flex-col gap-8">
-
-                {/* MAIN CONTENT: Enrollments & Finance */}
-                <div className="space-y-8">
-                    {/* FINANCIAL STATUS */}
-                    <StudentFinancialStatus studentId={id!} />
-
-                    <div className="bg-slate-800/50 backdrop-blur-md rounded-2xl shadow-xl border border-slate-700 p-8">
-                        <div className="flex justify-between items-center mb-6">
-                            <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                                <BookOpen size={24} className="text-blue-400" />
-                                Enrolled Programs
-                            </h3>
-                            <button
-                                onClick={() => setShowEnrollModal(true)}
-                                className="text-sm bg-blue-500/10 text-blue-400 px-4 py-2 rounded-lg font-bold hover:bg-blue-500/20 border border-blue-500/20 transition-all flex items-center gap-1"
-                            >
-                                <Plus size={16} /> Enroll
-                            </button>
+            {/* TABS */}
+            <div className="bg-slate-800/50 backdrop-blur-md rounded-2xl shadow-xl border border-slate-700 overflow-hidden mb-8">
+                <div className="flex border-b border-slate-700/50">
+                    <button
+                        onClick={() => setActiveTab('overview')}
+                        className={`flex-1 py-4 text-sm font-bold text-center transition-all whitespace-nowrap ${activeTab === 'overview'
+                            ? 'text-blue-400 border-b-2 border-blue-500 bg-blue-500/5'
+                            : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50'
+                            }`}
+                    >
+                        <div className="flex items-center justify-center gap-2">
+                            <BookOpen size={16} /> Overview
                         </div>
-
-                        {showEnrollModal && (
-                            <div className="bg-slate-900/50 p-6 rounded-xl mb-6 border border-slate-700 animate-fade-in">
-                                <p className="text-sm font-bold text-blue-400 mb-3">Select Program to Enroll</p>
-                                <div className="flex flex-col md:flex-row gap-3">
-                                    <select
-                                        className="flex-1 border border-slate-600 p-2.5 rounded-lg text-white bg-slate-800 focus:ring-2 focus:ring-blue-500/50 focus:outline-none"
-                                        value={selectedProgramId}
-                                        onChange={e => setSelectedProgramId(e.target.value)}
-                                    >
-                                        <option value="" className="bg-slate-800">Choose a Program...</option>
-                                        {allPrograms?.map((p: any) => (
-                                            <option key={p.program_id} value={p.program_id} className="bg-slate-800">
-                                                {p.program_name} (Batch: {p.batch?.batch_name})
-                                            </option>
-                                        ))}
-                                    </select>
-                                    <div className="flex gap-2">
-                                        <button
-                                            onClick={() => enrollMutation.mutate(parseInt(selectedProgramId))}
-                                            className="bg-blue-600 text-white px-6 py-2.5 rounded-lg shadow-lg hover:bg-blue-500 transition-all font-bold disabled:opacity-50 disabled:cursor-not-allowed"
-                                            disabled={!selectedProgramId}
-                                        >
-                                            Confirm
-                                        </button>
-                                        <button onClick={() => setShowEnrollModal(false)} className="text-slate-400 px-4 hover:text-white transition-colors">Cancel</button>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-
-                        <div className="space-y-4">
-                            {enrollments?.map((enroll: any) => (
-                                <div key={enroll.enrollment_id} className="bg-slate-900/30 border border-slate-700/50 p-5 rounded-xl flex justify-between items-center hover:bg-slate-800/50 transition-colors group">
-                                    <div>
-                                        <p className="font-bold text-lg text-slate-200">{enroll.program?.program_name || 'Unknown Program'}</p>
-                                        <div className="flex gap-4 mt-2 text-sm text-slate-400 items-center">
-                                            <span className="font-mono bg-slate-800 px-2 py-0.5 rounded text-blue-400 font-bold border border-slate-700">Roll: {enroll.roll_no || 'N/A'}</span>
-                                            <span>Joined: {enroll.enrollment_date || 'N/A'}</span>
-                                            {enroll.status === 'Withdrawn' && <span className="text-red-400 bg-red-500/10 px-2 rounded border border-red-500/20">Withdrawn</span>}
-                                        </div>
-                                    </div>
-                                    <button
-                                        onClick={() => setWithdrawEnrollment(enroll)}
-                                        className="text-red-400 hover:text-red-300 p-2 opacity-0 group-hover:opacity-100 transition-opacity bg-red-500/10 rounded-lg hover:bg-red-500/20"
-                                        title="Withdraw / Delete Enrollment"
-                                    >
-                                        <Trash2 size={20} />
-                                    </button>
-                                </div>
-                            ))}
-                            {(!student.enrollment || student.enrollment.length === 0) && (
-                                <div className="text-center py-8 border-2 border-dashed border-slate-700 rounded-xl">
-                                    <p className="text-slate-500 italic">No active enrollments.</p>
-                                </div>
-                            )}
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('performance')}
+                        className={`flex-1 py-4 text-sm font-bold text-center transition-all whitespace-nowrap ${activeTab === 'performance'
+                            ? 'text-emerald-400 border-b-2 border-emerald-500 bg-emerald-500/5'
+                            : 'text-emerald-500/70 hover:text-emerald-300 hover:bg-emerald-500/10'
+                            }`}
+                    >
+                        <div className="flex items-center justify-center gap-2">
+                            <TrendingUp size={16} /> Performance
                         </div>
-                    </div>
+                    </button>
                 </div>
 
+                <div className="p-6">
+                    {/* OVERVIEW TAB */}
+                    {activeTab === 'overview' && (
+                        <div className="space-y-8">
+                            {/* FINANCIAL STATUS */}
+                            <StudentFinancialStatus studentId={id!} />
+
+                            <div>
+                                <div className="flex justify-between items-center mb-6">
+                                    <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                                        <BookOpen size={24} className="text-blue-400" />
+                                        Enrolled Programs
+                                    </h3>
+                                    <button
+                                        onClick={() => setShowEnrollModal(true)}
+                                        className="text-sm bg-blue-500/10 text-blue-400 px-4 py-2 rounded-lg font-bold hover:bg-blue-500/20 border border-blue-500/20 transition-all flex items-center gap-1"
+                                    >
+                                        <Plus size={16} /> Enroll
+                                    </button>
+                                </div>
+
+                                {showEnrollModal && (
+                                    <div className="bg-slate-900/50 p-6 rounded-xl mb-6 border border-slate-700 animate-fade-in">
+                                        <p className="text-sm font-bold text-blue-400 mb-3">Select Program to Enroll</p>
+                                        <div className="flex flex-col md:flex-row gap-3">
+                                            <select
+                                                className="flex-1 border border-slate-600 p-2.5 rounded-lg text-white bg-slate-800 focus:ring-2 focus:ring-blue-500/50 focus:outline-none"
+                                                value={selectedProgramId}
+                                                onChange={e => setSelectedProgramId(e.target.value)}
+                                            >
+                                                <option value="" className="bg-slate-800">Choose a Program...</option>
+                                                {allPrograms?.map((p: any) => (
+                                                    <option key={p.program_id} value={p.program_id} className="bg-slate-800">
+                                                        {p.program_name} (Batch: {p.batch?.batch_name})
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            <div className="flex gap-2">
+                                                <button
+                                                    onClick={() => enrollMutation.mutate(parseInt(selectedProgramId))}
+                                                    className="bg-blue-600 text-white px-6 py-2.5 rounded-lg shadow-lg hover:bg-blue-500 transition-all font-bold disabled:opacity-50 disabled:cursor-not-allowed"
+                                                    disabled={!selectedProgramId}
+                                                >
+                                                    Confirm
+                                                </button>
+                                                <button onClick={() => setShowEnrollModal(false)} className="text-slate-400 px-4 hover:text-white transition-colors">Cancel</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                <div className="space-y-4">
+                                    {enrollments?.map((enroll: any) => (
+                                        <div key={enroll.enrollment_id} className="bg-slate-900/30 border border-slate-700/50 p-5 rounded-xl flex justify-between items-center hover:bg-slate-800/50 transition-colors group">
+                                            <div>
+                                                <p className="font-bold text-lg text-slate-200">{enroll.program?.program_name || 'Unknown Program'}</p>
+                                                <div className="flex gap-4 mt-2 text-sm text-slate-400 items-center">
+                                                    <span className="font-mono bg-slate-800 px-2 py-0.5 rounded text-blue-400 font-bold border border-slate-700">Roll: {enroll.roll_no || 'N/A'}</span>
+                                                    <span>Joined: {enroll.enrollment_date || 'N/A'}</span>
+                                                    {enroll.status === 'Withdrawn' && <span className="text-red-400 bg-red-500/10 px-2 rounded border border-red-500/20">Withdrawn</span>}
+                                                </div>
+                                            </div>
+                                            <button
+                                                onClick={() => setWithdrawEnrollment(enroll)}
+                                                className="text-red-400 hover:text-red-300 p-2 opacity-0 group-hover:opacity-100 transition-opacity bg-red-500/10 rounded-lg hover:bg-red-500/20"
+                                                title="Withdraw / Delete Enrollment"
+                                            >
+                                                <Trash2 size={20} />
+                                            </button>
+                                        </div>
+                                    ))}
+                                    {(!student.enrollment || student.enrollment.length === 0) && (
+                                        <div className="text-center py-8 border-2 border-dashed border-slate-700 rounded-xl">
+                                            <p className="text-slate-500 italic">No active enrollments.</p>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* PERFORMANCE TAB */}
+                    {activeTab === 'performance' && (
+                        <StudentPerformance studentId={id!} />
+                    )}
+                </div>
             </div>
 
             {/* WITHDRAWAL MODAL */}

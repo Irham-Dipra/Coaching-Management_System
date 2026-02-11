@@ -65,3 +65,14 @@ def delete_enrollment(enrollment_id: int):
 @router.get("/students/{student_id}/financial-summary")
 def get_student_financial_summary(student_id: int):
     return payment_repo.get_student_financial_summary(student_id)
+
+@router.get("/students/{student_id}/analytics")
+def get_student_analytics(student_id: int):
+    data = repo.get_student_analytics(student_id)
+    if not data:
+        return {
+            "summary": {"avg_percentage": 0, "highest_score": 0, "lowest_score": 0, "total_exams": 0, "attendance_present": 0, "attendance_total": 0},
+            "exams": [],
+            "attendance_trend": []
+        }
+    return data

@@ -94,3 +94,114 @@ class StudentRepository:
         }).execute()
         
         return response.data
+
+    def get_student_analytics(self, student_id: int):
+        """Get performance analytics for a single student across all their exams."""
+
+        # 1. Get all results for this student
+        raw_results = supabase.table("student_individual_result")\
+            .select("*")\
+            .eq("student_id", student_id)\
+            .execute().data
+
+        if not raw_results:
+            return None
+
+        # 2. Get unique exam_ids and fetch exam metadata
+        exam_ids = list(set([r['exam_id'] for r in raw_results]))
+
+        exam_map = {}
+        for eid in exam_ids:
+            exam_data = supabase.table("exam")\
+                .select("exam_id, exam_name, exam_date, total_marks")\
+                .eq("exam_id", eid)\
+                .execute().data
+            if exam_data:
+                exam_map[eid] = exam_data[0]
+
+        # 3. Process per-exam metrics
+        exam_analytics = []
+
+        for eid, exam_meta in exam_map.items():
+            exam_results = [r for r in raw_results if r['exam_id'] == eid]
+
+            if not exam_results:
+                continue
+
+            # Student should have exactly one result per exam, but handle gracefully
+            result = exam_results[0]
+            total_score = result.get('total_score', 0) or 0
+            written = result.get('written_marks', 0) or result.get('obt_written_mark', 0) or 0
+            mcq = result.get('mcq_marks', 0) or result.get('obt_mcq_mark', 0) or 0
+            max_marks = exam_meta.get('total_marks', 100) or 100
+            percentage = round((total_score / max_marks) * 100, 1) if max_marks else 0
+
+            exam_analytics.append({
+                "exam_id": eid,
+                "exam_name": exam_meta.get('exam_name', 'Unknown'),
+                "date": exam_meta.get('exam_date', ''),
+                "total_marks": max_marks,
+                "metrics": {
+                    "total_score": total_score,
+                    "written": written,
+                    "mcq": mcq,
+                    "percentage": percentage
+                }
+            })
+
+        exam_analytics.sort(key=lambda x: x['date'] if x['date'] else '')
+
+        # 4. Attendance data from enrollments
+        enrollments = supabase.table("enrollment")\
+            .select("enrollment_id")\
+            .eq("student_id", student_id)\
+            .execute().data
+
+        enrollment_ids = [e['enrollment_id'] for e in (enrollments or [])]
+
+        attendance_records = []
+        if enrollment_ids:
+            attendance_records = supabase.table("attendance")\
+                .select("status, date")\
+                .in_("enrollment_id", enrollment_ids)\
+                .execute().data
+
+        att_map = {}
+        for a in (attendance_records or []):
+            d = a['date']
+            if d not in att_map:
+                att_map[d] = 'Absent'
+            if a['status'] == 'Present':
+                att_map[d] = 'Present'
+
+        att_trend = []
+        for d in sorted(att_map.keys()):
+            att_trend.append({"date": d, "status": att_map[d]})
+
+        # 5. Summary stats
+        if exam_analytics:
+            all_pcts = [e['metrics']['percentage'] for e in exam_analytics]
+            all_totals = [e['metrics']['total_score'] for e in exam_analytics]
+            summary = {
+                "avg_percentage": round(sum(all_pcts) / len(all_pcts), 1),
+                "highest_score": max(all_totals),
+                "lowest_score": min(all_totals),
+                "total_exams": len(exam_analytics),
+                "attendance_present": sum(1 for a in att_trend if a['status'] == 'Present'),
+                "attendance_total": len(att_trend)
+            }
+        else:
+            summary = {
+                "avg_percentage": 0,
+                "highest_score": 0,
+                "lowest_score": 0,
+                "total_exams": 0,
+                "attendance_present": 0,
+                "attendance_total": 0
+            }
+
+        return {
+            "summary": summary,
+            "exams": exam_analytics,
+            "attendance_trend": att_trend
+        }

@@ -141,6 +141,7 @@ class ProgramRepository:
         # Return the newly created program
         return response.data[0]
 
+
     def update_program(self, program_id: int, updates: dict):
         response = supabase.table(self.program_table)\
             .update(updates)\
@@ -148,3 +149,170 @@ class ProgramRepository:
             .execute()
         return response.data[0] if response.data else None
 
+    # ==========================================
+    # ANALYTICS SUBSYSTEM
+    # ==========================================
+    def get_program_analytics(self, program_id: int):
+        # 1. Fetch Basic Scope (Program, Enrollments, Linked Exams)
+        
+        # A. Program & Enrollment IDs
+        # We need all enrollments to map student_ids and track attendance
+        enrollments = supabase.table("enrollment")\
+            .select("enrollment_id, student_id")\
+            .eq("program_id", program_id)\
+            .execute().data
+            
+        if not enrollments:
+            return None # No data
+            
+        enrollment_ids = [e['enrollment_id'] for e in enrollments]
+        student_ids = list(set([e['student_id'] for e in enrollments]))
+        
+        # B. Linked Exams
+        linked_exams = supabase.table("program_exam")\
+            .select("exam_id, exam(total_marks, exam_date, exam_name)")\
+            .eq("program_id", program_id)\
+            .execute().data
+            
+        exam_ids = [e['exam_id'] for e in linked_exams]
+        exam_map = {e['exam_id']: e['exam'] for e in linked_exams if e.get('exam')}
+        
+        # 2. Fetch DATA: Results & Attendance
+        
+        # A. Results (Filter by student_ids AND exam_ids)
+        # Note: We manually filter because supabase-py "in_" is limited.
+        # Actually, let's fetch results for these EXAMS, then filter by student_id in python
+        if not exam_ids:
+            results = []
+        else:
+            raw_results = supabase.table("student_individual_result")\
+                .select("*")\
+                .in_("exam_id", exam_ids)\
+                .execute().data
+            # Filter for our students only
+            results = [r for r in raw_results if r['student_id'] in student_ids]
+
+        # B. Attendance
+        if not enrollment_ids:
+            attendance_records = []
+        else:
+            attendance_records = supabase.table("attendance")\
+                .select("status, date")\
+                .in_("enrollment_id", enrollment_ids)\
+                .execute().data
+
+        # 2. Fetch Results (Granular: obtain written/mcq breakdown if available)
+        # Note: We already fetched 'raw_results' above, but let's just re-use the clean logic here if needed.
+        # actually, let's just ensure 'results' has the fields we need. 
+        # The query at 188 was `select("*")`, which includes total/written/mcq.
+        # So we don't need to re-fetch.
+        
+        # However, to be safe and clean, I will just ensure 'results' is populated correctly.
+        # If exam_ids is empty, results is [].
+        if not results and exam_ids:
+             # Just in case the previous block failed or I am misreading.
+             # The block 182-194 should have done it.
+             pass
+        
+        # 3. Process Data per Exam
+        exam_analytics = []
+        
+        for eid, exam_meta in exam_map.items():
+            exam_results = [r for r in results if r['exam_id'] == eid]
+            count = len(exam_results)
+            
+            if count == 0:
+                continue
+
+            # Aggregates
+            total_sum = 0
+            written_sum = 0
+            mcq_sum = 0
+            
+            highest = 0
+            lowest = 1000 # Arbitrary high
+            
+            # Setup Distribution Buckets for this exam
+            # 0-40, 41-60, 61-80, 81-100
+            dist = {
+                "0-40%": 0,
+                "41-60%": 0,
+                "61-80%": 0,
+                "81-100%": 0
+            }
+            
+            max_marks = exam_meta.get('total_marks', 100) or 100
+            
+            for r in exam_results:
+                score = r.get('total_score', 0) or 0
+                # Try new column names first, fall back to old if needed (or 0)
+                # Schema migration suggests 'written_marks' and 'mcq_marks'
+                w_score = r.get('written_marks', 0) or r.get('obt_written_mark', 0) or 0
+                m_score = r.get('mcq_marks', 0) or r.get('obt_mcq_mark', 0) or 0
+                
+                total_sum += score
+                written_sum += w_score
+                mcq_sum += m_score
+                
+                if score > highest: highest = score
+                if score < lowest: lowest = score
+                
+                # Distribution
+                pct = (score / max_marks) * 100
+                if pct <= 40: dist["0-40%"] += 1
+                elif pct <= 60: dist["41-60%"] += 1
+                elif pct <= 80: dist["61-80%"] += 1
+                else: dist["81-100%"] += 1
+
+            # Averages
+            avg_total = total_sum / count
+            avg_written = written_sum / count
+            avg_mcq = mcq_sum / count
+            
+            # Normalize to percentages if needed, but absolute marks usually preferred alongside Total.
+            # Let's return averages as absolute values, frontend can handle display.
+
+            exam_analytics.append({
+                "exam_id": eid,
+                "exam_name": exam_meta.get('exam_name', 'Unknown'),
+                "date": exam_meta.get('exam_date', ''),
+                "total_marks": max_marks,
+                "metrics": {
+                    "avg_total": round(avg_total, 1),
+                    "avg_written": round(avg_written, 1),
+                    "avg_mcq": round(avg_mcq, 1),
+                    "highest": highest,
+                    "lowest": lowest,
+                    "student_count": count
+                },
+                "distribution": [
+                    {"name": "0-40%", "value": dist["0-40%"]},
+                    {"name": "41-60%", "value": dist["41-60%"]},
+                    {"name": "61-80%", "value": dist["61-80%"]},
+                    {"name": "81-100%", "value": dist["81-100%"]}
+                ]
+            })
+
+        # Sort by date
+        exam_analytics.sort(key=lambda x: x['date'] if x['date'] else '')
+
+        # 4. Fetch Attendance (Use the records fetched in step 2B)
+        # attendance = supabase.table("attendance").select("date, status").eq("program_id", program_id).execute().data
+        # We process 'attendance_records' which we already fetched.
+        
+        att_map = {}
+        for a in attendance_records:
+            d = a['date']
+            if d not in att_map: att_map[d] = {'p': 0, 't': 0}
+            att_map[d]['t'] += 1
+            if a['status'] == 'Present': att_map[d]['p'] += 1
+            
+        att_graph_data = []
+        for d in sorted(att_map.keys()):
+            pct = (att_map[d]['p'] / att_map[d]['t']) * 100
+            att_graph_data.append({"date": d, "percentage": round(pct, 1)})
+
+        return {
+            "exams": exam_analytics,
+            "attendance_trend": att_graph_data
+        }

@@ -65,3 +65,13 @@ def update_program(program_id: int, program_update: ProgramCreate):
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
+@router.get("/programs/{program_id}/analytics")
+def get_program_analytics(program_id: int):
+    data = repo.get_program_analytics(program_id)
+    if not data:
+        # Return empty structure instead of 404 to handle empty states gracefully in UI
+        return {
+            "kpi": {"avg_score": 0, "highest_score": 0, "lowest_score": 0, "pass_rate": 0, "avg_attendance": 0},
+            "charts": {"performance_over_time": [], "score_distribution": [], "attendance_trend": []}
+        }
+    return data

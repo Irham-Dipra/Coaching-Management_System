@@ -69,5 +69,11 @@ export const ProgramRepository = {
         });
         if (!response.ok) throw new Error("Failed to update program");
         return await response.json();
+    },
+
+    async getProgramAnalytics(id: string) {
+        const response = await fetch(`${API_BASE_URL}/programs/${id}/analytics`);
+        if (!response.ok) throw new Error("Failed to fetch analytics");
+        return await response.json();
     }
 };

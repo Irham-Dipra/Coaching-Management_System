@@ -2,19 +2,19 @@ import React, { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ProgramRepository } from '../repositories/ProgramRepository';
-import { Users, FileText, DollarSign, Calendar, GraduationCap, Clock, Plus, X, Trash2, AlertCircle, Edit, ExternalLink } from 'lucide-react';
+import { Users, FileText, DollarSign, Calendar, GraduationCap, Clock, Plus, X, Trash2, AlertCircle, Edit, ExternalLink, TrendingUp, Award } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import CreateExamModal from '../components/CreateExamModal';
 import EditProgramModal from '../components/EditProgramModal';
 import { AttendanceRepository } from '../repositories/AttendanceRepository';
 import { ScheduleRepository } from '../repositories/ScheduleRepository';
-import { StudentRepository } from '../repositories/StudentRepository';
 import BatchPaymentModal from '../components/BatchPaymentModal';
 import WithdrawalModal from '../components/WithdrawalModal';
+import ProgramPerformance from './ProgramPerformance';
 
 const ProgramDetails: React.FC = () => {
     const { id } = useParams<{ id: string }>();
-    const [activeTab, setActiveTab] = useState<'students' | 'exams' | 'attendance' | 'schedule'>('students');
+    const [activeTab, setActiveTab] = useState<'students' | 'exams' | 'attendance' | 'schedule' | 'performance'>('students');
     const [isExamModalOpen, setIsExamModalOpen] = useState(false);
     const [isBatchModalOpen, setIsBatchModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -77,7 +77,6 @@ const ProgramDetails: React.FC = () => {
 
     // Calculate Fees
     let totalCollected = 0;
-    let totalDue = 0; // This requires more complex logic, for now we sum known dues if available
 
     // Iterate through enrollments to sum up payments (if loaded)
     program.enrollment?.forEach((enroll: any) => {
@@ -166,8 +165,6 @@ const ProgramDetails: React.FC = () => {
                 </div>
             </div>
 
-            {/* ... stats ... */}
-
             {/* Batch Payment Modal */}
             <BatchPaymentModal
                 isOpen={isBatchModalOpen}
@@ -181,8 +178,6 @@ const ProgramDetails: React.FC = () => {
                 onClose={() => setIsEditModalOpen(false)}
                 program={program}
             />
-
-            {/* ... rest of component ... */}
 
             <div className="bg-slate-800/50 backdrop-blur-md rounded-2xl border border-slate-700 p-8 shadow-xl">
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
@@ -276,6 +271,17 @@ const ProgramDetails: React.FC = () => {
                     >
                         Schedule
                     </button>
+                    <button
+                        onClick={() => setActiveTab('performance')}
+                        className={`flex-1 py-5 text-sm font-bold text-center transition-all whitespace-nowrap min-w-[120px] ${activeTab === 'performance'
+                            ? 'text-emerald-400 border-b-2 border-emerald-500 bg-emerald-500/5'
+                            : 'text-emerald-500/70 hover:text-emerald-300 hover:bg-emerald-500/10'
+                            }`}
+                    >
+                        <div className="flex items-center justify-center gap-2">
+                            <TrendingUp size={16} /> Performance
+                        </div>
+                    </button>
                 </div>
 
                 <div className="p-8">
@@ -341,26 +347,28 @@ const ProgramDetails: React.FC = () => {
                                     No exams scheduled for this program yet.
                                 </div>
                             ) : (
-                                <ul className="space-y-3">
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                                     {program.program_exam?.map((pe: any) => {
-                                        const exam = pe.exam; // Extract nested exam
+                                        const exam = pe.exam;
                                         if (!exam) return null;
-
                                         return (
-                                            <li key={exam.exam_id} className="bg-slate-800/50 border border-slate-700 p-5 rounded-xl flex justify-between items-center hover:bg-slate-800 hover:border-blue-500/30 transition-all shadow-sm">
-                                                <Link to={`/exams/${exam.exam_id}`} className="block flex-1 group">
-                                                    <div>
-                                                        <p className="font-bold text-lg text-slate-200 group-hover:text-blue-400 transition-colors">{exam.exam_name}</p>
-                                                        <p className="text-xs text-slate-500 mt-1">{exam.exam_date} • {exam.exam_type}</p>
+                                            <div key={exam.exam_id} className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-5 hover:border-blue-500/30 transition-all group">
+                                                <div className="flex justify-between items-start mb-3">
+                                                    <div className="p-2 bg-blue-500/10 rounded-lg text-blue-400 group-hover:bg-blue-500 group-hover:text-white transition-colors">
+                                                        <Award size={20} />
                                                     </div>
-                                                </Link>
-                                                <div className="text-right">
-                                                    <p className="text-sm font-bold text-slate-300">Total Marks: {exam.total_marks}</p>
+                                                    <span className="text-xs text-slate-500 font-mono">{exam.exam_date}</span>
                                                 </div>
-                                            </li>
-                                        )
+                                                <h3 className="text-lg font-bold text-white mb-1">{exam.exam_name}</h3>
+                                                <div className="flex justify-between items-center text-sm text-slate-400 mt-4">
+                                                    <span>{exam.subject}</span>
+                                                    <span className="bg-slate-700/50 px-2 py-1 rounded text-xs">{exam.exam_type}</span>
+                                                </div>
+                                                <Link to={`/exams/${exam.exam_id}`} className="absolute inset-0 z-10" />
+                                            </div>
+                                        );
                                     })}
-                                </ul>
+                                </div>
                             )}
 
                             {/* Create Exam Modal */}
@@ -441,6 +449,11 @@ const ProgramDetails: React.FC = () => {
 
                     {/* SCHEDULE TAB */}
                     {activeTab === 'schedule' && <ProgramScheduleManager programId={parseInt(id!)} />}
+
+                    {/* PERFORMANCE TAB */}
+                    {activeTab === 'performance' && (
+                        <ProgramPerformance programId={id!} />
+                    )}
                 </div>
             </div>
 

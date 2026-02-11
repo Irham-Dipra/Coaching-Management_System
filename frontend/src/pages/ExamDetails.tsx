@@ -201,8 +201,8 @@ const ExamDetails: React.FC = () => {
                 "Student ID": c.student?.student_id,
                 "Student Name": c.student?.name,
                 "Program": c.program?.program_name || (c.enrollments && c.enrollments.map((e: any) => e.program_name).join(', ')),
-                "Written Marks": c.written_marks || '', // Pre-fill if exists, else empty
-                "MCQ Marks": c.mcq_marks || ''         // Pre-fill if exists, else empty
+                "Written": c.written_marks || '', // Pre-fill if exists, else empty
+                "MCQ": c.mcq_marks || ''           // Pre-fill if exists, else empty
             }))
             .sort((a: any, b: any) => (a["Student ID"] || 0) - (b["Student ID"] || 0));
 

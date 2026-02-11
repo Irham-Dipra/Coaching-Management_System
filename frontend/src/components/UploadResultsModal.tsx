@@ -56,8 +56,8 @@ const UploadResultsModal: React.FC<UploadResultsModalProps> = ({ isOpen, onClose
                 // Map keys to lowercase/standardize
                 const formattedData = data.map((row: any) => ({
                     student_id: row['Student ID'] || row['student_id'] || row['ID'],
-                    written_marks: Number(row['Written'] || row['written'] || 0),
-                    mcq_marks: Number(row['MCQ'] || row['mcq'] || 0)
+                    written_marks: Number(row['Written'] || row['written'] || row['Written Marks'] || row['written_marks'] || 0),
+                    mcq_marks: Number(row['MCQ'] || row['mcq'] || row['MCQ Marks'] || row['mcq_marks'] || 0)
                 })).filter((r: any) => r.student_id); // Filter out empty rows
 
                 setPreviewData(formattedData);

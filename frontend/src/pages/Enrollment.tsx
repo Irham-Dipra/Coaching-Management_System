@@ -129,8 +129,8 @@ const Enrollment: React.FC = () => {
                 <button
                     onClick={() => setActiveTab('existing')}
                     className={`px-6 py-2.5 rounded-lg text-sm font-bold transition-all flex items-center gap-2 ${activeTab === 'existing'
-                            ? 'bg-emerald-500/20 text-emerald-400 shadow-lg shadow-emerald-900/20 border border-emerald-500/50'
-                            : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
+                        ? 'bg-emerald-500/20 text-emerald-400 shadow-lg shadow-emerald-900/20 border border-emerald-500/50'
+                        : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
                         }`}
                 >
                     <Users size={18} />
@@ -139,8 +139,8 @@ const Enrollment: React.FC = () => {
                 <button
                     onClick={() => setActiveTab('new')}
                     className={`px-6 py-2.5 rounded-lg text-sm font-bold transition-all flex items-center gap-2 ${activeTab === 'new'
-                            ? 'bg-blue-500/20 text-blue-400 shadow-lg shadow-blue-900/20 border border-blue-500/50'
-                            : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
+                        ? 'bg-blue-500/20 text-blue-400 shadow-lg shadow-blue-900/20 border border-blue-500/50'
+                        : 'text-slate-400 hover:text-white hover:bg-slate-700/50'
                         }`}
                 >
                     <UserPlus size={18} />
@@ -177,8 +177,8 @@ const Enrollment: React.FC = () => {
                                         key={student.student_id}
                                         onClick={() => setSelectedStudentId(student.student_id)}
                                         className={`p-4 rounded-xl border cursor-pointer transition-all flex justify-between items-center ${selectedStudentId === student.student_id
-                                                ? 'bg-emerald-500/10 border-emerald-500/50'
-                                                : 'bg-slate-900/30 border-slate-700/50 hover:bg-slate-800'
+                                            ? 'bg-emerald-500/10 border-emerald-500/50'
+                                            : 'bg-slate-900/30 border-slate-700/50 hover:bg-slate-800'
                                             }`}
                                     >
                                         <div>
@@ -279,18 +279,33 @@ const Enrollment: React.FC = () => {
                                     ? selectedPrograms.includes(prog.program_id)
                                     : newStudentPrograms.includes(prog.program_id);
 
+                                // Check if already enrolled for existing student
+                                let isAlreadyEnrolled = false;
+                                if (activeTab === 'existing' && selectedStudentId) {
+                                    const student = students?.find((s: any) => s.student_id === selectedStudentId);
+                                    // Backend filters enrollment to only show 'Active' ones, so existence check is enough
+                                    if (student?.enrollment?.some((e: any) => e.program_id === prog.program_id)) {
+                                        isAlreadyEnrolled = true;
+                                    }
+                                }
+
                                 return (
                                     <div
                                         key={prog.program_id}
-                                        onClick={() => toggleProgram(prog.program_id, activeTab === 'new')}
-                                        className={`p-3 rounded-xl border cursor-pointer transition-all flex justify-between items-center ${isSelected
-                                                ? 'bg-blue-500/10 border-blue-500/50'
-                                                : 'bg-slate-900/30 border-slate-700/50 hover:bg-slate-800'
+                                        onClick={() => !isAlreadyEnrolled && toggleProgram(prog.program_id, activeTab === 'new')}
+                                        className={`p-3 rounded-xl border transition-all flex justify-between items-center ${isAlreadyEnrolled
+                                                ? 'bg-slate-800/50 border-slate-800 opacity-50 cursor-not-allowed'
+                                                : isSelected
+                                                    ? 'bg-blue-500/10 border-blue-500/50 cursor-pointer'
+                                                    : 'bg-slate-900/30 border-slate-700/50 hover:bg-slate-800 cursor-pointer'
                                             }`}
                                     >
-                                        <span className={`font-medium ${isSelected ? 'text-blue-400' : 'text-slate-300'}`}>
-                                            {prog.program_name}
-                                        </span>
+                                        <div className="flex flex-col">
+                                            <span className={`font-medium ${isSelected ? 'text-blue-400' : isAlreadyEnrolled ? 'text-slate-500' : 'text-slate-300'}`}>
+                                                {prog.program_name}
+                                            </span>
+                                            {isAlreadyEnrolled && <span className="text-[10px] text-emerald-500 font-bold uppercase tracking-wider">Already Enrolled</span>}
+                                        </div>
                                         {isSelected && <CheckCircle className="text-blue-500" size={16} />}
                                     </div>
                                 );

@@ -1245,6 +1245,7 @@ class PaymentRepository:
             
             if not enrollments:
                 total_due = 0
+                due_this_month = 0
             else:
                 enrollment_ids = [e['enrollment_id'] for e in enrollments]
                 
@@ -1365,7 +1366,9 @@ class PaymentRepository:
                 "total_students": 0,
                 "total_programs": 0,
                 "revenue_this_month": 0,
-                "total_due": 0
+                "total_due": 0,
+                "due_total": 0,
+                "due_this_month": 0
             }
 
     def get_program_payment_status(self, program_id: int, month: int, year: int):

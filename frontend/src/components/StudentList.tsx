@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Link, useSearchParams } from 'react-router-dom';
 import { ProgramRepository } from '../repositories/ProgramRepository';
 import { StudentRepository } from '../repositories/StudentRepository';
-import { Search, Filter, Plus, ChevronRight, Download, Upload } from 'lucide-react';
+import { Search, Plus, ChevronRight, Download, Upload } from 'lucide-react';
 import CreateStudentModal from './CreateStudentModal';
 import ImportStudentModal from './ImportStudentModal';
 interface Student {

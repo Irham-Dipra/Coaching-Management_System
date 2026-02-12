@@ -30,7 +30,7 @@ const ProgramDetails: React.FC = () => {
     });
 
     // Fetch Attendance when tab is active
-    const { data: fetchedAttendance, refetch: refetchAttendance } = useQuery({
+    const { data: fetchedAttendance } = useQuery({
         queryKey: ['attendance', id, attendanceDate],
         queryFn: () => AttendanceRepository.getDailyAttendance(id!, attendanceDate),
         enabled: activeTab === 'attendance' && !!id

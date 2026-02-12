@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { StudentRepository } from '../repositories/StudentRepository';
 import { ProgramRepository } from '../repositories/ProgramRepository';
-import { Search, Plus, CheckCircle, Loader2, UserPlus, Users, ArrowRight } from 'lucide-react';
+import { Search, CheckCircle, Loader2, UserPlus, Users, ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 
 const Enrollment: React.FC = () => {
@@ -294,10 +294,10 @@ const Enrollment: React.FC = () => {
                                         key={prog.program_id}
                                         onClick={() => !isAlreadyEnrolled && toggleProgram(prog.program_id, activeTab === 'new')}
                                         className={`p-3 rounded-xl border transition-all flex justify-between items-center ${isAlreadyEnrolled
-                                                ? 'bg-slate-800/50 border-slate-800 opacity-50 cursor-not-allowed'
-                                                : isSelected
-                                                    ? 'bg-blue-500/10 border-blue-500/50 cursor-pointer'
-                                                    : 'bg-slate-900/30 border-slate-700/50 hover:bg-slate-800 cursor-pointer'
+                                            ? 'bg-slate-800/50 border-slate-800 opacity-50 cursor-not-allowed'
+                                            : isSelected
+                                                ? 'bg-blue-500/10 border-blue-500/50 cursor-pointer'
+                                                : 'bg-slate-900/30 border-slate-700/50 hover:bg-slate-800 cursor-pointer'
                                             }`}
                                     >
                                         <div className="flex flex-col">

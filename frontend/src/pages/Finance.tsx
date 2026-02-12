@@ -4,8 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { PaymentRepository } from '../repositories/PaymentRepository';
 import { StudentRepository } from '../repositories/StudentRepository';
 import { ProgramRepository } from '../repositories/ProgramRepository';
-import { DollarSign, Search, Plus, FileText, Download, X, Calendar, User, ArrowUpDown, Edit, Filter, Users, AlertCircle, Trash2 } from 'lucide-react';
-import jsPDF from 'jspdf';
+import { DollarSign, Search, Plus, FileText, Download, X, ArrowUpDown, Edit, Users, AlertCircle, Trash2 } from 'lucide-react';
 import { generatePaymentSlip } from '../utils/pdfGenerator';
 
 import BatchPaymentModal from '../components/BatchPaymentModal';

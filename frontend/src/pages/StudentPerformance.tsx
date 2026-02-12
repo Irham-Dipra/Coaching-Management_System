@@ -155,7 +155,7 @@ const StudentPerformance = ({ studentId }: { studentId: string }) => {
                                     <Tooltip
                                         cursor={{ fill: '#334155', opacity: 0.2 }}
                                         contentStyle={{ backgroundColor: '#1e293b', borderColor: '#334155', color: '#fff' }}
-                                        formatter={(value: number) => [`${value}%`, 'Percentage']}
+                                        formatter={(value: number | undefined) => [`${value ?? 0}%`, 'Percentage']}
                                     />
                                     <ReferenceLine y={summary.avg_percentage} stroke="#f59e0b" strokeDasharray="6 4" label={{ value: `Avg: ${summary.avg_percentage}%`, position: 'right', fill: '#f59e0b', fontSize: 11 }} />
                                     <Bar dataKey="percentage" name="Score %" radius={[4, 4, 0, 0]} barSize={35} fill="#10b981" />

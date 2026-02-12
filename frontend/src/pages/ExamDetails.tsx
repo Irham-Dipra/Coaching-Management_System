@@ -19,7 +19,7 @@ const ExamDetails: React.FC = () => {
     const queryClient = useQueryClient();
 
     // Queries
-    const { data: exam, isError: isExamError, refetch: refetchExam } = useQuery({
+    const { data: exam, isError: isExamError } = useQuery({
         queryKey: ['exam', id],
         queryFn: () => ExamRepository.getExamById(id!),
         enabled: !!id

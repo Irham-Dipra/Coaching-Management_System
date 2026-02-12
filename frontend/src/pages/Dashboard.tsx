@@ -8,7 +8,6 @@ import {
     AlertCircle,
     Plus,
     CreditCard,
-    Calendar,
     TrendingUp,
     Activity
 } from 'lucide-react';

@@ -27,7 +27,7 @@ const FinanceBreakdown: React.FC = () => {
         endpoint = 'due-breakdown';
     }
 
-    const API_BASE_URL = "http://localhost:8000";
+    const API_BASE_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
 
     const { data, isLoading, error } = useQuery({
         queryKey: ['finance_breakdown', type],

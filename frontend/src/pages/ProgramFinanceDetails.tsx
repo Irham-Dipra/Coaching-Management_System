@@ -131,28 +131,58 @@ const ProgramFinanceDetails: React.FC = () => {
                 </div>
 
                 {/* DATE CONTROLS (Hide for Overall Due?) */}
-                {viewMode !== 'due_overall' && (
-                    <div className="flex gap-2 bg-slate-800/50 backdrop-blur-sm p-1.5 rounded-xl border border-slate-700/50">
-                        <select
-                            value={month}
-                            onChange={(e) => setMonth(parseInt(e.target.value))}
-                            className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:ring-2 focus:ring-blue-500 outline-none hover:bg-slate-700 transition-colors cursor-pointer"
-                        >
-                            {Array.from({ length: 12 }, (_, i) => (
-                                <option key={i + 1} value={i + 1} className="bg-slate-800">{new Date(0, i).toLocaleString('default', { month: 'short' })}</option>
-                            ))}
-                        </select>
-                        <select
-                            value={year}
-                            onChange={(e) => setYear(parseInt(e.target.value))}
-                            className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:ring-2 focus:ring-blue-500 outline-none hover:bg-slate-700 transition-colors cursor-pointer"
-                        >
-                            <option value={2024} className="bg-slate-800">2024</option>
-                            <option value={2025} className="bg-slate-800">2025</option>
-                            <option value={2026} className="bg-slate-800">2026</option>
-                        </select>
-                    </div>
-                )}
+                {viewMode !== 'due_overall' && (() => {
+                    const startDate = program?.start_date ? new Date(program.start_date) : null;
+                    const endDate = program?.end_date ? new Date(program.end_date) : null;
+                    const startYear = startDate ? startDate.getFullYear() : today.getFullYear();
+                    const startMonth = startDate ? startDate.getMonth() + 1 : 1;
+                    const endYear = endDate ? endDate.getFullYear() : startYear + 5;
+                    const endMonth = endDate ? endDate.getMonth() + 1 : 12;
+
+                    const yearOptions: number[] = [];
+                    for (let y = startYear; y <= endYear; y++) yearOptions.push(y);
+
+                    // Determine which months are valid for the selected year
+                    const minMonth = year === startYear ? startMonth : 1;
+                    const maxMonth = year === endYear && endDate ? endMonth : 12;
+
+                    return (
+                        <div className="flex gap-2 bg-slate-800/50 backdrop-blur-sm p-1.5 rounded-xl border border-slate-700/50">
+                            <select
+                                value={month}
+                                onChange={(e) => setMonth(parseInt(e.target.value))}
+                                className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:ring-2 focus:ring-blue-500 outline-none hover:bg-slate-700 transition-colors cursor-pointer"
+                            >
+                                {Array.from({ length: 12 }, (_, i) => {
+                                    const m = i + 1;
+                                    const disabled = m < minMonth || m > maxMonth;
+                                    return (
+                                        <option key={m} value={m} disabled={disabled} className="bg-slate-800">
+                                            {new Date(0, i).toLocaleString('default', { month: 'short' })}
+                                        </option>
+                                    );
+                                })}
+                            </select>
+                            <select
+                                value={year}
+                                onChange={(e) => {
+                                    const newYear = parseInt(e.target.value);
+                                    setYear(newYear);
+                                    // Auto-clamp month if it becomes invalid for the new year
+                                    const newMinMonth = newYear === startYear ? startMonth : 1;
+                                    const newMaxMonth = newYear === endYear && endDate ? endMonth : 12;
+                                    if (month < newMinMonth) setMonth(newMinMonth);
+                                    if (month > newMaxMonth) setMonth(newMaxMonth);
+                                }}
+                                className="bg-slate-800 border border-slate-700 rounded-lg px-3 py-2 text-sm text-white focus:ring-2 focus:ring-blue-500 outline-none hover:bg-slate-700 transition-colors cursor-pointer"
+                            >
+                                {yearOptions.map(y => (
+                                    <option key={y} value={y} className="bg-slate-800">{y}</option>
+                                ))}
+                            </select>
+                        </div>
+                    );
+                })()}
             </div>
 
             {/* STATS CARDS */}

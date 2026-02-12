@@ -269,7 +269,7 @@ const StudentList: React.FC<StudentListProps> = ({ fixedBatchId, hideHeader }) =
                                         <td className="p-4 text-slate-400 text-sm">{student.fathers_name || '-'}</td>
                                         <td className="p-4">
                                             <span className="bg-blue-500/10 text-blue-400 px-2.5 py-1 rounded-md text-xs font-bold border border-blue-500/20">
-                                                Class {student.class}
+                                                {student.class}
                                             </span>
                                         </td>
                                         <td className="p-4 text-slate-400 text-sm">{student.school || '-'}</td>

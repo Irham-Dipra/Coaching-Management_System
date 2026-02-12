@@ -1,7 +1,7 @@
 // We might not need the repository if we use direct API calls or reuse generic patterns, 
 // strictly speaking, we agreed to use Repositories for consistency.
 
-const API_URL = 'http://127.0.0.1:8000';
+const API_URL = import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000';
 
 export interface Room {
     room_id: number;

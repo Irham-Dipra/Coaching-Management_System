@@ -32,6 +32,10 @@ app.add_middleware(
 def read_root():
     return {"status": "Backend is running!"}
 
+@app.get("/health")
+def health_check():
+    return {"status": "active"}
+
 # 3. Register the Routers (Departments)
 #    We built the 'student_router' in another file. 
 #    Now we plug it into the main app.

@@ -12,7 +12,7 @@ import BatchPaymentModal from '../components/BatchPaymentModal';
 const DAYS = ['Saturday', 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
 
 const ScheduleDetails: React.FC = () => {
-    const { windowId } = useParams<{ windowId: string }>();
+    const { id: windowId } = useParams<{ id: string }>();
     const navigate = useNavigate();
     const queryClient = useQueryClient();
 

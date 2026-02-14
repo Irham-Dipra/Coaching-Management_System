@@ -23,7 +23,7 @@ const FinanceBreakdown: React.FC = () => {
         title = 'Due Payments (This Month)';
         endpoint = 'due-breakdown/monthly';
     } else if (isDueOverall) {
-        title = 'Total Arrears (Overall)';
+        title = 'Total Dues (Overall)';
         endpoint = 'due-breakdown';
     }
 
@@ -65,7 +65,7 @@ const FinanceBreakdown: React.FC = () => {
                         <p className="text-slate-400 mt-1">
                             {isDueMonthly
                                 ? "List of students with unpaid fees for the current month."
-                                : "List of students with total accumulated arrears."}
+                                : "List of students with total accumulated dues."}
                         </p>
                     )}
                 </div>

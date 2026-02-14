@@ -40,7 +40,7 @@ const StudentFinancialStatus: React.FC<StudentFinancialStatusProps> = ({ student
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* Total Paid */}
                 <div className="bg-slate-800/50 backdrop-blur-md p-5 rounded-xl border border-slate-700 shadow-sm flex items-center justify-between">
-                    <div>
+                    <div className="text-left">
                         <p className="text-slate-500 text-xs font-bold uppercase tracking-wider">Total Paid</p>
                         <p className="text-2xl font-bold text-emerald-400 mt-1">৳{summary.total_paid?.toLocaleString()}</p>
                     </div>

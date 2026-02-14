@@ -190,7 +190,7 @@ const Finance: React.FC = () => {
 
                     <div className="flex justify-between items-start mb-4 relative z-10">
                         <div>
-                            <p className="text-xs font-bold text-red-400 uppercase tracking-widest mb-1">Total Arrears (Overall)</p>
+                            <p className="text-xs font-bold text-red-400 uppercase tracking-widest mb-1">Total Dues (Overall)</p>
                             <h3 className="text-4xl font-black text-white mt-1 group-hover:text-red-300 transition-colors">
                                 ৳{(stats?.total_due || 0).toLocaleString()}
                             </h3>
@@ -872,7 +872,7 @@ const AddPaymentModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ i
                                         <span className="font-bold text-emerald-400 text-lg">{paymentStatus?.paid_up_to || 'None'}</span>
                                     </div>
                                     <div className="text-right">
-                                        <span className="text-slate-400 block mb-0.5">Total Arrears</span>
+                                        <span className="text-slate-400 block mb-0.5">Total Dues</span>
                                         <span className="font-bold text-red-500 text-lg">৳{paymentStatus?.total_due || 0}</span>
                                     </div>
                                 </div>

@@ -283,9 +283,9 @@ class PaymentRepository:
             # This is what needs to be paid to clear this month, regardless of whether it's past or future.
             balance_remaining = max(0, monthly_fee - paid_sum)
 
-            # Calculate Arrears (Only for past/present months)
-            # This is for the "Total Due" stats.
-            arrears_amount = balance_remaining if is_past_or_present else 0
+            # Calculate Arrears (For past months OR future months that are partially paid)
+            # If a student starts paying for a future month, the remainder is considered 'Due' in this context.
+            arrears_amount = balance_remaining if (is_past_or_present or paid_sum > 0) else 0
             
             ledger.append({
                 "month": curr.month,

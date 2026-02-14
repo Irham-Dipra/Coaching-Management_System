@@ -105,7 +105,7 @@ const ProgramFinanceDetails: React.FC = () => {
         title = 'Revenue History';
         subtitle = `Transactions for ${new Date(year, month - 1).toLocaleString('default', { month: 'long' })} ${year}`;
     } else if (viewMode === 'due_overall') {
-        title = 'Total Arrears (All Time)';
+        title = 'Total Dues (All Time)';
         subtitle = 'List of students with accumulated due fees.';
     } else {
         title = 'Monthly Payment Status';
@@ -253,7 +253,7 @@ const ProgramFinanceDetails: React.FC = () => {
             <div className="bg-slate-800 rounded-2xl shadow-xl border border-slate-700 overflow-hidden">
                 <div className="p-5 border-b border-slate-700 flex justify-between items-center bg-slate-900/50">
                     <h3 className="font-bold text-slate-200">
-                        {viewMode === 'revenue' ? 'Recent Transactions' : viewMode === 'due_overall' ? 'Arrears List' : 'Student List'}
+                        {viewMode === 'revenue' ? 'Recent Transactions' : viewMode === 'due_overall' ? 'Dues List' : 'Student List'}
                     </h3>
 
                     {(viewMode === 'due_monthly' || viewMode === 'due') && (

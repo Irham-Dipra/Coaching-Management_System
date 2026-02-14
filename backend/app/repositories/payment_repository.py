@@ -37,6 +37,9 @@ class PaymentRepository:
         
         print(f"Processing Bulk Payment of {len(data_list)} months...")
         
+        failed_payments = []
+        successful_students = []
+        
         for data in data_list:
             # Generate unique ID for this specific payment record/student
             # If multiple months for same student were sent, they might want same ID?
@@ -63,6 +66,40 @@ class PaymentRepository:
                     raise Exception(f"Enrollment not found for Student {data['student_id']} Program {data['program_id']}")
                 eid = enrollment[0]['enrollment_id']
 
+            
+            # --- VALIDATION: Check for Prior Dues ---
+            # We must ensure the student has cleared all previous months before paying for this one.
+            # Get current status (ledger)
+            status = self.get_payment_status(eid)
+            
+            # Check if there is any 'Unpaid' or 'Partial' month BEFORE the target month
+            # Target: data['month'], data['year']
+            target_date = date(int(data['year']), int(data['month']), 1)
+            
+            has_prior_dues = False
+            prior_due_month = None
+            
+            if status and status.get('ledger'):
+                for entry in status['ledger']:
+                    entry_date = date(entry['year'], entry['month'], 1)
+                    
+                    # If this ledger month is BEFORE our target month
+                    if entry_date < target_date:
+                        # And it is NOT fully paid
+                        if entry['status'] != 'Paid':
+                            has_prior_dues = True
+                            prior_due_month = f"{date(entry['year'], entry['month'], 1).strftime('%b %Y')}"
+                            break
+            
+            if has_prior_dues:
+                # SKIP THIS PAYMENT
+                failed_payments.append({
+                    "student_name": f"Student {data['student_id']}", # Ideally fetch name, but ID is fast
+                    "reason": f"Has uncleared dues for {prior_due_month}"
+                })
+                print(f"Skipping Payment for Student {data['student_id']}: Prior due in {prior_due_month}")
+                continue
+
             record = {
                 "enrollment_id": eid,
                 "paid_amount": float(data['paid_amount']),
@@ -74,15 +111,23 @@ class PaymentRepository:
                 "transaction_group_id": group_id
             }
             batch_payload.append(record)
+            successful_students.append(data['student_id'])
             
-        try:
-            # Atomic Batch Insert
-            print(f"Executing Batch Insert for Group {group_id}")
-            response = supabase.table(self.table).insert(batch_payload).execute()
-            return response.data
-        except Exception as e:
-            print(f"Bulk Insert Failed: {e}")
-            raise e
+        if batch_payload:
+            try:
+                # Atomic Batch Insert
+                print(f"Executing Batch Insert for Group {group_id}")
+                response = supabase.table(self.table).insert(batch_payload).execute()
+            except Exception as e:
+                print(f"Bulk Insert Failed: {e}")
+                # If the batch fails (system error), re-raise
+                raise e
+                
+        return {
+            "success": len(batch_payload),
+            "failed": failed_payments,
+            "successful_student_ids": successful_students
+        }
 
 
     def update_payment(self, payment_id: int, updates: dict):

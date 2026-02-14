@@ -665,11 +665,26 @@ const AddPaymentModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ i
         mutationFn: (data: any) => mode === 'single'
             ? PaymentRepository.createPayment(data) // Legacy/Single wrapper
             : PaymentRepository.createBulkPayment(data),
-        onSuccess: () => {
+        onSuccess: (data) => {
             queryClient.invalidateQueries({ queryKey: ['payments'] });
             queryClient.invalidateQueries({ queryKey: ['payment_status'] });
             onClose();
-            alert("Payment Recorded!");
+
+            if (mode === 'bulk' && data && (data.success !== undefined || data.failed !== undefined)) {
+                // Handle Bulk Response
+                const successCount = data.success || 0;
+                const failureCount = data.failed ? data.failed.length : 0;
+
+                if (failureCount > 0) {
+                    const failMsg = data.failed.map((f: any) => `• ${f.student_name}: ${f.reason}`).join('\n');
+                    alert(`⚠️ Payment Recorded with Issues:\n\n✅ ${successCount} payments successful.\n❌ ${failureCount} payments failed due to prior dues:\n\n${failMsg}\n\nPlease clear previous dues for these students first.`);
+                } else {
+                    alert(`✅ Successfully recorded ${successCount} payments!`);
+                }
+            } else {
+                alert("Payment Recorded!");
+            }
+
             resetPaymentFields();
         },
         onError: (err) => alert("Error: " + err)

@@ -49,7 +49,7 @@ const BatchDetails: React.FC = () => {
         <div className="space-y-6 max-w-7xl mx-auto animate-in fade-in duration-300">
             {/* Header / Breadcrumb */}
             <div className="flex items-center gap-4 text-slate-500">
-                <Link to="/admin/batches" className="hover:text-white flex items-center gap-1 transition-colors">
+                <Link to="/batches" className="hover:text-white flex items-center gap-1 transition-colors">
                     <ArrowLeft size={16} /> Back to Batches
                 </Link>
             </div>

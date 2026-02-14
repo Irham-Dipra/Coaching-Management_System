@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ProgramRepository } from '../repositories/ProgramRepository';
-import { Users, FileText, DollarSign, Calendar, GraduationCap, Clock, Plus, X, Trash2, AlertCircle, Edit, ExternalLink, TrendingUp, Award } from 'lucide-react';
+import { Users, FileText, DollarSign, Calendar, GraduationCap, Clock, Plus, X, Trash2, AlertCircle, Edit, ExternalLink, TrendingUp, Award, ArrowLeft } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import CreateExamModal from '../components/CreateExamModal';
 import EditProgramModal from '../components/EditProgramModal';
@@ -88,6 +88,13 @@ const ProgramDetails: React.FC = () => {
 
     return (
         <div className="space-y-8 animate-fade-in">
+            {/* BREADCRUMB */}
+            <div className="flex items-center gap-4 text-slate-500">
+                <Link to="/programs" className="hover:text-white flex items-center gap-1 transition-colors">
+                    <ArrowLeft size={16} /> Back to Programs
+                </Link>
+            </div>
+
             {/* HEADER */}
             <div className="bg-slate-800/50 backdrop-blur-md rounded-2xl border border-slate-700 p-8 shadow-xl">
                 <div className="flex flex-col md:flex-row justify-between items-start gap-6 mb-8">

@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { StudentRepository } from '../repositories/StudentRepository';
 import { ProgramRepository } from '../repositories/ProgramRepository';
 import StudentFinancialStatus from '../components/StudentFinancialStatus';
 import StudentPerformance from './StudentPerformance';
 import WithdrawalModal from '../components/WithdrawalModal';
-import { User, BookOpen, CreditCard, Edit2, Save, Trash2, Plus, TrendingUp } from 'lucide-react';
+import { User, BookOpen, CreditCard, Edit2, Save, Trash2, Plus, TrendingUp, ArrowLeft } from 'lucide-react';
 import jsPDF from 'jspdf';
 
 const StudentProfile: React.FC = () => {
@@ -225,6 +225,13 @@ const StudentProfile: React.FC = () => {
 
     return (
         <div className="max-w-5xl mx-auto animate-fade-in">
+            {/* BREADCRUMB */}
+            <div className="flex items-center gap-4 text-slate-500 mb-4">
+                <Link to="/students" className="hover:text-white flex items-center gap-1 transition-colors">
+                    <ArrowLeft size={16} /> Back to Students
+                </Link>
+            </div>
+
             {/* HEADER CARD */}
             <div className="bg-slate-800/50 backdrop-blur-md rounded-2xl shadow-xl border border-slate-700 p-8 mb-8">
                 <div className="flex flex-col md:flex-row justify-between items-start gap-6">

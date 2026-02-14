@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ExamRepository } from '../repositories/ExamRepository';
-import { FileText, Trophy, AlignLeft, Download, Upload, Edit, Save, X } from 'lucide-react';
+import { FileText, Trophy, AlignLeft, Download, Upload, Edit, Save, X, ArrowLeft } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -329,6 +329,13 @@ const ExamDetails: React.FC = () => {
 
     return (
         <div className="space-y-6 animate-fade-in">
+            {/* BREADCRUMB */}
+            <div className="flex items-center gap-4 text-slate-500">
+                <Link to="/exams" className="hover:text-white flex items-center gap-1 transition-colors">
+                    <ArrowLeft size={16} /> Back to Exams
+                </Link>
+            </div>
+
             {/* HEADER */}
             <div className="bg-slate-800/50 backdrop-blur-md rounded-xl shadow-lg border border-slate-700/50 p-6">
                 <div className="flex justify-between items-start">

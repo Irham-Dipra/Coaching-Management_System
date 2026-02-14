@@ -8,6 +8,7 @@ import CreateStudentModal from './CreateStudentModal';
 import ImportStudentModal from './ImportStudentModal';
 interface Student {
     student_id: number;
+    student_code?: string;
     name: string;
     class: number;
     fathers_name?: string;
@@ -250,7 +251,7 @@ const StudentList: React.FC<StudentListProps> = ({ fixedBatchId, hideHeader }) =
                             {filteredStudents.length > 0 ? (
                                 filteredStudents.map((student: Student) => (
                                     <tr key={student.student_id} className="hover:bg-slate-700/30 transition-colors group">
-                                        <td className="p-4 text-slate-500 text-sm">#{student.student_id}</td>
+                                        <td className="p-4 text-slate-500 text-sm">#{student.student_code || student.student_id}</td>
                                         <td className="p-4 font-bold text-slate-200">
                                             <Link to={`/students/${student.student_id}`} className="hover:text-blue-400 transition-colors">
                                                 {student.name}

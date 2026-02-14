@@ -82,7 +82,8 @@ const Finance: React.FC = () => {
             const matchesMain =
                 (p.student_name || '').toLowerCase().includes(term) ||
                 (p.sort_id || p.payment_id).toString().includes(term) ||
-                (p.student_id || '').toString().includes(term);
+                (p.student_id || '').toString().includes(term) ||
+                (p.student_code || '').toString().includes(term);
 
             // 2. Roll Search
             const matchesRoll = rollTerm ? (p.roll_no || '').toString().toLowerCase().includes(rollTerm) : true;
@@ -797,7 +798,7 @@ const AddPaymentModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ i
                                             const term = searchQuery.toLowerCase();
                                             const rollTerm = rollSearch.toLowerCase();
 
-                                            const matchesName = s.name.toLowerCase().includes(term) || s.student_id.toString().includes(term);
+                                            const matchesName = s.name.toLowerCase().includes(term) || s.student_id.toString().includes(term) || (s.student_code || '').toString().includes(term);
                                             // Roll Matches (Logic from StudentList)
                                             let matchesRoll = true;
                                             if (rollTerm) {
@@ -820,7 +821,7 @@ const AddPaymentModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ i
                                                 <div className="flex justify-between items-start">
                                                     <div>
                                                         <div className="font-bold text-white">{s.name}</div>
-                                                        <div className="text-xs text-slate-400">ID: {s.student_id}</div>
+                                                        <div className="text-xs text-slate-400">ID: {s.student_code || s.student_id}</div>
                                                     </div>
                                                     <div className="text-right">
                                                         {s.enrollment?.map((e: any, idx: number) => (
@@ -838,7 +839,7 @@ const AddPaymentModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ i
                     ) : (
                         <div className="space-y-4">
                             <div className="bg-blue-500/10 border border-blue-500/20 p-4 rounded-xl flex justify-between items-center">
-                                <div className="font-bold text-blue-300 text-lg">{selectedStudent.name} <span className="text-sm text-blue-400/70 ml-2">(ID: {selectedStudent.student_id})</span></div>
+                                <div className="font-bold text-blue-300 text-lg">{selectedStudent.name} <span className="text-sm text-blue-400/70 ml-2">(ID: {selectedStudent.student_code || selectedStudent.student_id})</span></div>
                                 <button type="button" onClick={() => setSelectedStudent(null)} className="text-sm text-red-400 hover:text-red-300 underline font-medium">Change</button>
                             </div>
 

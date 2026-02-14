@@ -153,10 +153,10 @@ const StudentProfile: React.FC = () => {
             y += 4;
         };
 
-        const paddedId = String(student.student_id).padStart(5, '0');
+        const displayId = student.student_code || String(student.student_id).padStart(5, '0');
 
         addField("Name", student.name);
-        addField("ID", paddedId);
+        addField("ID", displayId);
         addField("Father", student.fathers_name || '—');
         addField("Class", student.class ? String(student.class) : '—');
         addField("Batch", batchName);
@@ -273,7 +273,7 @@ const StudentProfile: React.FC = () => {
                                             </span>
                                         )}
                                     </div>
-                                    <p className="text-sm text-slate-500 mt-2 font-mono">Student ID: #{student.student_id}</p>
+                                    <p className="text-sm text-slate-500 mt-2 font-mono">Student ID: #{student.student_code || student.student_id}</p>
                                 </>
                             )}
                         </div>

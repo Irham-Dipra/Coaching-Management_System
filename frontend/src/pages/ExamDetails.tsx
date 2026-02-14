@@ -198,7 +198,7 @@ const ExamDetails: React.FC = () => {
         // Sorted by Student ID for easier data entry from physical sheets
         const templateData = candidates
             .map((c: any) => ({
-                "Student ID": c.student?.student_id,
+                "Student ID": c.student?.student_code || c.student?.student_id,
                 "Student Name": c.student?.name,
                 "Program": c.program?.program_name || (c.enrollments && c.enrollments.map((e: any) => e.program_name).join(', ')),
                 "Written": c.written_marks || '', // Pre-fill if exists, else empty
@@ -297,7 +297,7 @@ const ExamDetails: React.FC = () => {
         const tableData = rankedList.map((r: any) => [
             r.rank,
             r.student?.name || 'Unknown',
-            r.student?.student_id || '-',
+            r.student?.student_code || r.student?.student_id || '-',
             r.written_marks || 0,
             r.mcq_marks || 0,
             r.total_score || 0

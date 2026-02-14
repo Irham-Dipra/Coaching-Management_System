@@ -304,7 +304,7 @@ const ProgramDetails: React.FC = () => {
                                         ?.filter((enroll: any) => enroll.status !== 'Withdrawn') // Filter out soft-deleted
                                         .map((enroll: any) => (
                                             <tr key={enroll.enrollment_id} className="hover:bg-slate-700/30 transition-colors group">
-                                                <td className="p-4 text-slate-500 text-sm">#{enroll.student.student_id}</td>
+                                                <td className="p-4 text-slate-500 text-sm">#{enroll.student.student_code || enroll.student.student_id}</td>
                                                 <td className="p-4 font-medium text-slate-200">
                                                     <Link to={`/students/${enroll.student.student_id}`} className="hover:text-blue-400 hover:underline">
                                                         {enroll.student.name}

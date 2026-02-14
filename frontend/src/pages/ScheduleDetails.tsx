@@ -268,7 +268,7 @@ const ScheduleDetails: React.FC = () => {
                                                     }}
                                                     className="w-full text-left p-2 hover:bg-slate-700 text-slate-300 border-b border-slate-700 last:border-0"
                                                 >
-                                                    {s.name} <span className="text-xs text-slate-500 ml-2">ID: {s.student_id}</span>
+                                                    {s.name} <span className="text-xs text-slate-500 ml-2">ID: {s.student_code || s.student_id}</span>
                                                 </button>
                                             ))}
                                         </div>

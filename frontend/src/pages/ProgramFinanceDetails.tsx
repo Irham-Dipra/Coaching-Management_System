@@ -317,7 +317,7 @@ const ProgramFinanceDetails: React.FC = () => {
                                         <td className="p-4 text-slate-300 text-sm">{row.payment_date}</td>
                                         <td className="p-4">
                                             <div className="font-medium text-white">{row.student_name}</div>
-                                            <div className="text-xs text-slate-500">ID: {row.student_id}</div>
+                                            <div className="text-xs text-slate-500">ID: {row.student_code || row.student_id}</div>
                                         </td>
                                         <td className="p-4 text-slate-300 text-sm font-medium">
                                             <div className="flex items-center gap-2">

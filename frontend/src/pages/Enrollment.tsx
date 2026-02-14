@@ -186,7 +186,7 @@ const Enrollment: React.FC = () => {
                                                 {student.name}
                                             </h3>
                                             <p className="text-xs text-slate-500">
-                                                {student.class ? `${student.class}` : 'No Class'} • {student.contact || 'No Contact'}
+                                                {student.student_code || student.student_id} • {student.batch?.batch_name || 'No Batch'}
                                             </p>
                                         </div>
                                         {selectedStudentId === student.student_id && <CheckCircle className="text-emerald-500" size={20} />}

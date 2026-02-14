@@ -455,7 +455,8 @@ class PaymentRepository:
                     "type": "Single", 
                     "remarks": r.get('remarks') or "",
                     "is_editable": False, 
-                    "raw_group_id": r.get('transaction_group_id') 
+                    "raw_group_id": r.get('transaction_group_id'),
+                    "sub_payments": [] 
                 }
                 group_order.append(gid)
             
@@ -473,6 +474,11 @@ class PaymentRepository:
             if y and m:
                 # Store as tuple
                 group['months'].append( (y, m) )
+                group['sub_payments'].append({
+                    "month": m,
+                    "year": y,
+                    "amount": float(amt)
+                })
                 
             group['payment_ids'].append(r['payment_id'])
             
@@ -591,13 +597,19 @@ class PaymentRepository:
                     "remarks": r.get('remarks') or "",
                     "type": "Single",
                     "is_editable": False, # Calculated below
-                    "raw_group_id": r.get('transaction_group_id')
+                    "raw_group_id": r.get('transaction_group_id'),
+                    "sub_payments": []
                 }
                 group_order.append(gid)
             
             group = grouped_map[gid]
             group['total_amount'] += float(r['paid_amount'])
             group['months'].append( (r['year'], r['month']) )
+            group['sub_payments'].append({
+                "month": r['month'],
+                "year": r['year'],
+                "amount": float(r['paid_amount'])
+            })
             group['payment_ids'].append(r['payment_id'])
             
             if len(group['payment_ids']) > 1:

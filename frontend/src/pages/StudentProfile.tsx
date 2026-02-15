@@ -7,7 +7,8 @@ import StudentFinancialStatus from '../components/StudentFinancialStatus';
 import StudentPerformance from './StudentPerformance';
 import WithdrawalModal from '../components/WithdrawalModal';
 import { User, BookOpen, CreditCard, Edit2, Save, Trash2, Plus, TrendingUp, ArrowLeft } from 'lucide-react';
-import jsPDF from 'jspdf';
+import { useReactToPrint } from 'react-to-print';
+import IDCardTemplate from '../components/IDCardTemplate';
 
 const StudentProfile: React.FC = () => {
     const { id } = useParams<{ id: string }>();
@@ -85,143 +86,20 @@ const StudentProfile: React.FC = () => {
         updateMutation.mutate(editForm);
     };
 
-    const generateIDCard = () => {
-        if (!student) return;
-
-        // Standard CR80 ID card: 85.6mm × 53.98mm (landscape)
-        const cardW = 85.6;
-        const cardH = 53.98;
-        const doc = new jsPDF({
-            orientation: 'landscape',
-            unit: 'mm',
-            format: [cardH, cardW]
-        });
-
-        const m = 4; // margin
-
-        // Identify Batch
-        let batchName = student.batch?.batch_name;
-        if (!batchName && enrollments && enrollments.length > 0) {
-            const active = enrollments.find((e: any) => e.status !== 'Withdrawn');
-            if (active) {
-                batchName = active.program?.batch?.batch_name || active.program?.program_name;
+    // Print Handler
+    const printRef = React.useRef<HTMLDivElement>(null);
+    const handlePrint = useReactToPrint({
+        contentRef: printRef,
+        documentTitle: `ID_Card_${student?.student_code || student?.student_id}`,
+        pageStyle: `
+            @page { size: A4; margin: 0; }
+            @media print {
+                body {
+                    -webkit-print-color-adjust: exact;
+                }
             }
-        }
-        batchName = batchName || 'General';
-
-        // ── HEADER ──────────────────────────────────────────
-        // Top border line
-        doc.setDrawColor(0, 0, 0);
-        doc.setLineWidth(0.6);
-        doc.line(0, 0.3, cardW, 0.3);
-
-        // Institution name
-        doc.setTextColor(0, 0, 0);
-        doc.setFontSize(11);
-        doc.setFont('helvetica', 'bold');
-        doc.text("SCIENCE POINT", cardW / 2, 6, { align: 'center' });
-
-        doc.setFontSize(6);
-        doc.setFont('helvetica', 'normal');
-        doc.setTextColor(80, 80, 80);
-        doc.text("by Dr. Talha", cardW / 2, 9.5, { align: 'center' });
-
-        // Separator line under header
-        doc.setDrawColor(0, 0, 0);
-        doc.setLineWidth(0.3);
-        doc.line(m, 11.5, cardW - m, 11.5);
-
-        // ── LEFT SIDE: Student Details ──────────────────────
-        let y = 15;
-        const labelX = m;
-        const valueX = m + 16;
-        const midX = 46; // divider between left and right sections
-
-        const addField = (label: string, value: string | number | undefined | null) => {
-            if (!value && value !== 0) return;
-            doc.setFont('helvetica', 'bold');
-            doc.setFontSize(5);
-            doc.setTextColor(80, 80, 80);
-            doc.text(label, labelX, y);
-
-            doc.setFont('helvetica', 'normal');
-            doc.setFontSize(6);
-            doc.setTextColor(0, 0, 0);
-            const valStr = String(value);
-            const maxLen = 16;
-            doc.text(valStr.length > maxLen ? valStr.substring(0, maxLen) + '…' : valStr, valueX, y);
-            y += 4;
-        };
-
-        const displayId = student.student_code || String(student.student_id).padStart(5, '0');
-
-        addField("Name", student.name);
-        addField("ID", displayId);
-        addField("Father", student.fathers_name || '—');
-        addField("Class", student.class ? String(student.class) : '—');
-        addField("Batch", batchName);
-        addField("Contact", student.contact || '—');
-
-        // ── Vertical divider ────────────────────────────────
-        doc.setDrawColor(180, 180, 180);
-        doc.setLineWidth(0.15);
-        doc.line(midX, 13, midX, cardH - 7);
-
-        // ── RIGHT SIDE: Enrolled Programs ───────────────────
-        const rightX = midX + 3;
-        let ry = 15;
-
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(5);
-        doc.setTextColor(80, 80, 80);
-        doc.text("ENROLLED PROGRAMS", rightX, ry);
-        ry += 1.5;
-        doc.setDrawColor(0, 0, 0);
-        doc.setLineWidth(0.1);
-        doc.line(rightX, ry, cardW - m, ry);
-        ry += 3;
-
-        if (enrollments && enrollments.length > 0) {
-            enrollments.forEach((enroll: any) => {
-                if (ry > cardH - 10) return; // prevent overflow
-
-                const pName = enroll.program?.program_name || 'Unknown';
-                const status = enroll.status || 'Active';
-
-                doc.setFont('helvetica', 'normal');
-                doc.setFontSize(5.5);
-                doc.setTextColor(0, 0, 0);
-                const maxPName = 20;
-                doc.text(pName.length > maxPName ? pName.substring(0, maxPName) + '…' : pName, rightX, ry);
-
-                // Status
-                doc.setFontSize(4.5);
-                doc.setTextColor(80, 80, 80);
-                doc.text(`(${status})`, cardW - m, ry, { align: 'right' });
-
-                ry += 3.5;
-            });
-        } else {
-            doc.setFont('helvetica', 'italic');
-            doc.setFontSize(5);
-            doc.setTextColor(120, 120, 120);
-            doc.text("No enrollments", rightX, ry);
-        }
-
-        // ── FOOTER ──────────────────────────────────────────
-        doc.setDrawColor(0, 0, 0);
-        doc.setLineWidth(0.3);
-        doc.line(m, cardH - 5.5, cardW - m, cardH - 5.5);
-
-        doc.setFontSize(4);
-        doc.setFont('helvetica', 'normal');
-        doc.setTextColor(100, 100, 100);
-        doc.text("Science Point Management System", m, cardH - 2.5);
-        doc.text(`Generated: ${new Date().toLocaleDateString()}`, cardW - m, cardH - 2.5, { align: 'right' });
-
-        // Save
-        doc.save(`${student.student_id}_${student.name?.replace(/\s+/g, '_')}_IDCard.pdf`);
-    };
+        `
+    });
 
     return (
         <div className="max-w-5xl mx-auto animate-fade-in">
@@ -287,7 +165,7 @@ const StudentProfile: React.FC = () => {
                     </div>
                     <div className="flex gap-3 items-center w-full md:w-auto">
                         <button
-                            onClick={generateIDCard}
+                            onClick={() => handlePrint()}
                             className="bg-slate-700 text-slate-200 px-4 py-2.5 rounded-xl hover:bg-slate-600 font-medium text-sm flex items-center gap-2 border border-slate-600 shadow-lg transition-all flex-1 md:flex-none justify-center"
                         >
                             <CreditCard size={18} /> <span className="hidden sm:inline">Download ID</span>
@@ -474,6 +352,17 @@ const StudentProfile: React.FC = () => {
                     }}
                 />
             )}
+
+            {/* Hidden Print Area */}
+            <div className="hidden">
+                <div ref={printRef} className="print:w-auto print:overflow-visible bg-white text-black p-8">
+                    <div className="grid grid-cols-2 gap-4 w-full">
+                        <div className="break-inside-avoid">
+                            <IDCardTemplate student={student} />
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     );
 };

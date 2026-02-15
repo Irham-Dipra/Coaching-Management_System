@@ -26,28 +26,37 @@ const IDCardTemplate: React.FC<IDCardProps> = ({ student }) => {
                 </div>
 
                 {/* Content */}
-                <div className="flex gap-4">
-                    {/* Photo Removed as requested */}
-
-                    {/* Details */}
+                {/* Content */}
+                <div className="flex gap-4 mt-2">
+                    {/* Left Column */}
                     <div className="flex-1 space-y-2">
                         <div>
-                            <p className="text-[10px] text-slate-400 uppercase">Name</p>
-                            <p className="text-lg font-bold text-slate-800 leading-tight">{student.name}</p>
+                            <p className="text-[9px] text-slate-400 uppercase">Name</p>
+                            <p className="text-sm font-bold text-slate-800 leading-tight">{student.name}</p>
                         </div>
                         <div>
-                            <p className="text-[10px] text-slate-400 uppercase">ID No</p>
+                            <p className="text-[9px] text-slate-400 uppercase">ID No</p>
                             <p className="text-xs font-mono font-bold text-blue-600">{student.student_code || student.student_id}</p>
                         </div>
-                        <div className="flex justify-between">
-                            <div>
-                                <p className="text-[10px] text-slate-400 uppercase">Class</p>
-                                <p className="text-xs font-medium text-slate-700">{student.class}</p>
-                            </div>
-                            <div>
-                                <p className="text-[10px] text-slate-400 uppercase">Contact</p>
-                                <p className="text-xs font-medium text-slate-700">{student.contact}</p>
-                            </div>
+                        <div>
+                            <p className="text-[9px] text-slate-400 uppercase">Class</p>
+                            <p className="text-xs font-medium text-slate-700">{student.class}</p>
+                        </div>
+                    </div>
+
+                    {/* Right Column */}
+                    <div className="flex-1 space-y-2 text-right">
+                        <div>
+                            <p className="text-[9px] text-slate-400 uppercase">Father's Name</p>
+                            <p className="text-xs font-medium text-slate-800 leading-tight">{student.fathers_name || '-'}</p>
+                        </div>
+                        <div>
+                            <p className="text-[9px] text-slate-400 uppercase">Institution</p>
+                            <p className="text-xs font-medium text-slate-700 leading-tight">{student.school || student.institution || '-'}</p>
+                        </div>
+                        <div>
+                            <p className="text-[9px] text-slate-400 uppercase">Contact</p>
+                            <p className="text-xs font-medium text-slate-700">{student.contact}</p>
                         </div>
                     </div>
                 </div>

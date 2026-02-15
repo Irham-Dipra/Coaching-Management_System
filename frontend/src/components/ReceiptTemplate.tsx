@@ -35,43 +35,52 @@ const ReceiptTemplate: React.FC<ReceiptProps> = ({ payment }) => {
                 </div>
             </div>
 
-            {/* Payment Details Table */}
-            <table className="w-full text-xs mb-1 flex-1">
-                <thead>
-                    <tr className="bg-slate-50 border-b border-t border-slate-200">
-                        <th className="text-left py-1 px-2 font-semibold text-slate-600">Description</th>
-                        <th className="text-right py-1 px-2 font-semibold text-slate-600">Month/Year</th>
-                        <th className="text-right py-1 px-2 font-semibold text-slate-600">Amount</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr className="border-b border-slate-50">
-                        <td className="py-1 px-2 text-slate-700">Tuition Fee - {payment.program_name}</td>
-                        <td className="py-1 px-2 text-right text-slate-700 font-mono">
-                            {/* Use date_display from backend if available, else fallback */}
-                            {payment.date_display || (payment.month ? `${new Date(0, payment.month - 1).toLocaleString('default', { month: 'short' })} ${payment.year}` : '-')}
-                        </td>
-                        <td className="py-1 px-2 text-right font-bold text-slate-800 font-mono">
-                            ৳{payment.paid_amount?.toLocaleString()}
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
+            {/* Payment Details Table - Flex grow to push footer down, but kept compact */}
+            <div className="flex-1">
+                <table className="w-full text-xs mb-2">
+                    <thead>
+                        <tr className="bg-slate-50 border-b border-t border-slate-200">
+                            <th className="text-left py-1 px-2 font-semibold text-slate-600">Description</th>
+                            <th className="text-right py-1 px-2 font-semibold text-slate-600">Month/Year</th>
+                            <th className="text-right py-1 px-2 font-semibold text-slate-600">Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr className="border-b border-slate-50">
+                            <td className="py-1 px-2 text-slate-700">Tuition Fee - {payment.program_name}</td>
+                            <td className="py-1 px-2 text-right text-slate-700 font-mono">
+                                {/* Use date_display from backend if available, else fallback */}
+                                {payment.date_display || (payment.month ? `${new Date(0, payment.month - 1).toLocaleString('default', { month: 'short' })} ${payment.year}` : '-')}
+                            </td>
+                            <td className="py-1 px-2 text-right font-bold text-slate-800 font-mono">
+                                ৳{payment.paid_amount?.toLocaleString()}
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
 
-            {/* Total Row (Inline) */}
-            <div className="flex justify-end items-center gap-4 text-sm mb-2 px-2">
-                <span className="font-bold text-slate-700">Total Paid:</span>
-                <span className="font-bold text-slate-900 border-b border-slate-300 px-1">৳{payment.paid_amount?.toLocaleString()}</span>
+                {/* Total Row - Moved up as requested */}
+                <div className="flex justify-end items-center gap-4 text-sm px-2">
+                    <span className="font-bold text-slate-700">Total Paid:</span>
+                    <span className="font-bold text-slate-900 border-b-2 border-slate-300 px-1">৳{payment.paid_amount?.toLocaleString()}</span>
+                </div>
             </div>
 
-            {/* Footer */}
-            <div className="flex justify-between items-end pt-1">
+            {/* Footer with Seal */}
+            <div className="flex justify-between items-end pt-2 relative">
                 <div>
                     <p className="text-[10px] text-slate-400">Method: {payment.payment_method || 'Cash'} {payment.remarks ? `| Note: ${payment.remarks}` : ''}</p>
                 </div>
-                <div className="text-center">
-                    <div className="w-24 border-t border-slate-300 mb-0.5"></div>
-                    <p className="text-[9px] text-slate-400 uppercase">Authorized Signature</p>
+
+                {/* Seal - Replaces Signature Line */}
+                <div className="text-center relative">
+                    <div className="w-20 h-20 border-2 border-slate-300 rounded-full flex items-center justify-center p-1 rotate-[-10deg] opacity-70">
+                        <div className="text-[8px] font-bold text-slate-400 uppercase text-center leading-tight">
+                            Science Point<br />
+                            <span className="text-[6px]">by Dr. Talha</span><br />
+                            <span className="text-[6px]">Authorized</span>
+                        </div>
+                    </div>
                 </div>
             </div>
 

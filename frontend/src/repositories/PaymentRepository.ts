@@ -2,8 +2,18 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
 
 export const PaymentRepository = {
     // Get recent payments (Ledger)
-    async getRecentPayments() {
-        const response = await fetch(`${API_BASE_URL}/payments/recent`);
+    // Get recent payments (Ledger) with Pagination
+    async getRecentPayments(page = 1, pageSize = 50, search = "", filters: any = {}) {
+        const params = new URLSearchParams();
+        params.append("page", page.toString());
+        params.append("page_size", pageSize.toString());
+        if (search) params.append("search", search);
+        if (filters.month) params.append("month", filters.month.toString());
+        if (filters.year) params.append("year", filters.year.toString());
+        if (filters.program_id) params.append("program_id", filters.program_id.toString());
+        if (filters.roll_no) params.append("roll_no", filters.roll_no);
+
+        const response = await fetch(`${API_BASE_URL}/payments/recent?${params.toString()}`);
         if (!response.ok) throw new Error("Failed to fetch payments");
         return await response.json();
     },

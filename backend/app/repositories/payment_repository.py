@@ -410,72 +410,58 @@ class PaymentRepository:
             "enrollment_date": enrollment['enrollment_date'] # For UI Transparency
         }
 
-    def get_recent_payments(self, limit: int = 50):
+    def get_payments_paginated(self, page: int = 1, page_size: int = 50, search: str = None, filters: dict = None):
         """
-        Fetches the latest payments for the global transaction ledger.
-        
-        Refactored for Phase 18:
-        1. Query recent raw rows (limit slightly higher to allow grouping compression).
-        2. Group by 'transaction_group_id' (or treat as single if None).
-        3. Aggregates:
-           - Amount: Sum
-           - Month/Year: Range or List
-           - Status: 'Bulk' or 'Single'
-        4. "Latest Payment" check for integrity:
-           - Fetch MAX(payment_id) for each student involved in this batch.
-           - Mark groups as 'is_editable' ONLY if they contain the latest transaction for that student.
+        Fetches payments with server-side pagination, search, and filtering.
+        Returns { data: [...], total_count: int }.
         """
-        # Step 1: Query Raw Data
-        # We fetch more than limit because grouping will reduce count.
-        # Phase 18 Update: Fetch 'class', 'batch_id' (from student), and 'roll_no' (from enrollment) for filters.
-        # Assuming 'student' has 'class' and 'batch_id' (or enrollment?).
-        # Checking StudentList logic: s.batch_id is on student.
-        # Also fetching 'roll_no' from enrollment.
-        response = supabase.table(self.table)\
-            .select("*, enrollment(roll_no, student(student_id, name, class, batch_id), program(program_name, program_id))")\
-            .order("payment_id", desc=True)\
-            .limit(limit * 2)\
-            .execute()
-            
-        raw_rows = response.data
-        if not raw_rows:
-             return []
+        # Calculate Range
+        start = (page - 1) * page_size
+        end = start + page_size - 1
 
-        # Step 2: Determine "Latest" for Integrity Check
-        # We need the MAX(payment_id) for every student present in this list.
-        # Efficient way: Single query? Or just trust the sorted list if we had ALL data.
-        # But we only have top 100. The *actual* latest might be in this list, OR (rarely) we might miss a race condition.
-        # Proper way: Query DB for max IDs.
+        # Base Query
+        # We need 'count="exact"' to get total records for pagination
+        query = supabase.table(self.table)\
+            .select("*, enrollment!inner(roll_no, student!inner(student_id, name, class, batch_id), program(program_name, program_id))", count="exact")\
+            .order("payment_id", desc=True)
+
+        # Apply Search
+        if search:
+            # Search by Student Name or Receipt ID
+            # Note: OR filter across relations is complex in Supabase-py. 
+            # We'll prioritize Student Name matching via relation. 
+            # If search is numeric, assume Payment ID.
+            if search.isdigit():
+                query = query.eq("payment_id", int(search))
+            else:
+                # ilike on student name
+                query = query.ilike("enrollment.student.name", f"%{search}%")
+
+        # Apply Filters
+        if filters:
+            if filters.get('month'):
+                query = query.eq("month", int(filters['month']))
+            if filters.get('year'):
+                query = query.eq("year", int(filters['year']))
+            if filters.get('program_id'):
+                query = query.eq("enrollment.program_id", int(filters['program_id']))
+            if filters.get('roll_no'):
+                query = query.ilike("enrollment.roll_no", f"%{filters['roll_no']}%")
         
-        student_ids = list(set([r['enrollment']['student']['student_id'] for r in raw_rows if r.get('enrollment') and r['enrollment'].get('student')]))
+        # Apply Range (Pagination)
+        response = query.range(start, end).execute()
         
-        # We can't do "WHERE student_id IN (...) GROUP BY" easily with Supabase client (no group_by support).
-        # Workaround: For the UI "Recent" list, we can assume the top of the list IS the latest... 
-        # BUT if I search/filter, that breaks. 
-        # However, the requirement is strict: "Admin can only edit the most recent...".
-        # Let's perform a lightweight RPC or just loop check if practical?
-        # Actually, if we sort by payment_id DESC, the FIRST appearance of a student in the GLOBAL list is the latest.
-        # Since we fetch 'limit * 2', it's highly likely we have the latest.
-        # Challenge: What if the latest is ID 1000, and we fetched ID 900-800? (Pagination).
-        # Safer: On the backend 'edit' action we enforce strictness. 
-        # For the UI list: We can just mark the first occurrence in *this* list as editable? 
-        # No, that's misleading if the *actual* latest isn't loaded.
-        # Compromise for list view: Mark as editable if it matches the *cached* max ID we fetch now.
-        
-        # Let's try to fetch true max IDs for these students.
-        # Since we can't GROUP BY, we might just have to skip strictly checking "Global" latest in the *List View* 
-        # and rely on the Backend Edit Endpoint to throw an error if not latest.
-        # Use Case: Admin sees list. Tries to edit. If backend rejects, we show error.
-        # UI optimization: We can flag "Latest in this view".
-        
-        # Let's proceed with Grouping first.
-        
-        # 3. Aggregation Loop
-        grouped_map = {} # Key: transaction_group_id (or "single_ID") -> Object
-        group_order = [] # To maintain sort order
+        raw_rows = response.data
+        total_count = response.count
+
+        if not raw_rows:
+            return { "data": [], "total_count": 0 }
+
+        # --- GROUPING LOGIC (Preserving existing logic) ---
+        grouped_map = {} 
+        group_order = [] 
 
         for r in raw_rows:
-            # Identifier: Use group_id if present, else valid unique string "single_{id}"
             gid = r.get('transaction_group_id')
             if not gid:
                  gid = f"single_{r['payment_id']}"
@@ -486,17 +472,19 @@ class PaymentRepository:
             
             if gid not in grouped_map:
                 grouped_map[gid] = {
-                    "sort_id": r['payment_id'], # Keep highest ID for sorting
+                    "sort_id": r['payment_id'], 
                     "payment_ids": [],
+                    "payment_id": r['payment_id'], # Primary ID for display
                     "student_id": student.get("student_id"),
-                    "enrollment_id": r.get("enrollment_id"), # Critical for "Latest" check per enrollment
+                    "enrollment_id": r.get("enrollment_id"),
                     "student_name": student.get("name") or "Unknown",
+                    "student_code": student.get("student_code") or student.get("student_id"), # Fallback
                     "class": student.get("class"),       
                     "batch_id": student.get("batch_id"), 
                     "roll_no": enroll.get("roll_no"),    
                     "program_name": program.get("program_name") or "Unknown Program",
                     "program_id": program.get("program_id"), 
-                    "total_amount": 0.0,
+                    "amount": 0.0, # Total amount
                     "months": [],
                     "payment_date": r.get('payment_date'), 
                     "payment_method": r.get('payment_method'),
@@ -508,19 +496,16 @@ class PaymentRepository:
                 }
                 group_order.append(gid)
             
-            # Aggregate
             group = grouped_map[gid]
             
-            # Safe float conversion
+            # Aggregate
             amt = r.get('paid_amount')
             if amt is not None:
-                group['total_amount'] += float(amt)
+                group['amount'] += float(amt)
                 
-            # Safe month/year collection
             y = r.get('year')
             m = r.get('month')
             if y and m:
-                # Store as tuple
                 group['months'].append( (y, m) )
                 group['sub_payments'].append({
                     "month": m,
@@ -530,21 +515,18 @@ class PaymentRepository:
                 
             group['payment_ids'].append(r['payment_id'])
             
-            # Update Type
             if len(group['payment_ids']) > 1:
                 group['type'] = "Bulk"
         
-        # Final Format
+        # Format Results
         results = []
-        
-        # Sort month ranges for display
         for gid in group_order:
             g = grouped_map[gid]
             
-            # Format Months: "Jan 2026", "Jan-Mar 2026"
+            # Date Range Display
             if g['months']:
                 try:
-                    g['months'].sort() # Sorts by (Year, Month) tuple
+                    g['months'].sort()
                     start_y, start_m = g['months'][0]
                     end_y, end_m = g['months'][-1]
                     
@@ -553,33 +535,31 @@ class PaymentRepository:
                     
                     if len(g['months']) > 1:
                         if start_y == end_y:
-                             # Same Year: "Jan - Mar 2026"
-                             start_month_name = date(start_y, start_m, 1).strftime("%b")
-                             g['date_display'] = f"{start_month_name} - {end_name}"
+                             start_month = date(start_y, start_m, 1).strftime("%b")
+                             g['date_display'] = f"{start_month} - {end_name}"
                         else:
                              g['date_display'] = f"{start_name} - {end_name}"
                     else:
                         g['date_display'] = start_name
                 except Exception:
-                    g['date_display'] = "Invalid Date"
+                    g['date_display'] = "-"
             else:
                 g['date_display'] = "-"
                 
             results.append(g)
             
-        # Post-Processing for "Latest" Flag
-        # Changed Phase: Action button should appear for the last payment of EVERY enrollment.
-        # So we track seen_enrollment_ids instead of seen_student_ids.
-        seen_enrollments = set()
+        # Post-Processing: "Latest" Flag
+        # Simple logic: If it's on Page 1 (start==0), we mark distinct enrollments as editable?
+        # Better: Strict check is in `update_payment`. Here we default to True for UX 
+        # or implement a lightweight check if critical. 
+        # For performance, we'll mark all as editable (let backend reject if not).
         for res in results:
-            eid = res.get('enrollment_id')
-            if eid and eid not in seen_enrollments:
-                res['is_editable'] = True
-                seen_enrollments.add(eid)
-            else:
-                res['is_editable'] = False
+            res['is_editable'] = True # Relies on backend validation in update_payment
                 
-        return results[:limit]
+        return {
+            "data": results,
+            "total_count": total_count
+        }
 
     def get_student_payments(self, student_id: int):
         """

@@ -7,8 +7,14 @@ router = APIRouter()
 payment_repo = PaymentRepository()
 
 @router.get("/payments/recent")
-def get_recent_payments():
-    return payment_repo.get_recent_payments()
+def get_recent_payments(page: int = 1, page_size: int = 50, search: str = None, month: int = None, year: int = None, program_id: int = None, roll_no: str = None):
+    filters = {}
+    if month: filters['month'] = month
+    if year: filters['year'] = year
+    if program_id: filters['program_id'] = program_id
+    if roll_no: filters['roll_no'] = roll_no
+    
+    return payment_repo.get_payments_paginated(page, page_size, search, filters)
 
 @router.post("/payments")
 def create_payment(payment: PaymentCreate):

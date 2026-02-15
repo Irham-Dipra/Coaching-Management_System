@@ -20,6 +20,23 @@ const StudentProfile: React.FC = () => {
     const [withdrawEnrollment, setWithdrawEnrollment] = useState<any>(null);
     const [activeTab, setActiveTab] = useState<'overview' | 'performance'>('overview');
 
+    // Print Handler (Must be before early returns)
+    const printRef = React.useRef<HTMLDivElement>(null);
+    // documentTitle depends on student, which might be undefined initially. 
+    // We can rely on student being available when print is called, or use default.
+    const handlePrint = useReactToPrint({
+        contentRef: printRef,
+        documentTitle: `ID_Card`,
+        pageStyle: `
+            @page { size: A4; margin: 0; }
+            @media print {
+                body {
+                    -webkit-print-color-adjust: exact;
+                }
+            }
+        `
+    });
+
     // 1. Fetch Student Details
     const { data: student, isLoading } = useQuery({
         queryKey: ['student', id],
@@ -87,19 +104,7 @@ const StudentProfile: React.FC = () => {
     };
 
     // Print Handler
-    const printRef = React.useRef<HTMLDivElement>(null);
-    const handlePrint = useReactToPrint({
-        contentRef: printRef,
-        documentTitle: `ID_Card_${student?.student_code || student?.student_id}`,
-        pageStyle: `
-            @page { size: A4; margin: 0; }
-            @media print {
-                body {
-                    -webkit-print-color-adjust: exact;
-                }
-            }
-        `
-    });
+
 
     return (
         <div className="max-w-5xl mx-auto animate-fade-in">
@@ -228,10 +233,10 @@ const StudentProfile: React.FC = () => {
                 <div className="flex border-b border-slate-700/50">
                     <button
                         onClick={() => setActiveTab('overview')}
-                        className={`flex-1 py-4 text-sm font-bold text-center transition-all whitespace-nowrap ${activeTab === 'overview'
-                            ? 'text-blue-400 border-b-2 border-blue-500 bg-blue-500/5'
-                            : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50'
-                            }`}
+                        className={`flex - 1 py - 4 text - sm font - bold text - center transition - all whitespace - nowrap ${activeTab === 'overview'
+                                ? 'text-blue-400 border-b-2 border-blue-500 bg-blue-500/5'
+                                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50'
+                            } `}
                     >
                         <div className="flex items-center justify-center gap-2">
                             <BookOpen size={16} /> Overview
@@ -239,10 +244,10 @@ const StudentProfile: React.FC = () => {
                     </button>
                     <button
                         onClick={() => setActiveTab('performance')}
-                        className={`flex-1 py-4 text-sm font-bold text-center transition-all whitespace-nowrap ${activeTab === 'performance'
-                            ? 'text-emerald-400 border-b-2 border-emerald-500 bg-emerald-500/5'
-                            : 'text-emerald-500/70 hover:text-emerald-300 hover:bg-emerald-500/10'
-                            }`}
+                        className={`flex - 1 py - 4 text - sm font - bold text - center transition - all whitespace - nowrap ${activeTab === 'performance'
+                                ? 'text-emerald-400 border-b-2 border-emerald-500 bg-emerald-500/5'
+                                : 'text-emerald-500/70 hover:text-emerald-300 hover:bg-emerald-500/10'
+                            } `}
                     >
                         <div className="flex items-center justify-center gap-2">
                             <TrendingUp size={16} /> Performance

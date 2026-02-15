@@ -270,7 +270,7 @@ const PrintBatch: React.FC = () => {
                             }
                         </div>
                     ) : (
-                        <div className="flex flex-col gap-8">
+                        <div className="flex flex-col gap-0">
                             {filteredPayments
                                 .filter((p: any) => selectedPaymentIds.includes(p.payment_id))
                                 .map((p: any) => (

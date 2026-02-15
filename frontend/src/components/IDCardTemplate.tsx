@@ -20,23 +20,20 @@ const IDCardTemplate: React.FC<IDCardProps> = ({ student }) => {
                         <User size={20} />
                     </div>
                     <div>
-                        <h2 className="text-xs font-bold text-slate-800 uppercase tracking-wider">Moniem Coaching Center</h2>
-                        <p className="text-[10px] text-slate-500">Student Identity Card</p>
+                        <h2 className="text-xs font-bold text-slate-800 uppercase tracking-wider">Science Point</h2>
+                        <p className="text-[9px] text-slate-500 font-bold uppercase">by Dr. Talha</p>
                     </div>
                 </div>
 
                 {/* Content */}
                 <div className="flex gap-4">
-                    {/* Photo Placeholder */}
-                    <div className="w-20 h-24 bg-slate-100 border border-slate-300 rounded-lg flex items-center justify-center text-slate-400 text-[10px]">
-                        Photo
-                    </div>
+                    {/* Photo Removed as requested */}
 
                     {/* Details */}
-                    <div className="flex-1 space-y-1.5">
+                    <div className="flex-1 space-y-2">
                         <div>
                             <p className="text-[10px] text-slate-400 uppercase">Name</p>
-                            <p className="text-sm font-bold text-slate-800 leading-tight">{student.name}</p>
+                            <p className="text-lg font-bold text-slate-800 leading-tight">{student.name}</p>
                         </div>
                         <div>
                             <p className="text-[10px] text-slate-400 uppercase">ID No</p>

@@ -8,6 +8,13 @@ const FinanceBreakdown: React.FC = () => {
     const { type } = useParams<{ type: string }>(); // 'revenue', 'due_monthly', 'due_overall'
     const navigate = useNavigate();
 
+    // Date State (Default to current or 2026 start)
+    const [month, setMonth] = React.useState(new Date().getMonth() + 1);
+    const [year, setYear] = React.useState(() => {
+        const y = new Date().getFullYear();
+        return y < 2026 ? 2026 : y;
+    });
+
     const isRevenue = type === 'revenue';
     const isDueMonthly = type === 'due_monthly';
     const isDueOverall = type === 'due_overall';
@@ -17,10 +24,10 @@ const FinanceBreakdown: React.FC = () => {
     let endpoint = '';
 
     if (isRevenue) {
-        title = 'Revenue Breakdown (This Month)';
+        title = 'Revenue Breakdown';
         endpoint = 'revenue-breakdown';
     } else if (isDueMonthly) {
-        title = 'Due Payments (This Month)';
+        title = 'Due Payments';
         endpoint = 'due-breakdown/monthly';
     } else if (isDueOverall) {
         title = 'Total Dues (Overall)';
@@ -30,9 +37,13 @@ const FinanceBreakdown: React.FC = () => {
     const API_BASE_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
 
     const { data, isLoading, error } = useQuery({
-        queryKey: ['finance_breakdown', type],
+        queryKey: ['finance_breakdown', type, month, year],
         queryFn: async () => {
-            const res = await fetch(`${API_BASE_URL}/finance/${endpoint}`);
+            let url = `${API_BASE_URL}/finance/${endpoint}`;
+            if (isRevenue || isDueMonthly) {
+                url += `?month=${month}&year=${year}`;
+            }
+            const res = await fetch(url);
             if (!res.ok) throw new Error("Failed to load data");
             return res.json();
         },
@@ -56,6 +67,29 @@ const FinanceBreakdown: React.FC = () => {
                 <div>
                     <h1 className="text-3xl font-bold text-white flex items-center gap-3">
                         {isRevenue ? <DollarSign className="text-emerald-400" size={32} /> : <AlertCircle className="text-red-500" size={32} />}
+                        {/* Date Filters: Show for Revenue & Due Monthly */}
+                        {(isRevenue || isDueMonthly) && (
+                            <div className="flex items-center gap-2 mt-1">
+                                <select
+                                    value={month}
+                                    onChange={(e) => setMonth(Number(e.target.value))}
+                                    className="bg-slate-800 border border-slate-700 text-white text-sm rounded-lg p-1.5 outline-none focus:ring-2 focus:ring-blue-500"
+                                >
+                                    {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
+                                        <option key={m} value={m}>{new Date(0, m - 1).toLocaleString('default', { month: 'short' })}</option>
+                                    ))}
+                                </select>
+                                <select
+                                    value={year}
+                                    onChange={(e) => setYear(Number(e.target.value))}
+                                    className="bg-slate-800 border border-slate-700 text-white text-sm rounded-lg p-1.5 outline-none focus:ring-2 focus:ring-blue-500"
+                                >
+                                    {[2026, 2027, 2028, 2029, 2030].map(y => (
+                                        <option key={y} value={y}>{y}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        )}
                         {title}
                     </h1>
                     {isRevenue && data && (

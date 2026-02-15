@@ -4,8 +4,10 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { PaymentRepository } from '../repositories/PaymentRepository';
 import { StudentRepository } from '../repositories/StudentRepository';
 import { ProgramRepository } from '../repositories/ProgramRepository';
-import { DollarSign, Search, Plus, FileText, Download, X, ArrowUpDown, Edit, Users, AlertCircle, Trash2 } from 'lucide-react';
+import { DollarSign, Search, Plus, FileText, Download, X, ArrowUpDown, Edit, Users, AlertCircle, Trash2, Printer, CheckSquare, Square } from 'lucide-react';
 import { generatePaymentSlip } from '../utils/pdfGenerator';
+import ReceiptTemplate from '../components/ReceiptTemplate';
+import { useReactToPrint } from 'react-to-print';
 
 import BatchPaymentModal from '../components/BatchPaymentModal';
 
@@ -108,6 +110,55 @@ const Finance: React.FC = () => {
     // For now, I'll bypass client filters for simplicity as per instructions to "Remove client side slicing".
     // I will assume backend search is primary.
     const filteredPayments = recentPayments;
+
+    // --- BATCH PRINT LOGIC ---
+    const [selectedIds, setSelectedIds] = useState<number[]>([]);
+    const [singlePrintId, setSinglePrintId] = useState<number | null>(null);
+    const batchPrintRef = React.useRef<HTMLDivElement>(null);
+    const singlePrintRef = React.useRef<HTMLDivElement>(null);
+
+    // Batch Print Hook
+    const handleBatchPrintTrigger = useReactToPrint({
+        contentRef: batchPrintRef,
+        documentTitle: 'Payment_Receipts_Batch',
+        pageStyle: `
+            @page { size: A4; margin: 0; }
+            @media print { 
+                body { -webkit-print-color-adjust: exact; }
+            }
+        `
+    });
+
+    // Single Print Hook
+    const handleSinglePrintTrigger = useReactToPrint({
+        contentRef: singlePrintRef,
+        documentTitle: 'Payment_Receipt',
+        pageStyle: `
+            @page { size: A4; margin: 0; }
+            @media print { 
+                body { -webkit-print-color-adjust: exact; }
+            }
+        `
+    });
+
+    const handleSinglePrint = (id: number) => {
+        setSinglePrintId(id);
+        // Timeout to allow render
+        setTimeout(() => handleSinglePrintTrigger(), 100);
+    };
+
+    const toggleSelection = (id: number) => {
+        setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
+    };
+
+    const toggleAll = () => {
+        // Use filteredPayments to determine what's "All" on this page
+        if (selectedIds.length === filteredPayments.length && filteredPayments.length > 0) {
+            setSelectedIds([]);
+        } else {
+            setSelectedIds(filteredPayments.map((p: any) => p.sort_id || p.payment_id));
+        }
+    };
 
     // Warn if using unsupported filters?
     // Or just let them be ignored server-side.
@@ -224,7 +275,19 @@ const Finance: React.FC = () => {
             {/* HEADER ACTION ROW */}
             <div className="flex flex-col md:flex-row justify-between items-start md:items-end mb-2 gap-4">
                 <div className="flex items-center gap-4">
-                    <h2 className="text-xl font-bold text-white">Recent Transactions</h2>
+                    <h2 className="text-xl font-bold text-white">All Transactions</h2>
+
+                    {/* Print Selected Button */}
+                    {selectedIds.length > 0 && (
+                        <button
+                            onClick={handleBatchPrintTrigger}
+                            className="flex items-center gap-2 px-3 py-1 bg-blue-600 text-white text-sm font-bold rounded-lg shadow-lg shadow-blue-500/20 hover:bg-blue-500 transition-all animate-in fade-in zoom-in"
+                        >
+                            <Printer size={16} />
+                            Print Selected ({selectedIds.length})
+                        </button>
+                    )}
+
                     <button
                         onClick={() => setSortDesc(!sortDesc)}
                         className="flex items-center gap-1 text-sm text-slate-400 hover:text-blue-400 transition-colors"
@@ -302,6 +365,14 @@ const Finance: React.FC = () => {
                 <table className="w-full text-left border-collapse">
                     <thead className="bg-slate-900/50 text-slate-400 text-xs uppercase font-bold border-b border-slate-700">
                         <tr>
+                            <th className="p-5 w-10">
+                                <button onClick={toggleAll} className="hover:text-white transition-colors">
+                                    {(selectedIds.length === filteredPayments?.length && filteredPayments?.length > 0)
+                                        ? <CheckSquare size={18} className="text-blue-500" />
+                                        : <Square size={18} />
+                                    }
+                                </button>
+                            </th>
                             <th className="p-5">Receipt #</th>
                             <th className="p-5">Date</th>
                             <th className="p-5">Student</th>
@@ -319,7 +390,15 @@ const Finance: React.FC = () => {
                             // Backend now returns 'date_display' and 'type' and 'total_amount'
                             // p.sort_id is the ID to key by
                             return (
-                                <tr key={p.sort_id || p.payment_id} className="hover:bg-slate-700/30 transition-colors group">
+                                <tr key={p.sort_id || p.payment_id} className={`hover:bg-slate-700/30 transition-colors group ${selectedIds.includes(p.sort_id || p.payment_id) ? 'bg-blue-900/10' : ''}`}>
+                                    <td className="p-5">
+                                        <button onClick={() => toggleSelection(p.sort_id || p.payment_id)} className="hover:text-white transition-colors">
+                                            {selectedIds.includes(p.sort_id || p.payment_id)
+                                                ? <CheckSquare size={18} className="text-blue-500" />
+                                                : <Square size={18} className="text-slate-600" />
+                                            }
+                                        </button>
+                                    </td>
                                     <td className="p-5 font-mono text-slate-500 group-hover:text-slate-300 transition-colors">#{p.sort_id}</td>
                                     <td className="p-5 text-slate-300 text-sm">{p.payment_date}</td>
                                     <td className="p-5">
@@ -370,10 +449,11 @@ const Finance: React.FC = () => {
                                             </button>
                                         )}
 
+                                        {/* Updated Download to use standard Print */}
                                         <button
-                                            onClick={() => generatePaymentSlip(p)}
+                                            onClick={() => handleSinglePrint(p.sort_id || p.payment_id)}
                                             className="text-blue-400 hover:text-blue-300 p-2 rounded-full hover:bg-blue-500/10 transition-colors"
-                                            title="Download Receipt"
+                                            title="Print Receipt"
                                         >
                                             <Download size={18} />
                                         </button>
@@ -390,6 +470,45 @@ const Finance: React.FC = () => {
 
             <AddPaymentModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
             <EditPaymentModal isOpen={!!editPayment} onClose={() => setEditPayment(null)} payment={editPayment} />
+
+            {/* HIDDEN PRINT CONTAINERS */}
+            {/* 1. Batch Print Container */}
+            <div style={{ display: "none" }}>
+                <div ref={batchPrintRef}>
+                    <div className="bg-white text-black p-8 flex flex-col gap-0">
+                        {filteredPayments
+                            ?.filter((p: any) => selectedIds.includes(p.sort_id || p.payment_id))
+                            .map((p: any) => (
+                                <div key={p.sort_id || p.payment_id} className="break-inside-avoid">
+                                    <ReceiptTemplate payment={{
+                                        ...p,
+                                        paid_amount: p.amount || p.paid_amount
+                                    }} />
+                                </div>
+                            ))
+                        }
+                    </div>
+                </div>
+            </div>
+
+            {/* 2. Single Print Container */}
+            <div style={{ display: "none" }}>
+                <div ref={singlePrintRef}>
+                    <div className="bg-white text-black p-8">
+                        {singlePrintId && filteredPayments
+                            ?.filter((p: any) => (p.sort_id || p.payment_id) === singlePrintId)
+                            .map((p: any) => (
+                                <div key={p.sort_id || p.payment_id}>
+                                    <ReceiptTemplate payment={{
+                                        ...p,
+                                        paid_amount: p.amount || p.paid_amount
+                                    }} />
+                                </div>
+                            ))
+                        }
+                    </div>
+                </div>
+            </div>
 
         </div>
     );

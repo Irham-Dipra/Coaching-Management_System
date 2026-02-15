@@ -13,14 +13,21 @@ def get_recent_payments():
 @router.post("/payments")
 def create_payment(payment: PaymentCreate):
     try:
-        # Legacy Single: Wrap in list for atomic bulk logic or keep distinct?
-        # User wants Atomic. Let's redirect to bulk logic for safety if we want.
-        # But schema has transaction_group_id optional.
-        # Let's keep legacy working or use bulk under hood. 
-        # Repository has create_payment removed? No, I replaced it?
-        # Step 1725: I REPLACED create_payment with create_bulk_payment!
-        # So I MUST update this route to use create_bulk_payment but wrapping single item.
-        return payment_repo.create_bulk_payment([payment.dict()])[0]
+        # Legacy Single: Wrap in list for atomic bulk logic.
+        # create_bulk_payment returns a dict: {'success': N, 'failed': [], 'data': [...]}
+        result = payment_repo.create_bulk_payment([payment.dict()])
+        
+        if result['failed']:
+            # For single payment, if it failed, we raise an error immediately.
+            failure = result['failed'][0]
+            raise HTTPException(status_code=400, detail=f"Payment Failed: {failure['reason']}")
+            
+        if not result['data']:
+            raise HTTPException(status_code=500, detail="Payment created but no data returned")
+            
+        return result['data'][0]
+    except HTTPException as he:
+        raise he
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 

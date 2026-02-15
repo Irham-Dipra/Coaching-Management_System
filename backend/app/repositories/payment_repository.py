@@ -113,11 +113,13 @@ class PaymentRepository:
             batch_payload.append(record)
             successful_students.append(data['student_id'])
             
+        inserted_data = []
         if batch_payload:
             try:
                 # Atomic Batch Insert
                 print(f"Executing Batch Insert for Group {group_id}")
                 response = supabase.table(self.table).insert(batch_payload).execute()
+                inserted_data = response.data
             except Exception as e:
                 print(f"Bulk Insert Failed: {e}")
                 # If the batch fails (system error), re-raise
@@ -126,7 +128,8 @@ class PaymentRepository:
         return {
             "success": len(batch_payload),
             "failed": failed_payments,
-            "successful_student_ids": successful_students
+            "successful_student_ids": successful_students,
+            "data": inserted_data
         }
 
 

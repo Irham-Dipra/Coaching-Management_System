@@ -668,24 +668,34 @@ const AddPaymentModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ i
         onSuccess: (data) => {
             queryClient.invalidateQueries({ queryKey: ['payments'] });
             queryClient.invalidateQueries({ queryKey: ['payment_status'] });
-            onClose();
-
-            if (mode === 'bulk' && data && (data.success !== undefined || data.failed !== undefined)) {
-                // Handle Bulk Response
+            if (data && (data.success !== undefined || data.failed !== undefined)) {
+                // Handle Bulk Response (Auto-detect based on shape)
                 const successCount = data.success || 0;
                 const failureCount = data.failed ? data.failed.length : 0;
 
                 if (failureCount > 0) {
                     const failMsg = data.failed.map((f: any) => `• ${f.student_name}: ${f.reason}`).join('\n');
                     alert(`⚠️ Payment Recorded with Issues:\n\n✅ ${successCount} payments successful.\n❌ ${failureCount} payments failed due to prior dues:\n\n${failMsg}\n\nPlease clear previous dues for these students first.`);
+
+                    if (successCount > 0) {
+                        // Partial Success: Close and Reset
+                        onClose();
+                        resetPaymentFields();
+                    } else {
+                        // All Failed: Keep modal open, Don't reset fields
+                        // This allows user to see what they tried or change selection without re-entering everything.
+                    }
                 } else {
                     alert(`✅ Successfully recorded ${successCount} payments!`);
+                    onClose();
+                    resetPaymentFields();
                 }
             } else {
+                // Single Payment or Legacy
                 alert("Payment Recorded!");
+                onClose();
+                resetPaymentFields();
             }
-
-            resetPaymentFields();
         },
         onError: (err) => alert("Error: " + err)
     });

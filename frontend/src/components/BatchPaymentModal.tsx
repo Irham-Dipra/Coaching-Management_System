@@ -126,14 +126,47 @@ const BatchPaymentModal: React.FC<BatchPaymentModalProps> = ({ isOpen, onClose, 
         onSuccess: (data) => {
             queryClient.invalidateQueries({ queryKey: ['payments'] });
             queryClient.invalidateQueries({ queryKey: ['finance'] });
-            alert(`Successfully processed ${data?.length || 'batch'} payments!`);
-            onClose();
-            // Reset selection
-            setSelectedFullIds([]);
-            setSelectedPartialIds([]);
-            setIsFullClearAll(false);
-            setIsPartialClearAll(false);
-            setCustomAmounts({});
+
+            // Check response structure
+            if (data && (data.success !== undefined || data.failed !== undefined)) {
+                const successCount = data.success || 0;
+                const failureCount = data.failed ? data.failed.length : 0;
+
+                if (failureCount > 0) {
+                    const failMsg = data.failed.map((f: any) => `• ${f.student_name}: ${f.reason}`).join('\n');
+                    alert(`⚠️ Batch Payment Completed with Issues:\n\n✅ ${successCount} payments successful.\n❌ ${failureCount} payments failed due to prior dues:\n\n${failMsg}`);
+
+                    if (successCount > 0) {
+                        // Partial Success:
+                        // Maybe we should remove the successful ones from selection?
+                        // For now, let's just close if user is done, BUT keeping it open is safer for review.
+                        // Actually, if we close, user loses the context of who failed (unless they memorized the alert).
+                        // Let's keep it open but maybe uncheck successful ones?
+                        // Unchecking successful ones requires mapping student IDs.
+                        if (data.successful_student_ids) {
+                            setSelectedFullIds(prev => prev.filter(id => !data.successful_student_ids.includes(id)));
+                            setSelectedPartialIds(prev => prev.filter(id => !data.successful_student_ids.includes(id)));
+                        }
+                    }
+                    // Don't close modal so user can see what remains.
+                } else {
+                    alert(`✅ Successfully processed ${successCount} payments!`);
+                    onClose();
+                    // Reset selection
+                    setSelectedFullIds([]);
+                    setSelectedPartialIds([]);
+                    setIsFullClearAll(false);
+                    setIsPartialClearAll(false);
+                    setCustomAmounts({});
+                }
+            } else {
+                // Fallback for unexpected response
+                alert(`Successfully processed payments!`);
+                onClose();
+                setSelectedFullIds([]);
+                setSelectedPartialIds([]);
+                setCustomAmounts({});
+            }
         },
         onError: (err: any) => alert("Batch Payment Failed: " + err.message)
     });

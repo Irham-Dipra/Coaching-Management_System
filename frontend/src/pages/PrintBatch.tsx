@@ -103,8 +103,14 @@ const PrintBatch: React.FC = () => {
 
     // --- PRINT HANDLER ---
     const handlePrint = useReactToPrint({
-        content: () => printRef.current,
+        contentRef: printRef,
         documentTitle: activeTab === 'idcards' ? 'Student_ID_Cards' : 'Payment_Receipts',
+        pageStyle: `
+            @page { size: A4; margin: 0; }
+            @media print { 
+                body { -webkit-print-color-adjust: exact; }
+            }
+        `
     });
 
     return (
@@ -249,9 +255,9 @@ const PrintBatch: React.FC = () => {
                 </div>
             </div>
 
-            {/* HIDDEN PRINT AREA */}
-            <div className="hidden">
-                <div ref={printRef} className="bg-white text-black p-8">
+            {/* HIDDEN PRINT AREA (Fixed off-screen with explicit width so it's not "empty") */}
+            <div ref={printRef} className="fixed left-[-9999px] top-0 w-[210mm] overflow-hidden print:static print:w-auto print:overflow-visible">
+                <div className="bg-white text-black p-8">
                     {activeTab === 'idcards' ? (
                         <div className="grid grid-cols-2 gap-4">
                             {filteredStudents

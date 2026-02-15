@@ -90,5 +90,12 @@ export const PaymentRepository = {
         const response = await fetch(`${API_BASE_URL}/programs/${programId}/payment-status?month=${month}&year=${year}`);
         if (!response.ok) throw new Error("Failed to fetch program payment status");
         return await response.json();
+    },
+
+    // New: Ledger Breakdown
+    async getRevenueBreakdown(month: number, year: number) {
+        const response = await fetch(`${API_BASE_URL}/finance/revenue-breakdown?month=${month}&year=${year}`);
+        if (!response.ok) throw new Error("Failed to fetch revenue breakdown");
+        return await response.json();
     }
 };

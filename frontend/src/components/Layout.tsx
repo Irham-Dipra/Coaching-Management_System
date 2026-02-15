@@ -8,7 +8,8 @@ import {
     CreditCard,
     Calendar,
     Layers,
-    UserPlus
+    UserPlus,
+    Printer
 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -31,6 +32,8 @@ const Layout: React.FC = () => {
         { label: 'Scheduling', path: '/admin/scheduling', icon: <Calendar size={20} /> },
         { label: 'Attendance', path: '/attendance', icon: <ClipboardCheck size={20} /> },
         { label: 'Finance', path: '/finance', icon: <CreditCard size={20} /> },
+        { type: 'divider', label: 'Tools' },
+        { label: 'Batch Print', path: '/admin/print', icon: <Printer size={20} /> },
     ];
 
     // Fallback display name logic

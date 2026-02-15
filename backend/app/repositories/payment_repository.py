@@ -413,28 +413,22 @@ class PaymentRepository:
     def get_payments_paginated(self, page: int = 1, page_size: int = 50, search: str = None, filters: dict = None):
         """
         Fetches payments with server-side pagination, search, and filtering.
-        Returns { data: [...], total_count: int }.
+        CORRECTED LOGIC:
+        1. Fetch ALL (id, group_id) pairs matching filters.
+        2. Group them in Python to determine REAL transaction count.
+        3. Slice the groups for pagination.
+        4. Fetch details only for the payments in the current page.
         """
-        # Calculate Range
-        start = (page - 1) * page_size
-        end = start + page_size - 1
-
-        # Base Query
-        # We need 'count="exact"' to get total records for pagination
+        # --- Step 1: Fetch Search/Filter Hits (IDs only) ---
         query = supabase.table(self.table)\
-            .select("*, enrollment!inner(roll_no, student!inner(student_id, name, class, batch_id), program(program_name, program_id))", count="exact")\
+            .select("payment_id, transaction_group_id, enrollment!inner(roll_no, student!inner(name), program(program_id))")\
             .order("payment_id", desc=True)
 
         # Apply Search
         if search:
-            # Search by Student Name or Receipt ID
-            # Note: OR filter across relations is complex in Supabase-py. 
-            # We'll prioritize Student Name matching via relation. 
-            # If search is numeric, assume Payment ID.
             if search.isdigit():
                 query = query.eq("payment_id", int(search))
             else:
-                # ilike on student name
                 query = query.ilike("enrollment.student.name", f"%{search}%")
 
         # Apply Filters
@@ -448,113 +442,162 @@ class PaymentRepository:
             if filters.get('roll_no'):
                 query = query.ilike("enrollment.roll_no", f"%{filters['roll_no']}%")
         
-        # Apply Range (Pagination)
-        response = query.range(start, end).execute()
-        
-        raw_rows = response.data
-        total_count = response.count
-
-        if not raw_rows:
+        # Execute (Fetch ALL simplified rows)
+        try:
+            # We request a large range to simulate "Fetch All".
+            response = query.range(0, 99999).execute()
+            all_hits = response.data
+        except Exception as e:
+            print(f"Pagination Query Failed: {e}")
             return { "data": [], "total_count": 0 }
 
-        # --- GROUPING LOGIC (Preserving existing logic) ---
-        grouped_map = {} 
-        group_order = [] 
+        if not all_hits:
+            return { "data": [], "total_count": 0 }
 
-        for r in raw_rows:
+        # --- Step 2: Grouping (In-Memory) ---
+        grouped_hits = {} # Map[gid -> { max_id, pids[] }]
+        group_order = []  # List[gid] to maintain DESC sort order
+        
+        for r in all_hits:
+            pid = r['payment_id']
             gid = r.get('transaction_group_id')
-            if not gid:
-                 gid = f"single_{r['payment_id']}"
-                 
-            enroll = r.get('enrollment') or {}
-            student = enroll.get('student') or {}
-            program = enroll.get('program') or {}
             
-            if gid not in grouped_map:
-                grouped_map[gid] = {
-                    "sort_id": r['payment_id'], 
-                    "payment_ids": [],
-                    "payment_id": r['payment_id'], # Primary ID for display
-                    "student_id": student.get("student_id"),
-                    "enrollment_id": r.get("enrollment_id"),
-                    "student_name": student.get("name") or "Unknown",
-                    "student_code": student.get("student_code") or student.get("student_id"), # Fallback
-                    "class": student.get("class"),       
-                    "batch_id": student.get("batch_id"), 
-                    "roll_no": enroll.get("roll_no"),    
-                    "program_name": program.get("program_name") or "Unknown Program",
-                    "program_id": program.get("program_id"), 
-                    "amount": 0.0, # Total amount
-                    "months": [],
-                    "payment_date": r.get('payment_date'), 
-                    "payment_method": r.get('payment_method'),
-                    "type": "Single", 
-                    "remarks": r.get('remarks') or "",
-                    "is_editable": False, 
-                    "raw_group_id": r.get('transaction_group_id'),
-                    "sub_payments": [] 
+            if not gid:
+                gid = f"single_{pid}"
+                
+            if gid not in grouped_hits:
+                grouped_hits[gid] = {
+                    "gid": gid,
+                    "max_pid": pid,
+                    "payment_ids": []
                 }
                 group_order.append(gid)
             
-            group = grouped_map[gid]
+            grouped_hits[gid]['payment_ids'].append(pid)
+
+        # Total "Transaction" Count
+        total_count = len(group_order)
+        
+        # --- Step 3: Pagination Slice ---
+        start_idx = (page - 1) * page_size
+        end_idx = start_idx + page_size
+        
+        paged_gids = group_order[start_idx:end_idx]
+        
+        if not paged_gids:
+             return { "data": [], "total_count": total_count }
+             
+        # Collect all payment_ids needed for this page
+        target_payment_ids = []
+        for gid in paged_gids:
+            target_payment_ids.extend(grouped_hits[gid]['payment_ids'])
+            
+        # --- Step 4: Fetch Full Details ---
+        details_response = supabase.table(self.table)\
+            .select("*, enrollment!inner(roll_no, student!inner(student_id, name, class, batch_id), program(program_name, program_id))")\
+            .in_("payment_id", target_payment_ids)\
+            .order("payment_id", desc=True)\
+            .execute()
+            
+        raw_rows = details_response.data
+        
+        # --- Step 5: Re-Group for Display (Same logic as before) ---
+        rows_by_pid = { r['payment_id']: r for r in raw_rows }
+        
+        results = []
+        
+        for gid in paged_gids:
+            # Reconstruct the group object
+            pids = grouped_hits[gid]['payment_ids']
+            if not pids: continue
+            
+            # Use max(pids) or the one that exists in rows_by_pid (all should exist)
+            valid_pids = [p for p in pids if p in rows_by_pid]
+            if not valid_pids: continue
+            
+            primary_pid = max(valid_pids)
+            primary_row = rows_by_pid[primary_pid]
+            
+            # Init Group Object
+            enroll = primary_row.get('enrollment') or {}
+            student = enroll.get('student') or {}
+            program = enroll.get('program') or {}
+            
+            group_obj = {
+                "sort_id": primary_row['payment_id'], 
+                "payment_ids": [], 
+                "payment_id": primary_row['payment_id'], 
+                "student_id": student.get("student_id"),
+                "enrollment_id": primary_row.get("enrollment_id"),
+                "student_name": student.get("name") or "Unknown",
+                "student_code": student.get("student_code") or student.get("student_id"), 
+                "class": student.get("class"),       
+                "batch_id": student.get("batch_id"), 
+                "roll_no": enroll.get("roll_no"),    
+                "program_name": program.get("program_name") or "Unknown Program",
+                "program_id": program.get("program_id"), 
+                "amount": 0.0, 
+                "months": [],
+                "payment_date": primary_row.get('payment_date'), 
+                "payment_method": primary_row.get('payment_method'),
+                "type": "Single", 
+                "remarks": primary_row.get('remarks') or "",
+                "is_editable": True, 
+                "raw_group_id": primary_row.get('transaction_group_id'),
+                "sub_payments": [] 
+            }
             
             # Aggregate
-            amt = r.get('paid_amount')
-            if amt is not None:
-                group['amount'] += float(amt)
+            for pid in valid_pids:
+                r = rows_by_pid[pid]
+                amt = r.get('paid_amount')
+                if amt is not None:
+                    group_obj['amount'] += float(amt)
+                    
+                y = r.get('year')
+                m = r.get('month')
+                if y and m:
+                    group_obj['months'].append( (y, m) )
+                    sub_p = { "month": m, "year": y, "amount": float(amt) }
+                    
+                    # Avoid duplicates manually if needed, but dict compare works
+                    is_dup = False
+                    for existing in group_obj['sub_payments']:
+                        if existing == sub_p:
+                            is_dup = True
+                            break
+                    if not is_dup:
+                        group_obj['sub_payments'].append(sub_p)
                 
-            y = r.get('year')
-            m = r.get('month')
-            if y and m:
-                group['months'].append( (y, m) )
-                group['sub_payments'].append({
-                    "month": m,
-                    "year": y,
-                    "amount": float(amt)
-                })
+                group_obj['payment_ids'].append(pid)
                 
-            group['payment_ids'].append(r['payment_id'])
-            
-            if len(group['payment_ids']) > 1:
-                group['type'] = "Bulk"
-        
-        # Format Results
-        results = []
-        for gid in group_order:
-            g = grouped_map[gid]
-            
-            # Date Range Display
-            if g['months']:
+            if len(group_obj['payment_ids']) > 1:
+                group_obj['type'] = "Bulk"
+                
+            # Date Range Display Logic
+            if group_obj['months']:
                 try:
-                    g['months'].sort()
-                    start_y, start_m = g['months'][0]
-                    end_y, end_m = g['months'][-1]
+                    group_obj['months'].sort()
+                    start_y, start_m = group_obj['months'][0]
+                    end_y, end_m = group_obj['months'][-1]
                     
                     start_name = date(start_y, start_m, 1).strftime("%b %Y")
                     end_name = date(end_y, end_m, 1).strftime("%b %Y")
                     
-                    if len(g['months']) > 1:
+                    if len(group_obj['months']) > 1:
                         if start_y == end_y:
                              start_month = date(start_y, start_m, 1).strftime("%b")
-                             g['date_display'] = f"{start_month} - {end_name}"
+                             group_obj['date_display'] = f"{start_month} - {end_name}"
                         else:
-                             g['date_display'] = f"{start_name} - {end_name}"
+                             group_obj['date_display'] = f"{start_name} - {end_name}"
                     else:
-                        g['date_display'] = start_name
+                        group_obj['date_display'] = start_name
                 except Exception:
-                    g['date_display'] = "-"
+                    group_obj['date_display'] = "-"
             else:
-                g['date_display'] = "-"
-                
-            results.append(g)
+                group_obj['date_display'] = "-"
             
-        # Post-Processing: "Latest" Flag
-        # Simple logic: If it's on Page 1 (start==0), we mark distinct enrollments as editable?
-        # Better: Strict check is in `update_payment`. Here we default to True for UX 
-        # or implement a lightweight check if critical. 
-        # For performance, we'll mark all as editable (let backend reject if not).
-        for res in results:
-            res['is_editable'] = True # Relies on backend validation in update_payment
+            results.append(group_obj)
                 
         return {
             "data": results,

@@ -1,15 +1,29 @@
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Users, Filter, CheckCircle, XCircle, AlertTriangle, DollarSign, Download } from 'lucide-react';
+import { ArrowLeft, Users, Filter, CheckCircle, XCircle, AlertTriangle, DollarSign, Download, CheckSquare, Square, Edit, Trash2, Printer } from 'lucide-react';
 import { ProgramRepository } from '../repositories/ProgramRepository';
-import { generatePaymentSlip } from '../utils/pdfGenerator';
+import ReceiptTemplate from '../components/ReceiptTemplate';
+import EditPaymentModal from '../components/EditPaymentModal';
+import { PaymentRepository } from '../repositories/PaymentRepository';
+import { useReactToPrint } from 'react-to-print';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 
 const ProgramFinanceDetails: React.FC = () => {
     const { id } = useParams<{ id: string }>();
+
     const navigate = useNavigate();
     const [searchParams] = useSearchParams();
+    const queryClient = useQueryClient();
     const viewMode = searchParams.get('view') || 'due_monthly'; // 'revenue', 'due_monthly', 'due_overall'
+
+    // Selection State
+    const [selectedPayments, setSelectedPayments] = useState<Map<number, any>>(new Map());
+    const [editPayment, setEditPayment] = useState<any>(null);
+    const [singlePrintId, setSinglePrintId] = useState<number | null>(null);
+
+    const batchPrintRef = React.useRef<HTMLDivElement>(null);
+    const singlePrintRef = React.useRef<HTMLDivElement>(null);
 
     // Default to current month/year
     const today = new Date();
@@ -50,6 +64,72 @@ const ProgramFinanceDetails: React.FC = () => {
         },
         enabled: !!id
     });
+
+    // Delete Mutation
+    const deleteMutation = useMutation({
+        mutationFn: PaymentRepository.deletePayment,
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['program_finance'] });
+            queryClient.invalidateQueries({ queryKey: ['finance'] });
+            alert("Payment Deleted Successfully!");
+        },
+        onError: (err) => alert("Failed to delete: " + err)
+    });
+
+    // Print Hooks
+    const handleBatchPrintTrigger = useReactToPrint({
+        contentRef: batchPrintRef,
+        documentTitle: 'Program_Receipts_Batch',
+        pageStyle: `
+            @page { size: A4; margin: 0; }
+            @media print { 
+                body { -webkit-print-color-adjust: exact; }
+            }
+        `
+    });
+
+    const handleSinglePrintTrigger = useReactToPrint({
+        contentRef: singlePrintRef,
+        documentTitle: 'Payment_Receipt',
+        pageStyle: `
+            @page { size: A4; margin: 0; }
+            @media print { 
+                body { -webkit-print-color-adjust: exact; }
+            }
+        `
+    });
+
+    const handleSinglePrint = (id: number) => {
+        setSinglePrintId(id);
+        setTimeout(() => handleSinglePrintTrigger(), 100);
+    };
+
+    // Selection Logic
+    const toggleSelection = (payment: any) => {
+        const pid = payment.payment_id;
+        setSelectedPayments(prev => {
+            const newMap = new Map(prev);
+            if (newMap.has(pid)) newMap.delete(pid);
+            else newMap.set(pid, payment);
+            return newMap;
+        });
+    };
+
+    const toggleAllVisible = () => {
+        if (!fetchedData?.transactions) return;
+        const allSelected = fetchedData.transactions.every((p: any) => selectedPayments.has(p.payment_id));
+        setSelectedPayments(prev => {
+            const newMap = new Map(prev);
+            if (allSelected) {
+                fetchedData.transactions.forEach((p: any) => newMap.delete(p.payment_id));
+            } else {
+                fetchedData.transactions.forEach((p: any) => newMap.set(p.payment_id, p));
+            }
+            return newMap;
+        });
+    };
+
+    const clearSelection = () => setSelectedPayments(new Map());
 
     // Flatten Logic
     const transactions = viewMode === 'revenue' ? (fetchedData?.transactions || []) : [];
@@ -129,6 +209,25 @@ const ProgramFinanceDetails: React.FC = () => {
                     </h1>
                     <p className="text-slate-400 mt-1">{subtitle}</p>
                 </div>
+
+                {/* ACTION BAR FOR REVENUE */}
+                {viewMode === 'revenue' && selectedPayments.size > 0 && (
+                    <div className="flex items-center gap-3 animate-in fade-in slide-in-from-right mr-4">
+                        <button
+                            onClick={clearSelection}
+                            className="px-3 py-1.5 bg-slate-800 text-slate-300 text-sm font-bold rounded-lg hover:bg-slate-700 transition-all border border-slate-700"
+                        >
+                            Clear ({selectedPayments.size})
+                        </button>
+                        <button
+                            onClick={handleBatchPrintTrigger}
+                            className="flex items-center gap-2 px-4 py-1.5 bg-blue-600 text-white text-sm font-bold rounded-lg shadow-lg shadow-blue-500/20 hover:bg-blue-500 transition-all"
+                        >
+                            <Printer size={16} />
+                            Print Selected
+                        </button>
+                    </div>
+                )}
 
                 {/* DATE CONTROLS (Hide for Overall Due?) */}
                 {viewMode !== 'due_overall' && (() => {
@@ -282,7 +381,15 @@ const ProgramFinanceDetails: React.FC = () => {
                                 <tr>
                                     {viewMode === 'revenue' ? (
                                         <>
-                                            <th className="p-4 pl-6">Receipt #</th>
+                                            <th className="p-4 pl-6 w-10">
+                                                <button onClick={toggleAllVisible} className="hover:text-white transition-colors">
+                                                    {(fetchedData?.transactions?.length > 0 && fetchedData.transactions.every((p: any) => selectedPayments.has(p.payment_id)))
+                                                        ? <CheckSquare size={18} className="text-blue-500" />
+                                                        : <Square size={18} />
+                                                    }
+                                                </button>
+                                            </th>
+                                            <th className="p-4">Receipt #</th>
                                             <th className="p-4">Date</th>
                                             <th className="p-4">Student</th>
                                             <th className="p-4">Period</th>
@@ -313,7 +420,15 @@ const ProgramFinanceDetails: React.FC = () => {
                                 {/* REVENUE ROWS */}
                                 {viewMode === 'revenue' && transactions.map((row: any, i: number) => (
                                     <tr key={i} className="hover:bg-slate-700/30 transition-colors group">
-                                        <td className="p-4 pl-6 font-mono text-slate-500 group-hover:text-slate-300">#{row.payment_id}</td>
+                                        <td className="p-4 pl-6">
+                                            <button onClick={() => toggleSelection(row)} className="hover:text-white transition-colors">
+                                                {selectedPayments.has(row.payment_id)
+                                                    ? <CheckSquare size={18} className="text-blue-500" />
+                                                    : <Square size={18} className="text-slate-600" />
+                                                }
+                                            </button>
+                                        </td>
+                                        <td className="p-4 font-mono text-slate-500 group-hover:text-slate-300">#{row.payment_id}</td>
                                         <td className="p-4 text-slate-300 text-sm">{row.payment_date}</td>
                                         <td className="p-4">
                                             <div className="font-medium text-white">{row.student_name}</div>
@@ -333,11 +448,37 @@ const ProgramFinanceDetails: React.FC = () => {
                                         <td className="p-4">
                                             <span className="px-2 py-1 bg-slate-700 rounded text-xs border border-slate-600 text-slate-300">{row.payment_method || 'Cash'}</span>
                                         </td>
-                                        <td className="p-4 pr-6 text-center">
+                                        <td className="p-4 pr-6 text-center flex justify-center gap-2">
+                                            {row.is_editable ? (
+                                                <div className="flex gap-1">
+                                                    <button
+                                                        onClick={() => setEditPayment(row)}
+                                                        className="text-slate-400 hover:text-blue-400 p-2 rounded-full hover:bg-slate-700/50 transition-colors"
+                                                        title="Edit"
+                                                    >
+                                                        <Edit size={16} />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => {
+                                                            if (window.confirm("Are you sure you want to delete this payment? This action cannot be undone.")) {
+                                                                deleteMutation.mutate(row.payment_id);
+                                                            }
+                                                        }}
+                                                        className="text-slate-400 hover:text-red-400 p-2 rounded-full hover:bg-red-500/10 transition-colors"
+                                                        title="Delete"
+                                                    >
+                                                        <Trash2 size={16} />
+                                                    </button>
+                                                </div>
+                                            ) : (
+                                                <button className="text-slate-700 cursor-not-allowed p-2" disabled title="Not editable">
+                                                    <Edit size={16} />
+                                                </button>
+                                            )}
                                             <button
-                                                onClick={() => generatePaymentSlip(row)}
-                                                className="text-blue-400 hover:text-white p-2 rounded-full hover:bg-blue-600 transition-colors"
-                                                title="Download Receipt"
+                                                onClick={() => handleSinglePrint(row.payment_id)}
+                                                className="text-blue-400 hover:text-blue-300 p-2 rounded-full hover:bg-blue-500/10 transition-colors"
+                                                title="Print Receipt"
                                             >
                                                 <Download size={18} />
                                             </button>
@@ -408,6 +549,39 @@ const ProgramFinanceDetails: React.FC = () => {
                         </table>
                     </div>
                 )}
+            </div>
+            {/* MODALS */}
+            <EditPaymentModal isOpen={!!editPayment} onClose={() => setEditPayment(null)} payment={editPayment} />
+
+            {/* Hidden Print Areas */}
+            <div style={{ display: "none" }}>
+                <div ref={batchPrintRef}>
+                    <div className="bg-white text-black p-8 flex flex-col gap-0">
+                        {Array.from(selectedPayments.values())
+                            .sort((a: any, b: any) => b.payment_id - a.payment_id)
+                            .map((p: any) => (
+                                <div key={p.payment_id} className="break-inside-avoid">
+                                    <ReceiptTemplate payment={{ ...p, paid_amount: p.amount }} />
+                                </div>
+                            ))
+                        }
+                    </div>
+                </div>
+            </div>
+
+            <div style={{ display: "none" }}>
+                <div ref={singlePrintRef}>
+                    <div className="bg-white text-black p-8">
+                        {singlePrintId && fetchedData?.transactions
+                            ?.filter((p: any) => p.payment_id === singlePrintId)
+                            .map((p: any) => (
+                                <div key={p.payment_id}>
+                                    <ReceiptTemplate payment={{ ...p, paid_amount: p.amount }} />
+                                </div>
+                            ))
+                        }
+                    </div>
+                </div>
             </div>
         </div>
     );

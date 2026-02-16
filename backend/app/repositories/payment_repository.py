@@ -448,6 +448,11 @@ class PaymentRepository:
             if filters.get('batch_id'):
                 print(f"DEBUG: Filtering by batch: {filters['batch_id']}")
                 query = query.eq("enrollment.student.batch_id", int(filters['batch_id']))
+            # Date Range Filters
+            if filters.get('start_date'):
+                query = query.gte("payment_date", filters['start_date'])
+            if filters.get('end_date'):
+                query = query.lte("payment_date", filters['end_date'])
         
         # Execute (Fetch ALL simplified rows)
         try:

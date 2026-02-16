@@ -43,20 +43,27 @@ const Finance: React.FC = () => {
     const [classFilter, setClassFilter] = useState('');
     const [programFilter, setProgramFilter] = useState('');
 
+    // Date Filters
+    const [dateMode, setDateMode] = useState<'all' | 'custom'>('all');
+    const [startDate, setStartDate] = useState('');
+    const [endDate, setEndDate] = useState('');
+
     // Reset Page on Filter Change
     useEffect(() => {
         setPage(1);
-    }, [searchTerm, rollSearch, batchFilter, classFilter, programFilter]);
+    }, [searchTerm, rollSearch, batchFilter, classFilter, programFilter, startDate, endDate]);
 
 
     // Fetch Recent Payments (Paginated)
     const { data: paymentsData, isLoading: isPaymentsLoading } = useQuery({
-        queryKey: ['payments', page, searchTerm, rollSearch, classFilter, batchFilter, programFilter],
+        queryKey: ['payments', page, searchTerm, rollSearch, classFilter, batchFilter, programFilter, startDate, endDate], // Added dates to key
         queryFn: () => PaymentRepository.getRecentPayments(page, pageSize, searchTerm, {
             roll_no: rollSearch,
             program_id: programFilter,
             class: classFilter,
-            batch_id: batchFilter
+            batch_id: batchFilter,
+            start_date: startDate, // Pass to repo
+            end_date: endDate
         }),
         placeholderData: (previousData: any) => previousData
     });
@@ -94,7 +101,8 @@ const Finance: React.FC = () => {
     const filteredPayments = recentPayments;
 
     // --- BATCH PRINT LOGIC ---
-    const [selectedIds, setSelectedIds] = useState<number[]>([]);
+    // Persist full payment objects for printing even if off-screen
+    const [selectedPayments, setSelectedPayments] = useState<Map<number, any>>(new Map());
     const [singlePrintId, setSinglePrintId] = useState<number | null>(null);
     const batchPrintRef = React.useRef<HTMLDivElement>(null);
     const singlePrintRef = React.useRef<HTMLDivElement>(null);
@@ -129,17 +137,41 @@ const Finance: React.FC = () => {
         setTimeout(() => handleSinglePrintTrigger(), 100);
     };
 
-    const toggleSelection = (id: number) => {
-        setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
+    const toggleSelection = (payment: any) => {
+        const id = payment.sort_id || payment.payment_id;
+        setSelectedPayments(prev => {
+            const newMap = new Map(prev);
+            if (newMap.has(id)) {
+                newMap.delete(id);
+            } else {
+                newMap.set(id, payment);
+            }
+            return newMap;
+        });
     };
 
-    const toggleAll = () => {
-        // Use filteredPayments to determine what's "All" on this page
-        if (selectedIds.length === filteredPayments.length && filteredPayments.length > 0) {
-            setSelectedIds([]);
-        } else {
-            setSelectedIds(filteredPayments.map((p: any) => p.sort_id || p.payment_id));
-        }
+    const toggleAllOnPage = () => {
+        // Toggle only visible items
+        if (!filteredPayments) return;
+
+        const visibleItems = filteredPayments;
+        const allVisibleSelected = visibleItems.every((p: any) => selectedPayments.has(p.sort_id || p.payment_id));
+
+        setSelectedPayments(prev => {
+            const newMap = new Map(prev);
+            if (allVisibleSelected) {
+                // Deselect only visible
+                visibleItems.forEach((p: any) => newMap.delete(p.sort_id || p.payment_id));
+            } else {
+                // Select all visible
+                visibleItems.forEach((p: any) => newMap.set(p.sort_id || p.payment_id, p));
+            }
+            return newMap;
+        });
+    };
+
+    const clearSelection = () => {
+        setSelectedPayments(new Map());
     };
 
     // Warn if using unsupported filters?
@@ -260,14 +292,22 @@ const Finance: React.FC = () => {
                     <h2 className="text-xl font-bold text-white">All Transactions</h2>
 
                     {/* Print Selected Button */}
-                    {selectedIds.length > 0 && (
-                        <button
-                            onClick={handleBatchPrintTrigger}
-                            className="flex items-center gap-2 px-3 py-1 bg-blue-600 text-white text-sm font-bold rounded-lg shadow-lg shadow-blue-500/20 hover:bg-blue-500 transition-all animate-in fade-in zoom-in"
-                        >
-                            <Printer size={16} />
-                            Print Selected ({selectedIds.length})
-                        </button>
+                    {selectedPayments.size > 0 && (
+                        <div className="flex items-center gap-2">
+                            <button
+                                onClick={clearSelection}
+                                className="px-3 py-1 bg-slate-700 text-slate-300 text-sm font-bold rounded-lg hover:bg-slate-600 transition-all"
+                            >
+                                Clear ({selectedPayments.size})
+                            </button>
+                            <button
+                                onClick={handleBatchPrintTrigger}
+                                className="flex items-center gap-2 px-3 py-1 bg-blue-600 text-white text-sm font-bold rounded-lg shadow-lg shadow-blue-500/20 hover:bg-blue-500 transition-all animate-in fade-in zoom-in"
+                            >
+                                <Printer size={16} />
+                                Print Selected
+                            </button>
+                        </div>
                     )}
 
                     <button
@@ -279,6 +319,47 @@ const Finance: React.FC = () => {
                     <span className="text-sm text-slate-500">
                         Showing {((page - 1) * pageSize) + 1}-{Math.min(page * pageSize, totalCount)} of {totalCount}
                     </span>
+
+                    {/* Date Filter (Moved from Filter Bar) */}
+                    <div className="flex items-center gap-2 bg-slate-800 p-1 rounded-lg border border-slate-700 ml-4 animate-in fade-in slide-in-from-top-2">
+                        <select
+                            className="bg-transparent text-slate-300 outline-none text-sm font-medium pl-1"
+                            value={dateMode}
+                            onChange={(e) => {
+                                setDateMode(e.target.value as 'all' | 'custom');
+                                if (e.target.value === 'all') {
+                                    setStartDate('');
+                                    setEndDate('');
+                                } else {
+                                    // Default to Today
+                                    const today = new Date().toISOString().split('T')[0];
+                                    setStartDate(today);
+                                    setEndDate(today);
+                                }
+                            }}
+                        >
+                            <option value="all" className="bg-slate-900">All Time</option>
+                            <option value="custom" className="bg-slate-900">Custom Date</option>
+                        </select>
+
+                        {dateMode === 'custom' && (
+                            <div className="flex items-center gap-1 px-1">
+                                <input
+                                    type="date"
+                                    className="bg-slate-900 text-white text-xs p-1 rounded border border-slate-600 outline-none focus:border-blue-500 w-[110px]"
+                                    value={startDate}
+                                    onChange={(e) => setStartDate(e.target.value)}
+                                />
+                                <span className="text-slate-500">-</span>
+                                <input
+                                    type="date"
+                                    className="bg-slate-900 text-white text-xs p-1 rounded border border-slate-600 outline-none focus:border-blue-500 w-[110px]"
+                                    value={endDate}
+                                    onChange={(e) => setEndDate(e.target.value)}
+                                />
+                            </div>
+                        )}
+                    </div>
                 </div>
 
                 {/* Pagination Controls */}
@@ -348,8 +429,8 @@ const Finance: React.FC = () => {
                     <thead className="bg-slate-900/50 text-slate-400 text-xs uppercase font-bold border-b border-slate-700">
                         <tr>
                             <th className="p-5 w-10">
-                                <button onClick={toggleAll} className="hover:text-white transition-colors">
-                                    {(selectedIds.length === filteredPayments?.length && filteredPayments?.length > 0)
+                                <button onClick={toggleAllOnPage} className="hover:text-white transition-colors">
+                                    {(filteredPayments?.length > 0 && filteredPayments.every((p: any) => selectedPayments.has(p.sort_id || p.payment_id)))
                                         ? <CheckSquare size={18} className="text-blue-500" />
                                         : <Square size={18} />
                                     }
@@ -369,13 +450,12 @@ const Finance: React.FC = () => {
                             <tr><td colSpan={7} className="p-10 text-center text-blue-400 animate-pulse">Loading transactions...</td></tr>
                         )}
                         {!isPaymentsLoading && filteredPayments?.map((p: any) => {
-                            // Backend now returns 'date_display' and 'type' and 'total_amount'
-                            // p.sort_id is the ID to key by
+                            const isSelected = selectedPayments.has(p.sort_id || p.payment_id);
                             return (
-                                <tr key={p.sort_id || p.payment_id} className={`hover:bg-slate-700/30 transition-colors group ${selectedIds.includes(p.sort_id || p.payment_id) ? 'bg-blue-900/10' : ''}`}>
+                                <tr key={p.sort_id || p.payment_id} className={`hover:bg-slate-700/30 transition-colors group ${isSelected ? 'bg-blue-900/10' : ''}`}>
                                     <td className="p-5">
-                                        <button onClick={() => toggleSelection(p.sort_id || p.payment_id)} className="hover:text-white transition-colors">
-                                            {selectedIds.includes(p.sort_id || p.payment_id)
+                                        <button onClick={() => toggleSelection(p)} className="hover:text-white transition-colors">
+                                            {isSelected
                                                 ? <CheckSquare size={18} className="text-blue-500" />
                                                 : <Square size={18} className="text-slate-600" />
                                             }
@@ -400,6 +480,7 @@ const Finance: React.FC = () => {
                                         <span className="px-2 py-1 bg-slate-700/50 rounded text-xs border border-slate-600">{p.payment_method || 'Cash'}</span>
                                     </td>
                                     <td className="p-5 text-center flex justify-center gap-2">
+                                        {/* Actions... */}
                                         {p.is_editable ? (
                                             <div className="flex gap-1">
                                                 <button
@@ -431,7 +512,6 @@ const Finance: React.FC = () => {
                                             </button>
                                         )}
 
-                                        {/* Print Receipt */}
                                         <button
                                             onClick={() => handleSinglePrint(p.sort_id || p.payment_id)}
                                             className="text-blue-400 hover:text-blue-300 p-2 rounded-full hover:bg-blue-500/10 transition-colors"
@@ -458,8 +538,8 @@ const Finance: React.FC = () => {
             <div style={{ display: "none" }}>
                 <div ref={batchPrintRef}>
                     <div className="bg-white text-black p-8 flex flex-col gap-0">
-                        {filteredPayments
-                            ?.filter((p: any) => selectedIds.includes(p.sort_id || p.payment_id))
+                        {Array.from(selectedPayments.values())
+                            .sort((a: any, b: any) => (b.sort_id || b.payment_id) - (a.sort_id || a.payment_id))
                             .map((p: any) => (
                                 <div key={p.sort_id || p.payment_id} className="break-inside-avoid">
                                     <ReceiptTemplate payment={{

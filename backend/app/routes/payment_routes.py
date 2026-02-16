@@ -16,7 +16,9 @@ def get_recent_payments(
     program_id: int = None, 
     roll_no: str = None,
     class_grade: int = Query(None, alias="class"),
-    batch_id: int = None
+    batch_id: int = None,
+    start_date: str = None,
+    end_date: str = None
 ):
     filters = {}
     if month: filters['month'] = month
@@ -25,6 +27,8 @@ def get_recent_payments(
     if roll_no: filters['roll_no'] = roll_no
     if class_grade: filters['class'] = class_grade
     if batch_id: filters['batch_id'] = batch_id
+    if start_date: filters['start_date'] = start_date
+    if end_date: filters['end_date'] = end_date
     
     return payment_repo.get_payments_paginated(page, page_size, search, filters)
 

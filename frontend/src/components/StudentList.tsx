@@ -47,6 +47,7 @@ const StudentList: React.FC<StudentListProps> = ({ fixedBatchId, hideHeader }) =
     // --- STATE: PRINTING ---
     const printRef = useRef<HTMLDivElement>(null);
     const [singlePrintId, setSinglePrintId] = useState<number | null>(null);
+    const [startPrint, setStartPrint] = useState(false);
 
     // --- AUTO-ACTION ---
     const [searchParams, setSearchParams] = useSearchParams();
@@ -109,9 +110,18 @@ const StudentList: React.FC<StudentListProps> = ({ fixedBatchId, hideHeader }) =
     const isAllPageSelected = students.length > 0 && students.every(s => selectedStudents.has(s.student_id));
 
     // --- PRINT LOGIC ---
+    // Calculate what to print FIRST to ensure it's ready
+    const studentsToPrint = useMemo(() => {
+        if (singlePrintId) {
+            let s = students.find(s => s.student_id === singlePrintId);
+            if (!s) s = selectedStudents.get(singlePrintId);
+            return s ? [s] : [];
+        }
+        return Array.from(selectedStudents.values());
+    }, [singlePrintId, selectedStudents, students]);
+
     const handlePrintRequest = useReactToPrint({
-        // @ts-ignore
-        content: () => printRef.current,
+        contentRef: printRef,
         documentTitle: 'Student_ID_Cards',
         pageStyle: `
             @page { size: A4; margin: 0; }
@@ -121,8 +131,16 @@ const StudentList: React.FC<StudentListProps> = ({ fixedBatchId, hideHeader }) =
         `,
         onAfterPrint: () => {
             setSinglePrintId(null);
+            setStartPrint(false);
         }
     });
+
+    // Trigger Print Effect
+    React.useEffect(() => {
+        if (startPrint && studentsToPrint.length > 0) {
+            handlePrintRequest();
+        }
+    }, [startPrint, studentsToPrint, handlePrintRequest]);
 
     const triggerPrint = (singleId?: number) => {
         if (singleId) {
@@ -130,25 +148,8 @@ const StudentList: React.FC<StudentListProps> = ({ fixedBatchId, hideHeader }) =
         } else {
             setSinglePrintId(null);
         }
-        // Timeout to allow render
-        setTimeout(() => handlePrintRequest(), 500);
+        setStartPrint(true);
     };
-
-    // Calculate what to print
-    const studentsToPrint = useMemo(() => {
-        if (singlePrintId) {
-            // Find student from current page OR selection
-            // We need to fetch full details if not in current page?
-            // For now, assume current page/selection has enough data.
-            // If singlePrintId is passed, we prioritize finding it.
-            let s = students.find(s => s.student_id === singlePrintId);
-            if (!s) s = selectedStudents.get(singlePrintId);
-
-            return s ? [s] : [];
-        }
-        return Array.from(selectedStudents.values());
-    }, [singlePrintId, selectedStudents, students]);
-
 
     if (error) return <div className="p-8 text-center text-red-500">Failed to load students.</div>;
 

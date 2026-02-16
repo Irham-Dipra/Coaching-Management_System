@@ -40,12 +40,20 @@ class PaymentRepository:
         failed_payments = []
         successful_students = []
         
+        # Prepare a lookup set for (student_id, month, year) to check if we are paying the due now
+        paying_set = set()
+        for d in data_list:
+            paying_set.add((d['student_id'], int(d['month']), int(d['year'])))
+
+        # Group ID Cache per student to ensure all months for ONE student get SAME Transaction ID
+        student_group_map = {}
+
         for data in data_list:
-            # Generate unique ID for this specific payment record/student
-            # If multiple months for same student were sent, they might want same ID?
-            # But BatchModal sends 1 entry per student (for current selected Month).
-            # So unique per entry is safer for now.
-            group_id = str(uuid.uuid4())
+            sid = data['student_id']
+            if sid not in student_group_map:
+                student_group_map[sid] = str(uuid.uuid4())
+            
+            group_id = student_group_map[sid]
             
             # Resolve Enrollment ID (Optimization: Could be done once if UI sends enrollment_id directly, 
             # but usually UI sends StudentID+ProgramID. We'll resolve strict.)
@@ -87,6 +95,11 @@ class PaymentRepository:
                     if entry_date < target_date:
                         # And it is NOT fully paid
                         if entry['status'] != 'Paid':
+                            # CHECK: Are we paying this 'entry' in the current batch?
+                            if (data['student_id'], entry['month'], entry['year']) in paying_set:
+                                # We are paying it now, so it's fine. Continue checking other months.
+                                continue
+                                
                             has_prior_dues = True
                             prior_due_month = f"{date(entry['year'], entry['month'], 1).strftime('%b %Y')}"
                             break

@@ -586,7 +586,7 @@ const EditPaymentModal: React.FC<{ isOpen: boolean; onClose: () => void; payment
     useEffect(() => {
         if (payment) {
             // Support new backend format: total_amount vs paid_amount
-            const amt = payment.total_amount || payment.paid_amount;
+            const amt = payment.amount || payment.total_amount || payment.paid_amount || 0;
             setAmount(amt.toString());
             setMethod(payment.payment_method || 'Cash');
             setRemarks(payment.remarks || '');

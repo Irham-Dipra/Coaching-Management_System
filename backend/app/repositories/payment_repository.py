@@ -421,7 +421,7 @@ class PaymentRepository:
         """
         # --- Step 1: Fetch Search/Filter Hits (IDs only) ---
         query = supabase.table(self.table)\
-            .select("payment_id, transaction_group_id, enrollment!inner(roll_no, student!inner(name, class, batch_id), program(program_id))")\
+            .select("payment_id, transaction_group_id, enrollment!inner(enrollment_id, roll_no, student!inner(name, class, batch_id), program(program_id))")\
             .order("payment_id", desc=True)
 
         # Apply Search
@@ -433,7 +433,6 @@ class PaymentRepository:
 
         # Apply Filters
         if filters:
-            print(f"DEBUG: Applying filters: {filters}")
             if filters.get('month'):
                 query = query.eq("month", int(filters['month']))
             if filters.get('year'):
@@ -443,10 +442,8 @@ class PaymentRepository:
             if filters.get('roll_no'):
                 query = query.ilike("enrollment.roll_no", f"%{filters['roll_no']}%")
             if filters.get('class'):
-                print(f"DEBUG: Filtering by class: {filters['class']}")
                 query = query.eq("enrollment.student.class", int(filters['class']))
             if filters.get('batch_id'):
-                print(f"DEBUG: Filtering by batch: {filters['batch_id']}")
                 query = query.eq("enrollment.student.batch_id", int(filters['batch_id']))
             # Date Range Filters
             if filters.get('start_date'):
@@ -499,44 +496,93 @@ class PaymentRepository:
         if not paged_gids:
              return { "data": [], "total_count": total_count }
              
-        # Collect all payment_ids needed for this page
+        # Collect target payment IDs
         target_payment_ids = []
         for gid in paged_gids:
             target_payment_ids.extend(grouped_hits[gid]['payment_ids'])
             
         # --- Step 4: Fetch Full Details ---
         details_response = supabase.table(self.table)\
-            .select("*, enrollment!inner(roll_no, student!inner(student_id, name, class, batch_id), program(program_name, program_id))")\
+            .select("*, enrollment!inner(enrollment_id, roll_no, student!inner(student_id, name, class, batch_id), program(program_name, program_id))")\
             .in_("payment_id", target_payment_ids)\
             .order("payment_id", desc=True)\
             .execute()
             
         raw_rows = details_response.data
         
-        # --- Step 5: Re-Group for Display (Same logic as before) ---
+        # --- Step 5: Resolve Latest Payment IDs for Editability (Batch Optimization) ---
+        # 1. Collect all enrollment_ids from the *displayed* groups
+        # Let's index all_hits by payment_id first for O(1) lookup
+        # Note: This `all_hits_pid_map` contains only partial data (payment_id, transaction_group_id, enrollment_id, etc.)
+        # It's used to quickly get enrollment_id from any payment_id in `all_hits`.
+        all_hits_pid_map = { r['payment_id']: r for r in all_hits }
+        
+        # Collect distinct enrollment IDs for the current page
+        page_enrollment_ids = set()
+        for gid in paged_gids:
+             pids = grouped_hits[gid]['payment_ids']
+             if pids:
+                 first_pid = pids[0]
+                 if first_pid in all_hits_pid_map:
+                     # Access enrollment_id from the partial data in all_hits_pid_map
+                     # enrollment is nested now
+                     eid = all_hits_pid_map[first_pid].get('enrollment', {}).get('enrollment_id')
+                     if eid: page_enrollment_ids.add(eid)
+
+        # 2. Fetch MAX(payment_id) for each of these enrollments
+        latest_payment_map = {}
+        if page_enrollment_ids:
+             try:
+                 # Fetch all payments for these enrollments to find max.
+                 # Selecting just payment_id and enrollment_id
+                 latest_rows = supabase.table('payment')\
+                     .select('enrollment_id, payment_id')\
+                     .in_('enrollment_id', list(page_enrollment_ids))\
+                     .execute().data
+                 
+                 # Calc max in memory
+                 for lr in latest_rows:
+                     eid = lr['enrollment_id']
+                     pid = lr['payment_id']
+                     if pid > latest_payment_map.get(eid, 0):
+                         latest_payment_map[eid] = pid
+             except Exception as e:
+                 print(f"Error fetching latest payments: {e}")
+
+        # --- Step 6: Re-Group for Display (Same logic as before) ---
+        # This `rows_by_pid` contains the full details for the payments on the current page.
+        # It comes from 'details_response' (Step 4) NOT all_hits.
         rows_by_pid = { r['payment_id']: r for r in raw_rows }
         
         results = []
         
         for gid in paged_gids:
-            # Reconstruct the group object
-            pids = grouped_hits[gid]['payment_ids']
-            if not pids: continue
+            group_data = grouped_hits[gid]  # { gid, max_pid, payment_ids }
+            valid_pids = group_data['payment_ids']
             
-            # Use max(pids) or the one that exists in rows_by_pid (all should exist)
-            valid_pids = [p for p in pids if p in rows_by_pid]
-            if not valid_pids: continue
+            # Sort PIDs desc so primary is latest
+            valid_pids.sort(reverse=True)
+            primary_pid = valid_pids[0]
             
-            primary_pid = max(valid_pids)
-            primary_row = rows_by_pid[primary_pid]
+            primary_row = rows_by_pid.get(primary_pid)
+            if not primary_row: continue
             
-            # Init Group Object
+            # Enrollment Info
             enroll = primary_row.get('enrollment') or {}
             student = enroll.get('student') or {}
             program = enroll.get('program') or {}
             
+            # Check Editability: Is this the LATEST payment for this enrollment?
+            # For a group (Bulk), if the primary_pid (max in group) is the absolute max for the enrollment, it's editable.
+            current_enrollment_id = primary_row.get("enrollment_id")
+            # Default to False if logic fails
+            is_latest = False
+            if current_enrollment_id and current_enrollment_id in latest_payment_map:
+                is_latest = (primary_pid == latest_payment_map[current_enrollment_id])
+            
             group_obj = {
-                "sort_id": primary_row['payment_id'], 
+                "id": group_data['gid'], # sort_id
+                "sort_id": primary_row['payment_id'],
                 "payment_ids": [], 
                 "payment_id": primary_row['payment_id'], 
                 "student_id": student.get("student_id"),
@@ -554,7 +600,7 @@ class PaymentRepository:
                 "payment_method": primary_row.get('payment_method'),
                 "type": "Single", 
                 "remarks": primary_row.get('remarks') or "",
-                "is_editable": True, 
+                "is_editable": is_latest, 
                 "raw_group_id": primary_row.get('transaction_group_id'),
                 "sub_payments": [] 
             }

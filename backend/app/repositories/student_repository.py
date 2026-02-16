@@ -23,6 +23,68 @@ class StudentRepository:
                 
         return data
 
+    def get_students_paginated(self, page: int = 1, page_size: int = 50, search: str = None, roll_search: str = None, filters: dict = None):
+        """
+        Fetches students with server-side pagination, search, and filters.
+        """
+        # Base Query
+        # We perform a joined query to filter by nested fields if needed (program, roll)
+        # Note: 'enrollment!inner' forces students to have at least one enrollment if we filter by it.
+        # But for general list, we use 'enrollment' (left join implicit in Supabase usually, but filters might change it).
+        
+        # We need to build the query dynamically based on filters to avoid strict inner joins if not filtering by them.
+        
+        select_str = "*, batch(batch_name), enrollment(program_id, roll_no, status, program(program_name))"
+        
+        query = supabase.table(self.table).select(select_str, count="exact")
+        
+        # 1. Search (Name/ID)
+        if search:
+            if search.isdigit():
+                query = query.eq("student_id", int(search))
+            else:
+                query = query.ilike("name", f"%{search}%")
+                
+        # 2. Roll Search (Needs checking inside enrollment)
+        # Supabase doesn't support "OR" across tables easily or "ANY element in array matches".
+        # But we can use `enrollment.roll_no` ilike.
+        # CAUTION: Filtering on nested resource changes join type to INNER in PostgREST usually.
+        # This means students without enrollments might vanish if we filter by roll_no.
+        # But if we search by roll, we expect them to have enrollment. So that's fine.
+        if roll_search:
+             query = query.ilike("enrollment.roll_no", f"%{roll_search}%")
+             # We must change select to inner for this to work as filter? 
+             # Actually PostgREST filters on nested resource implicitly turn it into inner join logic for the result.
+             
+        # 3. Filters
+        if filters:
+            if filters.get('class'):
+                query = query.eq("class", int(filters['class']))
+            if filters.get('batch_id'):
+                query = query.eq("batch_id", int(filters['batch_id']))
+            if filters.get('program_id'):
+                query = query.eq("enrollment.program_id", int(filters['program_id']))
+
+        # Pagination
+        start = (page - 1) * page_size
+        end = start + page_size - 1
+        
+        response = query.range(start, end).execute()
+        
+        # Post-Processing
+        data = response.data
+        count = response.count
+        
+        # Filter Withdrawn
+        for student in data:
+            if 'enrollment' in student:
+                student['enrollment'] = [e for e in student['enrollment'] if e.get('status') == 'Active']
+                
+        return {
+            "data": data,
+            "total_count": count
+        }
+
     def enroll_new_student(self, student_data: StudentCreate):
         # Convert Pydantic object to a dictionary
         data_dict = student_data.dict()

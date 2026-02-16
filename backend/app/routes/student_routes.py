@@ -18,7 +18,62 @@ payment_repo = PaymentRepository()
 # 3. Define the "Endpoints" (URL paths)
 
 @router.get("/students")
-def get_students():
+def get_students(
+    page: int = 1, 
+    page_size: int = 50, 
+    search: str = None, 
+    roll_search: str = None,
+    class_filter: str = None,
+    batch_filter: str = None,
+    program_filter: str = None
+):
+    filters = {}
+    if class_filter: filters['class'] = class_filter
+    if batch_filter: filters['batch_id'] = batch_filter
+    if program_filter: filters['program_id'] = program_filter
+    
+    # If no params, it acts like get_all (but paginated default Page 1)
+    # The frontend was calling getAllStudents which expected List.
+    # We must be careful not to break existing calls if they expect List.
+    # The existing repo.get_all_students() returned a List.
+    # If we change "/students" to return dict {data, total}, we might break other pages (e.g. BatchDetails, Batches?) if they use it.
+    # Let's check usages.
+    # `StudentList` used it. `PrintBatch` used it.
+    # To be safe, we can either:
+    # 1. Create separate endpoint "/students/list" or "/students/paginated".
+    # 2. Or detect if pagination params are present.
+    # But for cleaner API, usually Query Params defaults apply.
+    # If I change return type, I MUST update frontend.
+    # The User asked to "paginate the students list".
+    # I will update frontend to handle {data, total}.
+    # But wait, other components might break.
+    # Let's check `PrintBatch.tsx` lines 27:
+    # `const { data: students } = useQuery ... StudentRepository.getAllStudents`
+    # It expects array.
+    
+    # DECISION: Create NEW endpoint or update existing and fix all callers.
+    # "page" param is optional.
+    # If I make it optional and return List if not present?
+    # No, consistent return type is better.
+    # I will create a NEW function in repo `get_students_paginated` (done) and call it if params are passed?
+    # Or just use a different endpoint path.
+    # Let's use the SAME path but return different structure? No, bad practice.
+    # Let's use `/students/paginated` to be safe and incremental.
+    # Or just use params and if `all=true` return list?
+    
+    # Existing `get_all_students` does NOT take params.
+    # `get_students` in router calls `repo.get_all_students()`.
+    
+    # I will REPLACE `get_students` logic to use pagination, AND I will update Frontend to handle it.
+    # I will update `PrintBatch.tsx` later or now?
+    # Better: Keep `get_all_students` for legacy/dropdowns?
+    # But `PrintBatch` loads ALL students (could be thousands). It SHOULD use pagination or search api.
+    # For now, I will add `paginated` mode.
+    
+    return repo.get_students_paginated(page, page_size, search, roll_search, filters)
+
+@router.get("/students/all")
+def get_all_students_no_page():
     return repo.get_all_students()
 
 @router.post("/students")

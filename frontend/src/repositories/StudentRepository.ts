@@ -13,9 +13,10 @@ const API_BASE_URL = import.meta.env.VITE_API_URL || "http://127.0.0.1:8000";
 export const StudentRepository = {
 
   // 1. Get All Students
+  // 1. Get All Students (Legacy / Dropdowns)
   async getAllStudents() {
-    // Call the Python API: GET /students
-    const response = await fetch(`${API_BASE_URL}/students`);
+    // Call the Python API: GET /students/all (Non-paginated)
+    const response = await fetch(`${API_BASE_URL}/students/all`);
 
     // Check if the server said "OK"
     if (!response.ok) {
@@ -23,6 +24,23 @@ export const StudentRepository = {
     }
 
     // Return the JSON data (List of students)
+    return await response.json();
+  },
+
+  // 1.5 Get Students Paginated (For List View)
+  async getStudentsPaginated(page: number, pageSize: number, search: string, rollSearch: string, filters: any) {
+    const params = new URLSearchParams({
+      page: page.toString(),
+      page_size: pageSize.toString()
+    });
+    if (search) params.append("search", search);
+    if (rollSearch) params.append("roll_search", rollSearch);
+    if (filters.class) params.append("class_filter", filters.class);
+    if (filters.batch_id) params.append("batch_filter", filters.batch_id);
+    if (filters.program_id) params.append("program_filter", filters.program_id);
+
+    const response = await fetch(`${API_BASE_URL}/students?${params.toString()}`);
+    if (!response.ok) throw new Error("Failed to fetch students");
     return await response.json();
   },
 

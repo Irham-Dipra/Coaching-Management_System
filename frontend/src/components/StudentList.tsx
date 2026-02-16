@@ -1,10 +1,10 @@
-import React, { useState, useRef, useMemo } from 'react';
+﻿import React, { useState, useRef, useMemo } from 'react';
 import { useQuery, keepPreviousData } from '@tanstack/react-query';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useReactToPrint } from 'react-to-print';
 import { ProgramRepository } from '../repositories/ProgramRepository';
 import { StudentRepository } from '../repositories/StudentRepository';
-import { Search, Plus, ChevronRight, ChevronLeft, Download, Upload, Printer, CheckSquare, Square, X } from 'lucide-react';
+import { Search, Plus, ChevronRight, ChevronLeft, Upload, Printer, SquareCheck, Square, X } from 'lucide-react';
 import CreateStudentModal from './CreateStudentModal';
 import ImportStudentModal from './ImportStudentModal';
 import IDCardTemplate from './IDCardTemplate';
@@ -177,7 +177,7 @@ const StudentList: React.FC<StudentListProps> = ({ fixedBatchId, hideHeader }) =
                             Student Directory
                         </h1>
                         <p className="text-slate-400 text-sm mt-1">
-                            {totalCount} Students Found • Page {page} of {totalPages || 1}
+                            {totalCount} Students Found â€¢ Page {page} of {totalPages || 1}
                         </p>
                     </div>
                 </div>
@@ -299,7 +299,7 @@ const StudentList: React.FC<StudentListProps> = ({ fixedBatchId, hideHeader }) =
                             <tr>
                                 <th className="p-4 w-[50px]">
                                     <button onClick={toggleAllPage} className="text-slate-400 hover:text-white">
-                                        {isAllPageSelected ? <CheckSquare size={18} className="text-blue-500" /> : <Square size={18} />}
+                                        {isAllPageSelected ? <SquareCheck size={18} className="text-blue-500" /> : <Square size={18} />}
                                     </button>
                                 </th>
                                 <th className="p-4 border-b border-slate-700/50">ID</th>
@@ -320,7 +320,7 @@ const StudentList: React.FC<StudentListProps> = ({ fixedBatchId, hideHeader }) =
                                         <tr key={student.student_id} className={`transition-colors group ${isSelected ? 'bg-blue-900/20' : 'hover:bg-slate-700/30'}`}>
                                             <td className="p-4">
                                                 <button onClick={() => toggleStudent(student)} className="text-slate-400 hover:text-white">
-                                                    {isSelected ? <CheckSquare size={18} className="text-blue-500" /> : <Square size={18} />}
+                                                    {isSelected ? <SquareCheck size={18} className="text-blue-500" /> : <Square size={18} />}
                                                 </button>
                                             </td>
                                             <td className="p-4 text-slate-500 text-sm">#{student.student_code || student.student_id}</td>
@@ -333,7 +333,7 @@ const StudentList: React.FC<StudentListProps> = ({ fixedBatchId, hideHeader }) =
                                                 <div className="flex flex-col gap-1.5">
                                                     {student.enrollment?.map((enroll, idx) => (
                                                         <span key={idx} className="text-xs bg-slate-800 px-2.5 py-1 rounded-md border border-slate-700 text-slate-300 whitespace-nowrap inline-block w-fit">
-                                                            <span className="font-bold text-blue-400">{enroll.roll_no || 'N/A'}</span> • <span className="text-slate-400">{enroll.program?.program_name}</span>
+                                                            <span className="font-bold text-blue-400">{enroll.roll_no || 'N/A'}</span> â€¢ <span className="text-slate-400">{enroll.program?.program_name}</span>
                                                         </span>
                                                     ))}
                                                     {(!student.enrollment || student.enrollment.length === 0) && <span className="text-slate-600 text-xs italic">Not Enrolled</span>}

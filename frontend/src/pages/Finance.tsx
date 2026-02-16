@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { PaymentRepository } from '../repositories/PaymentRepository';
 import { StudentRepository } from '../repositories/StudentRepository';
 import { ProgramRepository } from '../repositories/ProgramRepository';
-import { DollarSign, Search, Plus, FileText, Download, X, ArrowUpDown, Edit, Users, AlertCircle, Trash2, Printer, CheckSquare, Square } from 'lucide-react';
+import { DollarSign, Search, Plus, FileText, Download, X, ArrowUpDown, Edit, Users, AlertCircle, Trash2, Printer, SquareCheck, Square } from 'lucide-react';
 import ReceiptTemplate from '../components/ReceiptTemplate';
 import { useReactToPrint } from 'react-to-print';
 
@@ -431,7 +431,7 @@ const Finance: React.FC = () => {
                             <th className="p-5 w-10">
                                 <button onClick={toggleAllOnPage} className="hover:text-white transition-colors">
                                     {(filteredPayments?.length > 0 && filteredPayments.every((p: any) => selectedPayments.has(p.sort_id || p.payment_id)))
-                                        ? <CheckSquare size={18} className="text-blue-500" />
+                                        ? <SquareCheck size={18} className="text-blue-500" />
                                         : <Square size={18} />
                                     }
                                 </button>
@@ -456,7 +456,7 @@ const Finance: React.FC = () => {
                                     <td className="p-5">
                                         <button onClick={() => toggleSelection(p)} className="hover:text-white transition-colors">
                                             {isSelected
-                                                ? <CheckSquare size={18} className="text-blue-500" />
+                                                ? <SquareCheck size={18} className="text-blue-500" />
                                                 : <Square size={18} className="text-slate-600" />
                                             }
                                         </button>

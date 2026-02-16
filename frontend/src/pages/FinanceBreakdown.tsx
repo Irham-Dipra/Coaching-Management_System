@@ -1,7 +1,7 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { ArrowLeft, DollarSign, AlertCircle, Download, CheckSquare, Square, Edit, Trash2, Printer } from 'lucide-react';
+import { ArrowLeft, DollarSign, AlertCircle, Download, SquareCheck, Square, Edit, Trash2, Printer } from 'lucide-react';
 import ReceiptTemplate from '../components/ReceiptTemplate';
 import EditPaymentModal from '../components/EditPaymentModal';
 import { PaymentRepository } from '../repositories/PaymentRepository';
@@ -255,7 +255,7 @@ const FinanceBreakdown: React.FC = () => {
                                                 <th className="p-4 pl-6 w-10">
                                                     <button onClick={toggleAllVisible} className="hover:text-white transition-colors">
                                                         {(data?.transactions?.length > 0 && data.transactions.every((p: any) => selectedPayments.has(p.payment_id)))
-                                                            ? <CheckSquare size={18} className="text-blue-500" />
+                                                            ? <SquareCheck size={18} className="text-blue-500" />
                                                             : <Square size={18} />
                                                         }
                                                     </button>
@@ -286,7 +286,7 @@ const FinanceBreakdown: React.FC = () => {
                                                     <td className="p-4 pl-6">
                                                         <button onClick={() => toggleSelection(row)} className="hover:text-white transition-colors">
                                                             {selectedPayments.has(row.payment_id)
-                                                                ? <CheckSquare size={18} className="text-blue-500" />
+                                                                ? <SquareCheck size={18} className="text-blue-500" />
                                                                 : <Square size={18} className="text-slate-600" />
                                                             }
                                                         </button>

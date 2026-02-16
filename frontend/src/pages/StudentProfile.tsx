@@ -233,9 +233,9 @@ const StudentProfile: React.FC = () => {
                 <div className="flex border-b border-slate-700/50">
                     <button
                         onClick={() => setActiveTab('overview')}
-                        className={`flex - 1 py - 4 text - sm font - bold text - center transition - all whitespace - nowrap ${activeTab === 'overview'
-                                ? 'text-blue-400 border-b-2 border-blue-500 bg-blue-500/5'
-                                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50'
+                        className={`flex-1 py-4 text-sm font-bold text-center transition-all whitespace-nowrap ${activeTab === 'overview'
+                            ? 'text-blue-400 border-b-2 border-blue-500 bg-blue-500/5'
+                            : 'text-slate-400 hover:text-slate-200 hover:bg-slate-700/50'
                             } `}
                     >
                         <div className="flex items-center justify-center gap-2">
@@ -244,9 +244,9 @@ const StudentProfile: React.FC = () => {
                     </button>
                     <button
                         onClick={() => setActiveTab('performance')}
-                        className={`flex - 1 py - 4 text - sm font - bold text - center transition - all whitespace - nowrap ${activeTab === 'performance'
-                                ? 'text-emerald-400 border-b-2 border-emerald-500 bg-emerald-500/5'
-                                : 'text-emerald-500/70 hover:text-emerald-300 hover:bg-emerald-500/10'
+                        className={`flex-1 py-4 text-sm font-bold text-center transition-all whitespace-nowrap ${activeTab === 'performance'
+                            ? 'text-emerald-400 border-b-2 border-emerald-500 bg-emerald-500/5'
+                            : 'text-emerald-500/70 hover:text-emerald-300 hover:bg-emerald-500/10'
                             } `}
                     >
                         <div className="flex items-center justify-center gap-2">

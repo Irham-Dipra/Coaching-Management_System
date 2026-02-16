@@ -449,7 +449,7 @@ const Finance: React.FC = () => {
                                             </button>
                                         )}
 
-                                        {/* Updated Download to use standard Print */}
+                                        {/* Print Receipt */}
                                         <button
                                             onClick={() => handleSinglePrint(p.sort_id || p.payment_id)}
                                             className="text-blue-400 hover:text-blue-300 p-2 rounded-full hover:bg-blue-500/10 transition-colors"

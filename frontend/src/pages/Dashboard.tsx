@@ -24,7 +24,7 @@ const Dashboard: React.FC = () => {
     // 2. Fetch Recent Activity
     const { data: recentPayments, isLoading: historyLoading } = useQuery({
         queryKey: ['recent-payments'],
-        queryFn: PaymentRepository.getRecentPayments
+        queryFn: () => PaymentRepository.getRecentPayments(1, 10)
     });
 
     // Loading Skeleton
@@ -168,13 +168,13 @@ const Dashboard: React.FC = () => {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-700/50">
-                                {recentPayments?.slice(0, 5).map((pay: any) => (
+                                {recentPayments?.data?.slice(0, 5).map((pay: any) => (
                                     <tr key={pay.sort_id || pay.payment_ids?.[0] || Math.random()} className="hover:bg-slate-700/30 transition-colors">
                                         <td className="p-4 font-medium text-slate-200">
                                             {pay.student_name || 'Unknown Student'}
                                         </td>
                                         <td className="p-4 text-emerald-400 font-bold">
-                                            +৳{pay.total_amount?.toLocaleString()}
+                                            +৳{pay.total_amount?.toLocaleString() || pay.amount?.toLocaleString()}
                                         </td>
                                         <td className="p-4 text-slate-400">
                                             {pay.program_name} <span className="text-xs text-slate-500">({pay.date_display})</span>
@@ -184,7 +184,7 @@ const Dashboard: React.FC = () => {
                                         </td>
                                     </tr>
                                 ))}
-                                {!recentPayments?.length && (
+                                {!recentPayments?.data?.length && (
                                     <tr>
                                         <td colSpan={4} className="p-8 text-center text-slate-500 italic">No recent activity found.</td>
                                     </tr>

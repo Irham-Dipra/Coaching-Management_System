@@ -19,7 +19,6 @@ import RoomDetails from './pages/RoomDetails';
 import Login from './pages/Login';
 import UserProfile from './pages/UserProfile';
 import Enrollment from './pages/Enrollment';
-import PrintBatch from './pages/PrintBatch';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 
 // Admin-Only Protected Route
@@ -71,7 +70,7 @@ function App() {
               <Route path="/admin/scheduling/:id" element={<ScheduleDetails />} />
               <Route path="/admin/scheduling/rooms/:id" element={<RoomDetails />} />
 
-              <Route path="/admin/print" element={<PrintBatch />} />
+
 
               <Route path="/students" element={<StudentList />} />
               <Route path="/students/:id" element={<StudentProfile />} />

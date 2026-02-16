@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { StudentRepository } from '../repositories/StudentRepository'; // For Summary
 import { PaymentRepository } from '../repositories/PaymentRepository'; // For History
-import { DollarSign, AlertCircle, FileText, ChevronDown, ChevronUp, Calendar } from 'lucide-react';
+import { DollarSign, AlertCircle, FileText, CheckSquare, Calendar } from 'lucide-react';
 
 interface StudentFinancialStatusProps {
     studentId: string;
@@ -58,7 +58,7 @@ const StudentFinancialStatus: React.FC<StudentFinancialStatusProps> = ({ student
                     className="bg-slate-800/50 backdrop-blur-md p-5 rounded-xl border border-slate-700 shadow-sm flex items-center justify-between cursor-pointer hover:bg-slate-700/50 hover:border-red-500/30 transition-all group"
                 >
                     <div>
-                        <p className="text-slate-500 text-xs font-bold uppercase tracking-wider group-hover:text-red-400 transition-colors">Total Outstanding Balance</p>
+                        <p className="text-slate-500 text-xs font-bold uppercase tracking-wider group-hover:text-red-400 transition-colors">Total Due</p>
                         <p className={`text-2xl font-bold mt-1 ${summary.total_due > 0 ? 'text-red-400' : 'text-slate-200'}`}>
                             ৳{summary.total_due?.toLocaleString()}
                         </p>

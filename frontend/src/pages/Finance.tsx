@@ -607,22 +607,30 @@ const EditPaymentModal: React.FC<{ isOpen: boolean; onClose: () => void; payment
 
     useEffect(() => {
         if (payment && status && status.ledger) {
+            // Determine Year/Month from payment
+            let pMonth = payment.month;
+            let pYear = payment.year;
+
+            // Fallback for new structure if top-level month/year missing
+            if (!pMonth && payment.sub_payments && payment.sub_payments.length > 0) {
+                pMonth = payment.sub_payments[0].month;
+                pYear = payment.sub_payments[0].year;
+            }
+
             // Find ledger entry for this payment's month
-            const entry = status.ledger.find((l: any) => l.month === payment.month && l.year === payment.year);
+            const entry = status.ledger.find((l: any) => l.month === pMonth && l.year === pYear);
             if (entry) {
-                // The ledger "paid" includes THIS payment because it fetches from DB.
-                // We want to know what OTHERS paid.
-                // Sum of Others = entry.paid - payment.paid_amount (Old Value)
-                // Cap = Fee - Sum of Others
-                //     = Fee - (entry.paid - payment.paid_amount)
-                //     = (Fee - entry.paid) + payment.paid_amount
-                //     = entry.due + payment.paid_amount (roughly, if due is accurate)
+                // Cap = Amount Already Paid by THIS transaction + Remaining Due
+                // entry.due is (Fee - TotalPaid).
+                // Max we can set this transaction to is (CurrentValue + Due).
+                // Example: Fee 5000, Paid 3000 (this), Due 2000. Max = 3000+2000 = 5000.
 
-                // Let's use the Fee - Others logic strictly.
-                const paidByOthers = entry.paid - payment.paid_amount;
-                const remainingCap = entry.fee - paidByOthers;
+                // Be careful: payment.amount is the currently saved amount. 
+                // We typically receive it in 'payment' prop.
+                const currentSavedAmount = payment.amount || payment.total_amount || payment.paid_amount || 0;
 
-                setMaxCap(remainingCap);
+                const allowed = currentSavedAmount + entry.due;
+                setMaxCap(allowed);
             }
         }
     }, [payment, status]);
@@ -678,7 +686,7 @@ const EditPaymentModal: React.FC<{ isOpen: boolean; onClose: () => void; payment
                             onChange={e => {
                                 const val = parseFloat(e.target.value);
                                 if (val > maxCap) {
-                                    alert(`Cannot exceed ${maxCap}`);
+                                    alert(`Value must not exceed ৳${maxCap !== Infinity ? maxCap : '...'}`);
                                     setAmount(maxCap.toString());
                                 } else {
                                     setAmount(e.target.value);

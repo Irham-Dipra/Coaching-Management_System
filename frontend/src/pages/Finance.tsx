@@ -53,30 +53,12 @@ const Finance: React.FC = () => {
     const { data: paymentsData, isLoading: isPaymentsLoading } = useQuery({
         queryKey: ['payments', page, searchTerm, rollSearch, classFilter, batchFilter, programFilter],
         queryFn: () => PaymentRepository.getRecentPayments(page, pageSize, searchTerm, {
-            roll_no: rollSearch, // Pass roll search explicitly
-            program_id: programFilter
-            // Note: Batch/Class filters are not supported by backend yet, 
-            // but we can try client-side filtering on the returned page if needed, 
-            // OR ignore them for server-side pagination for now. 
-            // User requirements only mentioned "search_query (student name/roll)".
-            // Let's rely on backend filtering if I added it? 
-            // I only added month/year/program/roll. 
-            // I did NOT add batch/class to backend. 
-            // So these filters wont work serverside. 
-            // But I should pass them? 
-            // Actually, if I don't pass them, I get all batches.
-            // I'll leave them client-side filtered? No, that breaks pagination totals.
-            // I should update backend to support them? 
-            // The user didn't explicitly ask for batch/class in backend request, but frontend had them.
-            // To be safe, I'll update backend later or now?
-            // "Apply search_query (search by student name/roll) and any other filters before pagination."
-            // "any other filters" implies I should support them.
-            // But I didn't add them to backend yet.
-            // I'll skip them in the prompt compliance for now as they weren't explicitly listed in the params list request?
-            // "filters (dict, optional - e.g., date range or program)"
-            // I'll stick to program.
+            roll_no: rollSearch,
+            program_id: programFilter,
+            class: classFilter,
+            batch_id: batchFilter
         }),
-        placeholderData: (previousData: any) => previousData // Keep prev data while fetching
+        placeholderData: (previousData: any) => previousData
     });
 
     const recentPayments = paymentsData?.data || [];

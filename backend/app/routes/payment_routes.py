@@ -1,5 +1,5 @@
 from typing import List
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from app.repositories.payment_repository import PaymentRepository
 from app.schemas.payment import PaymentCreate, PaymentUpdate
 
@@ -7,12 +7,24 @@ router = APIRouter()
 payment_repo = PaymentRepository()
 
 @router.get("/payments/recent")
-def get_recent_payments(page: int = 1, page_size: int = 50, search: str = None, month: int = None, year: int = None, program_id: int = None, roll_no: str = None):
+def get_recent_payments(
+    page: int = 1, 
+    page_size: int = 50, 
+    search: str = None, 
+    month: int = None, 
+    year: int = None, 
+    program_id: int = None, 
+    roll_no: str = None,
+    class_grade: int = Query(None, alias="class"),
+    batch_id: int = None
+):
     filters = {}
     if month: filters['month'] = month
     if year: filters['year'] = year
     if program_id: filters['program_id'] = program_id
     if roll_no: filters['roll_no'] = roll_no
+    if class_grade: filters['class'] = class_grade
+    if batch_id: filters['batch_id'] = batch_id
     
     return payment_repo.get_payments_paginated(page, page_size, search, filters)
 

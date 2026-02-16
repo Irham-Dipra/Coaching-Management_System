@@ -421,7 +421,7 @@ class PaymentRepository:
         """
         # --- Step 1: Fetch Search/Filter Hits (IDs only) ---
         query = supabase.table(self.table)\
-            .select("payment_id, transaction_group_id, enrollment!inner(roll_no, student!inner(name), program(program_id))")\
+            .select("payment_id, transaction_group_id, enrollment!inner(roll_no, student!inner(name, class, batch_id), program(program_id))")\
             .order("payment_id", desc=True)
 
         # Apply Search
@@ -433,6 +433,7 @@ class PaymentRepository:
 
         # Apply Filters
         if filters:
+            print(f"DEBUG: Applying filters: {filters}")
             if filters.get('month'):
                 query = query.eq("month", int(filters['month']))
             if filters.get('year'):
@@ -441,6 +442,12 @@ class PaymentRepository:
                 query = query.eq("enrollment.program_id", int(filters['program_id']))
             if filters.get('roll_no'):
                 query = query.ilike("enrollment.roll_no", f"%{filters['roll_no']}%")
+            if filters.get('class'):
+                print(f"DEBUG: Filtering by class: {filters['class']}")
+                query = query.eq("enrollment.student.class", int(filters['class']))
+            if filters.get('batch_id'):
+                print(f"DEBUG: Filtering by batch: {filters['batch_id']}")
+                query = query.eq("enrollment.student.batch_id", int(filters['batch_id']))
         
         # Execute (Fetch ALL simplified rows)
         try:

@@ -12,6 +12,8 @@ export const PaymentRepository = {
         if (filters.year) params.append("year", filters.year.toString());
         if (filters.program_id) params.append("program_id", filters.program_id.toString());
         if (filters.roll_no) params.append("roll_no", filters.roll_no);
+        if (filters.class) params.append("class", filters.class.toString());
+        if (filters.batch_id) params.append("batch_id", filters.batch_id.toString());
 
         const response = await fetch(`${API_BASE_URL}/payments/recent?${params.toString()}`);
         if (!response.ok) throw new Error("Failed to fetch payments");

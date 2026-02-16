@@ -196,21 +196,23 @@ const ExamDetails: React.FC = () => {
 
         // Prepare Data: ID, Name, Written, MCQ
         // Sorted by Student ID for easier data entry from physical sheets
+        // Prepare Data: Student Code, Name, Written, MCQ
+        // Sorted by Student Code for easier data entry
         const templateData = candidates
             .map((c: any) => ({
-                "Student ID": c.student?.student_code || c.student?.student_id,
+                "Student Code": c.student?.student_code || c.student?.student_id, // Primary Identifier
                 "Student Name": c.student?.name,
                 "Program": c.program?.program_name || (c.enrollments && c.enrollments.map((e: any) => e.program_name).join(', ')),
                 "Written": c.written_marks || '', // Pre-fill if exists, else empty
                 "MCQ": c.mcq_marks || ''           // Pre-fill if exists, else empty
             }))
-            .sort((a: any, b: any) => (a["Student ID"] || 0) - (b["Student ID"] || 0));
+            .sort((a: any, b: any) => String(a["Student Code"]).localeCompare(String(b["Student Code"])));
 
         const ws = XLSX.utils.json_to_sheet(templateData);
 
         // Adjust column widths
         const wscols = [
-            { wch: 10 }, // ID
+            { wch: 15 }, // Student Code
             { wch: 30 }, // Name
             { wch: 25 }, // Program
             { wch: 15 }, // Written
@@ -220,7 +222,22 @@ const ExamDetails: React.FC = () => {
 
         const wb = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(wb, ws, "Result Entry");
-        XLSX.writeFile(wb, `${exam.exam_name}_Result_Template.xlsx`);
+
+        const safeName = (exam.exam_name || 'Exam').replace(/[^a-zA-Z0-9]/g, '_');
+
+        // Generate buffer
+        const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+        const blob = new Blob([wbout], { type: 'application/octet-stream' });
+
+        // Manual Download Trigger
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `${safeName}_Result_Template.xlsx`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
     };
 
     // 2. Download Professional Merit List PDF
@@ -469,13 +486,7 @@ const ExamDetails: React.FC = () => {
                     )}
                 </div>
                 <div className="flex gap-2">
-                    <button
-                        onClick={exportResultTemplate}
-                        className="flex items-center gap-2 text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-3 py-2 rounded-lg hover:bg-emerald-500/20 transition-colors text-sm font-bold"
-                        title="Download Excel Template for Data Entry"
-                    >
-                        <Download size={16} /> Excel Template
-                    </button>
+                    {/* Template Button Removed - moved effectively to Upload Modal */}
                     <button
                         onClick={exportMeritListPDF}
                         className="flex items-center gap-2 text-white bg-red-600 border border-red-500 px-3 py-2 rounded-lg hover:bg-red-500 transition-colors shadow-lg shadow-red-500/20 text-sm font-bold"
@@ -615,6 +626,13 @@ const ExamDetails: React.FC = () => {
                 isOpen={isUploadModalOpen}
                 onClose={() => setIsUploadModalOpen(false)}
                 examId={id!}
+                onDownloadTemplate={exportResultTemplate}
+                studentLookup={candidates?.reduce((acc: any, c: any) => {
+                    if (c.student?.student_code) acc[String(c.student.student_code)] = c.student.student_id;
+                    // Also map by ID itself just in case
+                    if (c.student?.student_id) acc[String(c.student.student_id)] = c.student.student_id;
+                    return acc;
+                }, {}) || {}}
             />
 
             {/* Edit Modal */}

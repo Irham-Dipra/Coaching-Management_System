@@ -8,9 +8,11 @@ interface UploadResultsModalProps {
     isOpen: boolean;
     onClose: () => void;
     examId: string;
+    onDownloadTemplate?: () => void;
+    studentLookup?: Record<string, number>; // Maps "student_code" -> student_id
 }
 
-const UploadResultsModal: React.FC<UploadResultsModalProps> = ({ isOpen, onClose, examId }) => {
+const UploadResultsModal: React.FC<UploadResultsModalProps> = ({ isOpen, onClose, examId, onDownloadTemplate, studentLookup }) => {
     const queryClient = useQueryClient();
     const [file, setFile] = useState<File | null>(null);
     const [previewData, setPreviewData] = useState<any[]>([]);
@@ -25,6 +27,7 @@ const UploadResultsModal: React.FC<UploadResultsModalProps> = ({ isOpen, onClose
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['analytics', examId] });
             queryClient.invalidateQueries({ queryKey: ['merit', examId] });
+            queryClient.invalidateQueries({ queryKey: ['candidates', examId] }); // Refresh list
             onClose();
             setFile(null);
             setPreviewData([]);
@@ -54,11 +57,22 @@ const UploadResultsModal: React.FC<UploadResultsModalProps> = ({ isOpen, onClose
                 const data = XLSX.utils.sheet_to_json(ws);
 
                 // Map keys to lowercase/standardize
-                const formattedData = data.map((row: any) => ({
-                    student_id: row['Student ID'] || row['student_id'] || row['ID'],
-                    written_marks: Number(row['Written'] || row['written'] || row['Written Marks'] || row['written_marks'] || 0),
-                    mcq_marks: Number(row['MCQ'] || row['mcq'] || row['MCQ Marks'] || row['mcq_marks'] || 0)
-                })).filter((r: any) => r.student_id); // Filter out empty rows
+                const formattedData = data.map((row: any) => {
+                    const rawCode = row['Student Code'] || row['student_code'] || row['Code'] || row['Student ID'] || row['student_id'] || row['ID'];
+
+                    // Resolve ID from Code using Lookup if available
+                    let resolvedId = rawCode;
+                    if (studentLookup && rawCode) {
+                        const lookupId = studentLookup[String(rawCode)];
+                        if (lookupId) resolvedId = lookupId;
+                    }
+
+                    return {
+                        student_id: resolvedId,
+                        written_marks: Number(row['Written'] || row['written'] || row['Written Marks'] || row['written_marks'] || 0),
+                        mcq_marks: Number(row['MCQ'] || row['mcq'] || row['MCQ Marks'] || row['mcq_marks'] || 0)
+                    };
+                }).filter((r: any) => r.student_id); // Filter out empty rows
 
                 setPreviewData(formattedData);
             } catch (err) {
@@ -69,16 +83,6 @@ const UploadResultsModal: React.FC<UploadResultsModalProps> = ({ isOpen, onClose
             }
         };
         reader.readAsBinaryString(selectedFile);
-    };
-
-    const handleDownloadTemplate = () => {
-        const ws = XLSX.utils.json_to_sheet([
-            { "Student ID": 101, "Written": 35, "MCQ": 12 },
-            { "Student ID": 102, "Written": 40, "MCQ": 15 },
-        ]);
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, "Template");
-        XLSX.writeFile(wb, "Result_Entry_Template.xlsx");
     };
 
     return (
@@ -97,9 +101,13 @@ const UploadResultsModal: React.FC<UploadResultsModalProps> = ({ isOpen, onClose
                     <div className="bg-blue-900/20 p-4 rounded-lg border border-blue-500/20 flex justify-between items-center">
                         <div>
                             <h3 className="text-sm font-bold text-blue-400">Need a format?</h3>
-                            <p className="text-xs text-blue-300/70">Download the Excel template to fill marks.</p>
+                            <p className="text-xs text-blue-300/70">Download the pre-filled Excel template.</p>
                         </div>
-                        <button onClick={handleDownloadTemplate} className="text-xs bg-slate-800 border border-blue-500/30 text-blue-400 px-3 py-1.5 rounded-lg hover:bg-blue-500/10 flex items-center gap-1 transition-colors font-semibold">
+                        <button
+                            onClick={onDownloadTemplate}
+                            disabled={!onDownloadTemplate}
+                            className="text-xs bg-slate-800 border border-blue-500/30 text-blue-400 px-3 py-1.5 rounded-lg hover:bg-blue-500/10 flex items-center gap-1 transition-colors font-semibold disabled:opacity-50"
+                        >
                             <Download size={14} /> Download Template
                         </button>
                     </div>
@@ -141,7 +149,7 @@ const UploadResultsModal: React.FC<UploadResultsModalProps> = ({ isOpen, onClose
                                 <table className="w-full text-left">
                                     <thead className="bg-slate-900 text-slate-400">
                                         <tr>
-                                            <th className="p-2 pl-3">ID</th>
+                                            <th className="p-2 pl-3">ID / Code</th>
                                             <th className="p-2">Written</th>
                                             <th className="p-2">MCQ</th>
                                         </tr>

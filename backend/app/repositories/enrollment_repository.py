@@ -99,3 +99,69 @@ class EnrollmentRepository:
             response = supabase.table(self.table).delete().eq("enrollment_id", enrollment_id).execute()
             
         return response.data
+
+    def enroll_student_bulk(self, student_ids: list[int], program_ids: list[int]):
+        results = []
+        
+        # Process one program at a time to manage roll numbers correctly
+        for program_id in program_ids:
+            # 1. Fetch current max roll for this program
+            last_enrollment = supabase.table(self.table)\
+                .select('roll_no')\
+                .eq('program_id', program_id)\
+                .order('roll_no', desc=True)\
+                .limit(1)\
+                .execute()
+                
+            next_roll = 1
+            if last_enrollment.data:
+                current_max = last_enrollment.data[0].get('roll_no')
+                if current_max is not None:
+                    next_roll = current_max + 1
+            
+            # 2. Prepare Valid Enrollments
+            enrollments_to_insert = []
+            
+            # Fetch existing enrollments for these students in this program to avoid duplicates
+            existing = supabase.table(self.table)\
+                .select("student_id, status, enrollment_id")\
+                .in_("student_id", student_ids)\
+                .eq("program_id", program_id)\
+                .execute().data
+                
+            existing_map = {e['student_id']: e for e in existing}
+            
+            today_str = date.today().isoformat()
+            
+            for student_id in student_ids:
+                if student_id in existing_map:
+                    # Handle Re-enrollment or Skip
+                    rec = existing_map[student_id]
+                    if rec['status'] != 'Active':
+                        # Re-activate
+                        supabase.table(self.table).update({
+                            "status": "Active", 
+                            "enrollment_date": today_str
+                        }).eq("enrollment_id", rec['enrollment_id']).execute()
+                        results.append({"student_id": student_id, "program_id": program_id, "status": "Re-enrolled"})
+                    else:
+                        # Already Active
+                        results.append({"student_id": student_id, "program_id": program_id, "status": "Skipped (Already Active)"})
+                else:
+                    # New Enrollment
+                    enrollments_to_insert.append({
+                        "student_id": student_id,
+                        "program_id": program_id,
+                        "enrollment_date": today_str,
+                        "roll_no": next_roll,
+                        "status": "Active"
+                    })
+                    next_roll += 1
+            
+            # 3. Bulk Insert for this program
+            if enrollments_to_insert:
+                response = supabase.table(self.table).insert(enrollments_to_insert).execute()
+                for inserted in response.data:
+                    results.append({"student_id": inserted['student_id'], "program_id": inserted['program_id'], "status": "Enrolled"})
+
+        return results

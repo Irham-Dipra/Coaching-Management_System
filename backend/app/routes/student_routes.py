@@ -3,7 +3,7 @@ from app.repositories.student_repository import StudentRepository
 from app.schemas.student import StudentCreate
 from app.repositories.enrollment_repository import EnrollmentRepository
 from app.repositories.payment_repository import PaymentRepository
-from app.schemas.enrollment import EnrollmentCreate, EnrollmentResponse
+from app.schemas.enrollment import EnrollmentCreate, EnrollmentResponse, EnrollmentBulkRequest
 from app.schemas.student import StudentCreate, StudentEnrollmentRequest
 
 # 1. Create a Router (like a mini-app for students)
@@ -116,6 +116,10 @@ def enroll_student(enrollment: EnrollmentCreate):
     except Exception as e:
         # Catch duplicate error and return 400
         raise HTTPException(status_code=400, detail=str(e))
+
+@router.post("/enrollments/bulk")
+def enroll_students_bulk(request: EnrollmentBulkRequest):
+    return enrollment_repo.enroll_student_bulk(request.student_ids, request.program_ids)
 
 @router.delete("/enrollments/{enrollment_id}")
 def delete_enrollment(enrollment_id: int):

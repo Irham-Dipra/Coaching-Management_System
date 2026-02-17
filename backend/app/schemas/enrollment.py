@@ -19,3 +19,7 @@ class EnrollmentResponse(EnrollmentBase):
 
     class Config:
         from_attributes = True
+
+class EnrollmentBulkRequest(BaseModel):
+    student_ids: list[int]
+    program_ids: list[int]

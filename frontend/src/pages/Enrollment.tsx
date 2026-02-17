@@ -20,9 +20,11 @@ const Enrollment: React.FC = () => {
     // ====================
     // STATE: EXISTING STUDENT
     // ====================
-    const [selectedStudentId, setSelectedStudentId] = useState<number | null>(null);
+    const [selectedStudentIds, setSelectedStudentIds] = useState<number[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedPrograms, setSelectedPrograms] = useState<number[]>([]);
+    const [batchFilter, setBatchFilter] = useState('');
+    const [classFilter, setClassFilter] = useState('');
 
     // ====================
     // STATE: NEW STUDENT
@@ -38,37 +40,40 @@ const Enrollment: React.FC = () => {
     const [newStudentPrograms, setNewStudentPrograms] = useState<number[]>([]);
 
     // Filter Students for Existing Tab
-    const filteredStudents = students?.filter((s: any) =>
-        s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        s.enrollment?.some((e: any) => String(e.roll_no).includes(searchTerm))
-    ) || [];
+    const filteredStudents = students?.filter((s: any) => {
+        const matchesSearch = s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            s.enrollment?.some((e: any) => String(e.roll_no).includes(searchTerm)) ||
+            String(s.student_code || '').includes(searchTerm);
+
+        const matchesBatch = batchFilter ? s.batch_id === parseInt(batchFilter) : true;
+        const matchesClass = classFilter ? String(s.class) === classFilter : true;
+
+        return matchesSearch && matchesBatch && matchesClass;
+    }) || [];
 
     // ====================
     // MUTATIONS
     // ====================
     const enrollExistingMutation = useMutation({
         mutationFn: async () => {
-            if (!selectedStudentId) throw new Error("No student selected");
-            // Enroll in all selected programs
-            // We do this sequentially or parallel, but repo only supports one by one currently?
-            // Actually, we should probably update repo to support bulk, but let's stick to loop for now 
-            // OR use the new RPC if it supports just enrolling?
-            // The RPC 'register_student_with_enrollment' creates a student.
-            // We need a 'enroll_student_bulk' maybe? Or just loop.
-            // Let's loop for now as per "Block A" reqs.
-            const promises = selectedPrograms.map(pid =>
-                StudentRepository.enrollStudent({ student_id: selectedStudentId, program_id: pid })
-            );
-            return Promise.all(promises);
+            if (selectedStudentIds.length === 0) throw new Error("No students selected");
+
+            // Call Bulk API
+            return StudentRepository.enrollStudentsBulk({
+                student_ids: selectedStudentIds,
+                program_ids: selectedPrograms
+            });
         },
-        onSuccess: () => {
+        onSuccess: (data) => {
             queryClient.invalidateQueries({ queryKey: ['students'] });
-            alert("Enrollment successful!");
-            setSelectedStudentId(null);
+            alert(`Successfully processed enrollment for ${data.length} records!`);
+            setSelectedStudentIds([]);
             setSelectedPrograms([]);
         },
         onError: (err) => alert("Failed to enroll: " + err)
     });
+
+    // ... (createAndEnrollMutation remains same)
 
     const createAndEnrollMutation = useMutation({
         mutationFn: async () => {
@@ -86,13 +91,8 @@ const Enrollment: React.FC = () => {
         },
         onSuccess: (data) => {
             queryClient.invalidateQueries({ queryKey: ['students'] });
-            // Show Success Animation / Card
-            // calculated initial due amount? We can't easily calculate it on frontend without checking fees.
-            // For now, simple alert or navigate. 
-            // User requested "summary card showing the student's name, assigned programs, and their calculated initial due amount".
-            // We can fetch financial summary.
             const studentId = data.student_id;
-            navigate(`/students?highlight=${studentId}`); // Or separate success view
+            navigate(`/students?highlight=${studentId}`);
         },
         onError: (err) => alert("Failed to register: " + err)
     });
@@ -109,6 +109,20 @@ const Enrollment: React.FC = () => {
             setSelectedPrograms(prev =>
                 prev.includes(id) ? prev.filter(p => p !== id) : [...prev, id]
             );
+        }
+    };
+
+    const toggleStudentSelection = (id: number) => {
+        setSelectedStudentIds(prev =>
+            prev.includes(id) ? prev.filter(p => p !== id) : [...prev, id]
+        );
+    };
+
+    const toggleSelectAll = () => {
+        if (selectedStudentIds.length === filteredStudents.length) {
+            setSelectedStudentIds([]);
+        } else {
+            setSelectedStudentIds(filteredStudents.map((s: any) => s.student_id));
         }
     };
 
@@ -157,10 +171,35 @@ const Enrollment: React.FC = () => {
                     {activeTab === 'existing' ? (
                         <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700 rounded-2xl p-6 shadow-xl">
                             <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-                                <Search className="text-emerald-400" /> Select Student
+                                <Search className="text-emerald-400" /> Select Students
                             </h2>
 
-                            <div className="relative group mb-6">
+                            {/* FILTERS */}
+                            <div className="grid grid-cols-2 gap-4 mb-4">
+                                <select
+                                    className="p-3 bg-slate-900/50 border border-slate-700 rounded-xl text-white outline-none focus:border-emerald-500 transition-all"
+                                    value={batchFilter}
+                                    onChange={(e) => setBatchFilter(e.target.value)}
+                                >
+                                    <option value="">All Batches</option>
+                                    {batches?.map((b: any) => (
+                                        <option key={b.batch_id} value={b.batch_id}>{b.batch_name}</option>
+                                    ))}
+                                </select>
+                                <select
+                                    className="p-3 bg-slate-900/50 border border-slate-700 rounded-xl text-white outline-none focus:border-emerald-500 transition-all"
+                                    value={classFilter}
+                                    onChange={(e) => setClassFilter(e.target.value)}
+                                >
+                                    <option value="">All Classes</option>
+                                    {[...Array(13)].map((_, i) => (
+                                        <option key={i} value={i + 1}>Class {i + 1}</option>
+                                    ))}
+                                    <option value="HSC">HSC</option>
+                                </select>
+                            </div>
+
+                            <div className="relative group mb-4">
                                 <Search className="absolute left-3 top-3.5 text-slate-500 group-focus-within:text-emerald-400 transition-colors" size={18} />
                                 <input
                                     type="text"
@@ -171,27 +210,46 @@ const Enrollment: React.FC = () => {
                                 />
                             </div>
 
-                            <div className="max-h-[300px] overflow-y-auto space-y-2 pr-2 scrollbar-thin scrollbar-thumb-slate-700">
-                                {filteredStudents.map((student: any) => (
-                                    <div
-                                        key={student.student_id}
-                                        onClick={() => setSelectedStudentId(student.student_id)}
-                                        className={`p-4 rounded-xl border cursor-pointer transition-all flex justify-between items-center ${selectedStudentId === student.student_id
-                                            ? 'bg-emerald-500/10 border-emerald-500/50'
-                                            : 'bg-slate-900/30 border-slate-700/50 hover:bg-slate-800'
-                                            }`}
+                            <div className="flex justify-between items-center mb-2 px-1">
+                                <span className="text-sm text-slate-400">
+                                    {filteredStudents.length} students found
+                                </span>
+                                {filteredStudents.length > 0 && (
+                                    <button
+                                        onClick={toggleSelectAll}
+                                        className="text-sm text-emerald-400 hover:text-emerald-300 font-medium"
                                     >
-                                        <div>
-                                            <h3 className={`font-bold ${selectedStudentId === student.student_id ? 'text-emerald-400' : 'text-slate-200'}`}>
-                                                {student.name}
-                                            </h3>
-                                            <p className="text-xs text-slate-500">
-                                                {student.student_code || student.student_id} • {student.batch?.batch_name || 'No Batch'}
-                                            </p>
+                                        {selectedStudentIds.length === filteredStudents.length ? 'Deselect All' : 'Select All'}
+                                    </button>
+                                )}
+                            </div>
+
+                            <div className="max-h-[300px] overflow-y-auto space-y-2 pr-2 scrollbar-thin scrollbar-thumb-slate-700">
+                                {filteredStudents.map((student: any) => {
+                                    const isSelected = selectedStudentIds.includes(student.student_id);
+                                    return (
+                                        <div
+                                            key={student.student_id}
+                                            onClick={() => toggleStudentSelection(student.student_id)}
+                                            className={`p-4 rounded-xl border cursor-pointer transition-all flex justify-between items-center ${isSelected
+                                                ? 'bg-emerald-500/10 border-emerald-500/50'
+                                                : 'bg-slate-900/30 border-slate-700/50 hover:bg-slate-800'
+                                                }`}
+                                        >
+                                            <div>
+                                                <h3 className={`font-bold ${isSelected ? 'text-emerald-400' : 'text-slate-200'}`}>
+                                                    {student.name}
+                                                </h3>
+                                                <p className="text-xs text-slate-500">
+                                                    {student.student_code || student.student_id} • {student.batch?.batch_name || 'No Batch'} • Class {student.class}
+                                                </p>
+                                            </div>
+                                            <div className={`w-5 h-5 rounded-full border flex items-center justify-center ${isSelected ? 'bg-emerald-500 border-emerald-500' : 'border-slate-500'}`}>
+                                                {isSelected && <CheckCircle className="text-white" size={14} />}
+                                            </div>
                                         </div>
-                                        {selectedStudentId === student.student_id && <CheckCircle className="text-emerald-500" size={20} />}
-                                    </div>
-                                ))}
+                                    );
+                                })}
                                 {filteredStudents.length === 0 && (
                                     <p className="text-center text-slate-500 py-4">No students found.</p>
                                 )}
@@ -281,9 +339,11 @@ const Enrollment: React.FC = () => {
 
                                 // Check if already enrolled for existing student
                                 let isAlreadyEnrolled = false;
-                                if (activeTab === 'existing' && selectedStudentId) {
-                                    const student = students?.find((s: any) => s.student_id === selectedStudentId);
-                                    // Backend filters enrollment to only show 'Active' ones, so existence check is enough
+                                // In multi-select, if ANY selected student is enrolled, we could warn, or check all?
+                                // Simpler: Just show "Already Enrolled" if 1 student selected and they have it.
+                                // If multiple selected, we rely on backend to skip duplicates.
+                                if (activeTab === 'existing' && selectedStudentIds.length === 1) {
+                                    const student = students?.find((s: any) => s.student_id === selectedStudentIds[0]);
                                     if (student?.enrollment?.some((e: any) => e.program_id === prog.program_id)) {
                                         isAlreadyEnrolled = true;
                                     }
@@ -322,7 +382,7 @@ const Enrollment: React.FC = () => {
 
                             <button
                                 disabled={
-                                    (activeTab === 'existing' && (!selectedStudentId || selectedPrograms.length === 0)) ||
+                                    (activeTab === 'existing' && (selectedStudentIds.length === 0 || selectedPrograms.length === 0)) ||
                                     (activeTab === 'new' && (!newStudent.name || newStudentPrograms.length === 0)) ||
                                     enrollExistingMutation.isPending ||
                                     createAndEnrollMutation.isPending
@@ -334,7 +394,10 @@ const Enrollment: React.FC = () => {
                                     <Loader2 className="animate-spin" />
                                 ) : (
                                     <>
-                                        Complete Enrollment <ArrowRight size={20} />
+                                        {activeTab === 'existing'
+                                            ? `Enroll ${selectedStudentIds.length > 0 ? selectedStudentIds.length + ' Students' : ''}`
+                                            : 'Complete Registration'
+                                        } <ArrowRight size={20} />
                                     </>
                                 )}
                             </button>

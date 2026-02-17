@@ -102,6 +102,19 @@ export const StudentRepository = {
     return await response.json();
   },
 
+  // 6.5 Sudo Bulk Enroll
+  async enrollStudentsBulk(data: { student_ids: number[], program_ids: number[] }) {
+    const response = await fetch(`${API_BASE_URL}/enrollments/bulk`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    if (!response.ok) {
+      throw new Error("Failed to bulk enroll students");
+    }
+    return await response.json();
+  },
+
   // 7. Delete Enrollment
   async deleteEnrollment(enrollmentId: number) {
     const response = await fetch(`${API_BASE_URL}/enrollments/${enrollmentId}`, {

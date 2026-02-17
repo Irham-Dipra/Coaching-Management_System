@@ -38,6 +38,13 @@ class StudentRepository:
         
         select_str = "*, batch(batch_name), enrollment(program_id, roll_no, status, program(program_name))"
         
+        # FIX: PostgREST requires '!inner' to filter the PARENT (student) based on CHILD (enrollment) conditions.
+        # If we don't use !inner, it just filters the child array but returns all parents (students).
+        has_enrollment_filter = (filters and filters.get('program_id')) or roll_search
+        
+        if has_enrollment_filter:
+            select_str = "*, batch(batch_name), enrollment!inner(program_id, roll_no, status, program(program_name))"
+        
         # Phase 22: Filter by is_active=true
         query = supabase.table(self.table).select(select_str, count="exact").eq('is_active', True)
         

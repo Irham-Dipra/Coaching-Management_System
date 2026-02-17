@@ -1,5 +1,6 @@
-from fastapi import APIRouter, UploadFile, File
+from fastapi import APIRouter, UploadFile, File, Form
 from fastapi.responses import StreamingResponse
+from typing import Optional
 from app.repositories.import_repository import ImportRepository
 
 router = APIRouter()
@@ -15,5 +16,5 @@ def get_template():
     return StreamingResponse(stream, media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", headers=headers)
 
 @router.post("/student-imports/data")
-async def import_students(file: UploadFile = File(...)):
-    return await repo.process_student_import(file)
+async def import_students(file: UploadFile = File(...), batch_id: Optional[int] = Form(None)):
+    return await repo.process_student_import(file, batch_id)

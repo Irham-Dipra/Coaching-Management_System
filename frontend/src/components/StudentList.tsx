@@ -430,6 +430,7 @@ const StudentList: React.FC<StudentListProps> = ({ fixedBatchId, hideHeader }) =
             <ImportStudentModal
                 isOpen={isImportModalOpen}
                 onClose={() => setIsImportModalOpen(false)}
+                batchId={fixedBatchId}
             />
         </div>
     );

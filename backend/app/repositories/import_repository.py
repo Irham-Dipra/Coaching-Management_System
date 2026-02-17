@@ -27,7 +27,7 @@ class ImportRepository:
         output.seek(0)
         return output
 
-    async def process_student_import(self, file: UploadFile):
+    async def process_student_import(self, file: UploadFile, batch_id: int = None):
         try:
             # Read the file
             contents = await file.read()
@@ -50,7 +50,8 @@ class ImportRepository:
                     "fathers_name": row.get("fathers_name"),
                     "class": row.get("class"),
                     "school": row.get("school"),
-                    "contact": str(row.get("contact")) if row.get("contact") else None
+                    "contact": str(row.get("contact")) if row.get("contact") else None,
+                    "batch_id": batch_id  # Assign to batch if provided
                 }
                 students_to_insert.append(student)
 
@@ -58,7 +59,6 @@ class ImportRepository:
             if students_to_insert:
                 response = supabase.table(self.student_table).insert(students_to_insert).execute()
                 return {"message": "Success", "count": len(response.data)}
-            else:
                 return {"message": "No data found in file", "count": 0}
 
         except Exception as e:

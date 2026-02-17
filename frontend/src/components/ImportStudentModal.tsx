@@ -6,14 +6,15 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 interface ImportStudentModalProps {
     isOpen: boolean;
     onClose: () => void;
+    batchId?: string | number;
 }
 
-const ImportStudentModal: React.FC<ImportStudentModalProps> = ({ isOpen, onClose }) => {
+const ImportStudentModal: React.FC<ImportStudentModalProps> = ({ isOpen, onClose, batchId }) => {
     const [file, setFile] = useState<File | null>(null);
     const queryClient = useQueryClient();
 
     const importMutation = useMutation({
-        mutationFn: StudentRepository.importStudents,
+        mutationFn: (file: File) => StudentRepository.importStudents(file, batchId),
         onSuccess: (data) => {
             alert(`Successfully imported ${data.count} students!`);
             queryClient.invalidateQueries({ queryKey: ['students'] });

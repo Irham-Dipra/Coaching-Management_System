@@ -128,9 +128,12 @@ export const StudentRepository = {
   },
 
   // 9. Import Students
-  async importStudents(file: File) {
+  async importStudents(file: File, batchId?: number | string) {
     const formData = new FormData();
     formData.append('file', file);
+    if (batchId) {
+      formData.append('batch_id', String(batchId));
+    }
 
     const response = await fetch(`${API_BASE_URL}/student-imports/data`, {
       method: 'POST',

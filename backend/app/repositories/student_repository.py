@@ -48,12 +48,12 @@ class StudentRepository:
         # Phase 22: Filter by is_active=true
         query = supabase.table(self.table).select(select_str, count="exact").eq('is_active', True)
         
-        # 1. Search (Name/ID)
+        # 1. Search (Name OR Student Code)
         if search:
-            if search.isdigit():
-                query = query.eq("student_id", int(search))
-            else:
-                query = query.ilike("name", f"%{search}%")
+            # User requested that "ID" search should check 'student_code' (text), not 'student_id' (int).
+            # We search for the term in EITHER name OR student_code using the .or_() filter.
+            # Syntax: column1.ilike.pattern,column2.ilike.pattern
+            query = query.or_(f"name.ilike.%{search}%,student_code.ilike.%{search}%")
                 
         # 2. Roll Search (Needs checking inside enrollment)
         # Supabase doesn't support "OR" across tables easily or "ANY element in array matches".

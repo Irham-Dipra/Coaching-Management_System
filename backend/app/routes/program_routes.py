@@ -75,6 +75,13 @@ def update_program(program_id: int, program_update: ProgramCreate):
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
+@router.delete("/programs/{program_id}")
+def delete_program(program_id: int):
+    try:
+        return repo.delete_program(program_id)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
 @router.get("/programs/{program_id}/analytics")
 def get_program_analytics(program_id: int):
     data = repo.get_program_analytics(program_id)

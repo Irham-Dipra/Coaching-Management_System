@@ -12,7 +12,7 @@ class StudentRepository:
         # Fetch students with Batch info and Enrollment (Program) info
         # Phase 22: Filter by is_active=true
         response = supabase.table(self.table)\
-            .select("*, batch(batch_name), enrollment(program_id, roll_no, status, program(program_name))")\
+            .select("*, batch(batch_name), enrollment(program_id, roll_no, status, program(program_name, is_active))")\
             .eq('is_active', True)\
             .execute()
         
@@ -21,7 +21,10 @@ class StudentRepository:
         data = response.data
         for student in data:
             if 'enrollment' in student:
-                student['enrollment'] = [e for e in student['enrollment'] if e.get('status') == 'Active']
+                student['enrollment'] = [
+                    e for e in student['enrollment'] 
+                    if e.get('status') == 'Active' and e.get('program', {}).get('is_active') is not False
+                ]
                 
         return data
 
@@ -36,14 +39,14 @@ class StudentRepository:
         
         # We need to build the query dynamically based on filters to avoid strict inner joins if not filtering by them.
         
-        select_str = "*, batch(batch_name), enrollment(program_id, roll_no, status, program(program_name))"
+        select_str = "*, batch(batch_name), enrollment(program_id, roll_no, status, program(program_name, is_active))"
         
         # FIX: PostgREST requires '!inner' to filter the PARENT (student) based on CHILD (enrollment) conditions.
         # If we don't use !inner, it just filters the child array but returns all parents (students).
         has_enrollment_filter = (filters and filters.get('program_id')) or roll_search
         
         if has_enrollment_filter:
-            select_str = "*, batch(batch_name), enrollment!inner(program_id, roll_no, status, program(program_name))"
+            select_str = "*, batch(batch_name), enrollment!inner(program_id, roll_no, status, program(program_name, is_active))"
         
         # Phase 22: Filter by is_active=true
         query = supabase.table(self.table).select(select_str, count="exact").eq('is_active', True)
@@ -85,10 +88,13 @@ class StudentRepository:
         data = response.data
         count = response.count
         
-        # Filter Withdrawn
+        # Filter Withdrawn & Soft-Deleted Programs
         for student in data:
             if 'enrollment' in student:
-                student['enrollment'] = [e for e in student['enrollment'] if e.get('status') == 'Active']
+                student['enrollment'] = [
+                    e for e in student['enrollment'] 
+                    if e.get('status') == 'Active' and e.get('program', {}).get('is_active') is not False
+                ]
                 
         return {
             "data": data,
@@ -113,7 +119,7 @@ class StudentRepository:
     def get_student_by_id(self, student_id: int):
         # Join enrollment -> program to see what they are studying
         response = supabase.table(self.table)\
-            .select("*, batch(*), enrollment(*, program(*))")\
+            .select("*, batch(*), enrollment(*, program(*, is_active))")\
             .eq("student_id", student_id)\
             .execute()
             
@@ -123,8 +129,12 @@ class StudentRepository:
         student = response.data[0]
         
         # Phase 21: Filter out 'Withdrawn' enrollments
+        # Phase 29: Also filter out Soft-Deleted Programs (is_active=False)
         if 'enrollment' in student:
-             student['enrollment'] = [e for e in student['enrollment'] if e.get('status') == 'Active']
+             student['enrollment'] = [
+                 e for e in student['enrollment'] 
+                 if e.get('status') == 'Active' and e.get('program', {}).get('is_active') is not False
+             ]
              
         return student
 

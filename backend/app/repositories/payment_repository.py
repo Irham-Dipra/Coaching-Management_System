@@ -899,6 +899,8 @@ class PaymentRepository:
             prog = env.get('program')
             if not prog or not env['enrollment_date']: continue
             
+            if prog.get('is_active') is False: continue
+            
             fee = float(prog['monthly_fee'] or 0)
             if fee == 0: continue
             
@@ -964,9 +966,17 @@ class PaymentRepository:
         
         # 2. Iterate Enrollments for Due & Status
         for env in enrollments:
+            # Check for Soft Deleted Program
+            # User requirement: Deleted programs should NOT show due.
+            prog = env.get('program')
+            if not prog: continue
+            
+            if prog.get('is_active') is False:
+                continue
+
             eid = env['enrollment_id']
-            prog_name = env['program']['program_name']
-            fee = env['program']['monthly_fee']
+            prog_name = prog['program_name']
+            fee = prog['monthly_fee']
             joined = env['enrollment_date']
             
             # Reuse core logic
@@ -1143,7 +1153,7 @@ class PaymentRepository:
         """
         # 1. Get Active Enrollments with Student/Program info
         query = supabase.table(self.enrollment_table)\
-            .select("*, roll_no, student(name, student_id), program(program_name, monthly_fee, batch(batch_name))")\
+            .select("*, roll_no, student(name, student_id), program(program_name, monthly_fee, is_active, batch(batch_name))")\
             .eq("status", "Active")
             
         if program_id:
@@ -1182,6 +1192,10 @@ class PaymentRepository:
         for env in enrollments:
             prog = env.get('program')
             if not prog or not env.get('enrollment_date'): continue
+            
+            # Filter Deleted Programs
+            if prog.get('is_active') is False:
+                continue
             
             fee = float(prog.get('monthly_fee', 0))
             if fee == 0: continue
@@ -1275,7 +1289,7 @@ class PaymentRepository:
         
         # 1. Active Enrollments (that started before or during target month)
         query = supabase.table(self.enrollment_table)\
-            .select("*, roll_no, student(name, student_id), program(program_name, monthly_fee, batch(batch_name))")\
+            .select("*, roll_no, student(name, student_id), program(program_name, monthly_fee, is_active, batch(batch_name))")\
             .eq("status", "Active")
             
         if program_id:
@@ -1334,6 +1348,10 @@ class PaymentRepository:
         for env in valid_enrollments:
             prog = env.get('program')
             if not prog: continue
+            
+            # Filter Deleted Programs
+            if prog.get('is_active') is False:
+                continue
             fee = float(prog.get('monthly_fee', 0))
             if fee == 0: continue
             
@@ -1427,7 +1445,7 @@ class PaymentRepository:
             
             # A. Fetch Active Enrollments + Program Data
             enrollments = supabase.table(self.enrollment_table)\
-                .select("enrollment_id, enrollment_date, program(monthly_fee)")\
+                .select("enrollment_id, enrollment_date, program(monthly_fee, is_active)")\
                 .eq("status", "Active")\
                 .execute().data
             
@@ -1466,6 +1484,10 @@ class PaymentRepository:
                 # 1. Create Map: { enrollment_id: { fee: X, date: Y, paid: 0 } }
                 edu_map = {}
                 for e in enrollments:
+                    # Filter deleted programs
+                    if e.get('program') and e['program'].get('is_active') is False:
+                         continue
+
                     if e.get('program'): # Handle broken links
                         edu_map[e['enrollment_id']] = {
                             'fee': e['program']['monthly_fee'],

@@ -14,7 +14,14 @@ class EnrollmentRepository:
             .eq("student_id", student_id)\
             .eq("status", "Active")\
             .execute()
-        return response.data
+            
+        # Filter out soft-deleted programs
+        data = [
+            e for e in response.data 
+            if e.get('program') and e.get('program').get('is_active') is not False
+        ]
+            
+        return data
 
 
     def enroll_student(self, enrollment: EnrollmentCreate):

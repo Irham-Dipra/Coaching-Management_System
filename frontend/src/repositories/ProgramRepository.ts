@@ -71,6 +71,14 @@ export const ProgramRepository = {
         return await response.json();
     },
 
+    async deleteProgram(id: string) {
+        const response = await fetch(`${API_BASE_URL}/programs/${id}`, {
+            method: "DELETE",
+        });
+        if (!response.ok) throw new Error("Failed to delete program");
+        return await response.json();
+    },
+
     async getProgramAnalytics(id: string) {
         const response = await fetch(`${API_BASE_URL}/programs/${id}/analytics`);
         if (!response.ok) throw new Error("Failed to fetch analytics");

@@ -135,6 +135,23 @@ const ProgramDetails: React.FC = () => {
                         >
                             <Users size={20} /> Record Batch Payment
                         </button>
+
+                        <button
+                            onClick={() => {
+                                if (window.confirm("Are you sure you want to delete this program? This action cannot be undone.")) {
+                                    ProgramRepository.deleteProgram(id!)
+                                        .then(() => {
+                                            alert("Program deleted successfully");
+                                            window.location.href = "/programs";
+                                        })
+                                        .catch(err => alert("Failed to delete program: " + err.message));
+                                }
+                            }}
+                            className="bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 p-3 rounded-xl shadow-lg transition-all hover:-translate-y-0.5"
+                            title="Delete Program"
+                        >
+                            <Trash2 size={20} />
+                        </button>
                     </div>
                 </div>
 

@@ -79,8 +79,10 @@ class ProgramRepository:
     
     def get_all_programs(self):
         # Fetch status to filter Active counts only
+        # Phase 28: Filter by is_active=True (Soft Delete)
         response = supabase.table(self.program_table)\
             .select("*, batch(*), enrollment(status)")\
+            .eq('is_active', True)\
             .execute()
         
         data = response.data
@@ -147,6 +149,26 @@ class ProgramRepository:
             .update(updates)\
             .eq("program_id", program_id)\
             .execute()
+        return response.data[0] if response.data else None
+
+    def delete_program(self, program_id: int):
+        """
+        Soft Delete:
+        1. Set is_active = False
+        2. Set end_date = TODAY (to stop due calculation)
+        """
+        from datetime import date
+        
+        updates = {
+            "is_active": False,
+            "end_date": str(date.today())
+        }
+        
+        response = supabase.table(self.program_table)\
+            .update(updates)\
+            .eq("program_id", program_id)\
+            .execute()
+            
         return response.data[0] if response.data else None
 
     # ==========================================

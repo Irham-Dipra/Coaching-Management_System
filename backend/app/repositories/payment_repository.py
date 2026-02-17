@@ -262,7 +262,7 @@ class PaymentRepository:
         """
         # 1. Get Enrollment Details (Start Date, Fee)
         enrollment = supabase.table(self.enrollment_table)\
-            .select("enrollment_date, program(monthly_fee)")\
+            .select("enrollment_date, program(monthly_fee, end_date)")\
             .eq("enrollment_id", enrollment_id)\
             .single()\
             .execute().data
@@ -304,7 +304,40 @@ class PaymentRepository:
                  # This sets it to first day of NEXT month, ensuring the loop covers the payment month.
         
         # End date is the later of Today or the last paid month
-        end = max(today.replace(day=1), last_payment_date)
+        calc_end_date = max(today.replace(day=1), last_payment_date)
+        
+        # FIX: Check if program has an End Date (Soft Deleted or Completed)
+        # If the program ended, we should NOT calculate dues beyond that date.
+        program_end_str = enrollment.get('program', {}).get('end_date')
+        if program_end_str:
+            program_end = datetime.strptime(program_end_str, "%Y-%m-%d").date().replace(day=1)
+            # If the calculated end date goes beyond the program end, cap it.
+            # However, if the student PAID beyond the program end (advance), we should still show it (ledger logic).
+            # But the 'Due' logic loop will stop at 'end'.
+            # So, we set 'end' to min(calc_end_date, program_end) UNLESS they paid more?
+            # Actually, simply capping the 'Due Generation' loop is enough.
+            # If they paid beyond, they paid.
+            
+            # Logic: We only generate ledger rows up to the program end OR the last payment (whichever is later).
+            # AND we definitely do not generate NEW dues after program_end.
+            
+            effective_end = program_end
+            
+            # If they paid past the end date, we must extend to show that payment
+            if last_payment_date > effective_end:
+                effective_end = last_payment_date
+                
+            # If 'today' is past the end date, we should NOT extend to today.
+            # So:
+            # Base end is max(today, last_payment) --> this assumes active.
+            # With limit:
+            # If today > program_end: end at MAX(program_end, last_payment)
+            # If today <= program_end: end at MAX(today, last_payment)
+            
+            if today > program_end:
+                calc_end_date = max(program_end, last_payment_date)
+        
+        end = calc_end_date
         
         # Track the latest month with any payment
         last_active_payment = None

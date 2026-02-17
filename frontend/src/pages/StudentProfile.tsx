@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { StudentRepository } from '../repositories/StudentRepository';
 import { ProgramRepository } from '../repositories/ProgramRepository';
@@ -88,6 +88,19 @@ const StudentProfile: React.FC = () => {
         },
         onError: (err: any) => {
             alert(err.message);
+        }
+    });
+
+    const navigate = useNavigate();
+
+    const deleteMutation = useMutation({
+        mutationFn: () => StudentRepository.deleteStudent(parseInt(id!)),
+        onSuccess: () => {
+            alert("Student deleted successfully.");
+            navigate('/students');
+        },
+        onError: (err: any) => {
+            alert("Failed to delete student: " + err.message);
         }
     });
 
@@ -180,9 +193,22 @@ const StudentProfile: React.FC = () => {
                                 <Save size={18} /> Save
                             </button>
                         ) : (
-                            <button onClick={handleEditToggle} className="bg-blue-600 text-white px-6 py-2.5 rounded-xl flex items-center gap-2 hover:bg-blue-500 shadow-lg shadow-blue-500/20 transition-all flex-1 md:flex-none justify-center font-bold">
-                                <Edit2 size={18} /> Edit
-                            </button>
+                            <>
+                                <button
+                                    onClick={() => {
+                                        if (window.confirm("Are you sure you want to delete this student? This action cannot be undone. It will withdraw all enrollments and delete exam results. Payments will be preserved.")) {
+                                            deleteMutation.mutate();
+                                        }
+                                    }}
+                                    className="bg-red-600/10 text-red-500 px-4 py-2.5 rounded-xl hover:bg-red-600 hover:text-white transition-all font-medium border border-red-600/20 flex items-center gap-2"
+                                    title="Delete Student"
+                                >
+                                    <Trash2 size={18} />
+                                </button>
+                                <button onClick={handleEditToggle} className="bg-blue-600 text-white px-6 py-2.5 rounded-xl flex items-center gap-2 hover:bg-blue-500 shadow-lg shadow-blue-500/20 transition-all flex-1 md:flex-none justify-center font-bold">
+                                    <Edit2 size={18} /> Edit
+                                </button>
+                            </>
                         )}
                     </div>
                 </div>

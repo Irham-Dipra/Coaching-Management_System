@@ -12,6 +12,7 @@ class AttendanceRepository:
         enrollments = supabase.table(self.enrollment_table)\
             .select("enrollment_id, roll_no, student(student_id, name)")\
             .eq("program_id", program_id)\
+            .eq("status", "Active")\
             .execute().data
 
         if not enrollments:

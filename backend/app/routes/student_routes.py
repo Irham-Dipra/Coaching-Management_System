@@ -97,6 +97,10 @@ def update_student(student_id: int, student_data: dict):
     # We accept a dict so we can do partial updates
     return repo.update_student(student_id, student_data)
 
+@router.delete("/students/{student_id}")
+def delete_student(student_id: int):
+    return repo.delete_student(student_id)
+
 # ==========================================
 # ENROLLMENT ENDPOINTS
 # ==========================================

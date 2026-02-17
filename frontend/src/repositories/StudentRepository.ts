@@ -171,5 +171,14 @@ export const StudentRepository = {
     const response = await fetch(`${API_BASE_URL}/students/${studentId}/analytics`);
     if (!response.ok) throw new Error("Failed to fetch student analytics");
     return await response.json();
+  },
+
+  // 13. Delete Student (Soft Delete)
+  async deleteStudent(studentId: number) {
+    const response = await fetch(`${API_BASE_URL}/students/${studentId}`, {
+      method: "DELETE",
+    });
+    if (!response.ok) throw new Error("Failed to delete student");
+    return await response.json();
   }
 }

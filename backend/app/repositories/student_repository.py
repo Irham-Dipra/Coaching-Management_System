@@ -10,8 +10,10 @@ class StudentRepository:
 
     def get_all_students(self):
         # Fetch students with Batch info and Enrollment (Program) info
+        # Phase 22: Filter by is_active=true
         response = supabase.table(self.table)\
             .select("*, batch(batch_name), enrollment(program_id, roll_no, status, program(program_name))")\
+            .eq('is_active', True)\
             .execute()
         
         # Phase 21: Filter out 'Withdrawn' enrollments from the list
@@ -36,7 +38,8 @@ class StudentRepository:
         
         select_str = "*, batch(batch_name), enrollment(program_id, roll_no, status, program(program_name))"
         
-        query = supabase.table(self.table).select(select_str, count="exact")
+        # Phase 22: Filter by is_active=true
+        query = supabase.table(self.table).select(select_str, count="exact").eq('is_active', True)
         
         # 1. Search (Name/ID)
         if search:
@@ -140,6 +143,25 @@ class StudentRepository:
             .eq("student_id", student_id)\
             .execute()
         return response.data[0] if response.data else None
+
+    def delete_student(self, student_id: int):
+        """
+        Soft delete a student:
+        1. Set is_active = False
+        2. Set all enrollments to 'Withdrawn'
+        3. Delete all results from student_individual_result
+        4. (Payments are preserved)
+        """
+        # 1. Soft Delete Student
+        supabase.table(self.table).update({'is_active': False}).eq('student_id', student_id).execute()
+        
+        # 2. Withdraw Enrollments
+        supabase.table('enrollment').update({'status': 'Withdrawn'}).eq('student_id', student_id).execute()
+        
+        # 3. Delete Results
+        supabase.table('student_individual_result').delete().eq('student_id', student_id).execute()
+        
+        return {"message": "Student soft deleted successfully"}
 
     def register_student_with_enrollment(self, student_data: StudentCreate, program_ids: list[int]):
         # Convert Pydantic object to a dictionary

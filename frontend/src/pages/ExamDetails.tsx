@@ -259,7 +259,7 @@ const ExamDetails: React.FC = () => {
         doc.setFontSize(22);
         doc.setTextColor(41, 128, 185); // Blue
         doc.setFont("helvetica", "bold");
-        doc.text("Coaching Management System", 105, 20, { align: "center" });
+        doc.text("Science Point by Dr. Talha", 105, 20, { align: "center" });
 
         // Subtitle / Exam Name
         doc.setFontSize(16);

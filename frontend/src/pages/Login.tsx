@@ -69,7 +69,8 @@ const Login: React.FC = () => {
                     <div className="w-16 h-16 bg-blue-500/10 rounded-full flex items-center justify-center mx-auto mb-4 border border-blue-500/20">
                         <ShieldCheck className="text-blue-400" size={32} />
                     </div>
-                    <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-400 mb-1">Coaching Management System</h1>
+                    <h1 className="text-3xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-400 mb-1">Science Point</h1>
+                    <p className="text-sm text-slate-500 font-semibold uppercase tracking-wider">by Dr. Talha</p>
                     <p className="text-slate-400 mt-3 text-sm">Administrator Login</p>
                 </div>
 

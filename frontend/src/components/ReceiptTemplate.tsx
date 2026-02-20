@@ -10,7 +10,8 @@ const ReceiptTemplate: React.FC<ReceiptProps> = ({ payment }) => {
             {/* Header */}
             <div className="flex justify-between items-start mb-2">
                 <div>
-                    <h1 className="text-lg font-bold text-black leading-tight">COACHING MANAGEMENT SYSTEM</h1>
+                    <h1 className="text-lg font-bold text-black leading-tight">SCIENCE POINT</h1>
+                    <p className="text-xs font-bold text-black">by Dr. Talha</p>
                     <p className="text-[10px] text-black mt-0.5">Main Road, Pabna | 01700000000</p>
                 </div>
                 <div className="text-right">

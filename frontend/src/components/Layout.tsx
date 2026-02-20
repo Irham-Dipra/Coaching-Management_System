@@ -60,8 +60,9 @@ const Layout: React.FC = () => {
                 <div className="p-6 border-b border-slate-800/50 bg-slate-900/50 backdrop-blur-md sticky top-0 z-10">
                     <Link to="/" className="block group">
                         <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-400 group-hover:from-blue-300 group-hover:to-purple-300 transition-all">
-                            Coaching Management System
+                            Science Point
                         </h1>
+                        <p className="text-xs font-semibold text-slate-500 tracking-wider uppercase mt-1">by Dr. Talha</p>
                     </Link>
                 </div>
 

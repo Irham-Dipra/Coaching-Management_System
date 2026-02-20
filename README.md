@@ -13,9 +13,9 @@ A full-stack, production-grade web application for managing student enrollments,
 
 ## 📸 Screenshots
 
-| Dashboard | Finance | Student Profile |
+| Dashboard | Finance | Programs |
 |-----------|---------|-----------------|
-| ![Dashboard View](docs/dashboard.png) | ![Finance View](docs/finance.png) | ![Student Profile](docs/student_profile.png) |
+| ![Dashboard View](docs/dashboard.png) | ![Finance View](docs/finance.png) | ![Programs View](docs/programs.png) |
 
 ---
 

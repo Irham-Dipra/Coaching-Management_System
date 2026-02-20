@@ -177,7 +177,7 @@ const StudentList: React.FC<StudentListProps> = ({ fixedBatchId, hideHeader }) =
                             Student Directory
                         </h1>
                         <p className="text-slate-400 text-sm mt-1">
-                            {totalCount} Students Found â€¢ Page {page} of {totalPages || 1}
+                            {totalCount} Students Found &bull; Page {page} of {totalPages || 1}
                         </p>
                     </div>
                 </div>

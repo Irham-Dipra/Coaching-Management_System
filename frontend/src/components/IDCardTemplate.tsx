@@ -20,8 +20,7 @@ const IDCardTemplate: React.FC<IDCardProps> = ({ student }) => {
                         <User size={20} />
                     </div>
                     <div>
-                        <h2 className="text-xs font-bold text-black uppercase tracking-wider">Science Point</h2>
-                        <p className="text-[9px] text-black font-bold uppercase">by Dr. Talha</p>
+                        <h2 className="text-xs font-bold text-black uppercase tracking-wider">Coaching Mgmt System</h2>
                     </div>
                 </div>
 

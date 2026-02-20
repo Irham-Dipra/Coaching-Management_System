@@ -21,12 +21,7 @@ export const generatePaymentSlip = (payment: any) => {
     doc.setTextColor(0, 0, 0);
     doc.setFontSize(18);
     doc.setFont('helvetica', 'bold');
-    doc.text("SCIENCE POINT", marginLeft, 19);
-
-    doc.setFontSize(8);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(80, 80, 80);
-    doc.text("by Dr. Talha", marginLeft, 24);
+    doc.text("COACHING MANAGEMENT SYSTEM", marginLeft, 19);
 
     // Title on right
     doc.setFontSize(14);
@@ -213,7 +208,7 @@ export const generatePaymentSlip = (payment: any) => {
     doc.setFontSize(6.5);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(120, 120, 120);
-    doc.text("Science Point Management System", marginLeft, footerY + 4);
+    doc.text("Coaching Management System", marginLeft, footerY + 4);
     doc.text("Authorized Signature: ___________________", contentRight, footerY + 4, { align: 'right' });
 
     doc.save(`Receipt_${receiptNo}.pdf`);

@@ -44,7 +44,7 @@ const ExamDetails: React.FC = () => {
     });
 
     // Sorting State
-    const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' }>({ key: 'student_id', direction: 'asc' });
+    const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' }>({ key: 'student_code', direction: 'asc' });
 
     const handleSort = (key: string) => {
         let direction: 'asc' | 'desc' = 'asc';
@@ -78,7 +78,7 @@ const ExamDetails: React.FC = () => {
                 sort_written: isEditing ? (Number(finalEditData.written) || 0) : (g.written_marks || 0),
                 sort_mcq: isEditing ? (Number(finalEditData.mcq) || 0) : (g.mcq_marks || 0),
                 sort_total: isEditing ? ((Number(finalEditData.written) || 0) + (Number(finalEditData.mcq) || 0)) : (g.total_score || 0),
-                sort_student_id: studentId || 0,
+                sort_student_code: g.student?.student_code || String(studentId || ''),
 
                 editData: finalEditData,
                 enrollments: g.enrollments // Already provided by backend
@@ -90,9 +90,9 @@ const ExamDetails: React.FC = () => {
             let aValue: any;
             let bValue: any;
 
-            if (sortConfig.key === 'student_id') {
-                aValue = a.sort_student_id;
-                bValue = b.sort_student_id;
+            if (sortConfig.key === 'student_code') {
+                aValue = a.sort_student_code;
+                bValue = b.sort_student_code;
             } else if (sortConfig.key === 'written') {
                 aValue = a.sort_written;
                 bValue = b.sort_written;
@@ -102,6 +102,12 @@ const ExamDetails: React.FC = () => {
             } else if (sortConfig.key === 'total') {
                 aValue = a.sort_total;
                 bValue = b.sort_total;
+            }
+
+            if (sortConfig.key === 'student_code') {
+                return sortConfig.direction === 'asc'
+                    ? String(aValue).localeCompare(String(bValue), undefined, { numeric: true })
+                    : String(bValue).localeCompare(String(aValue), undefined, { numeric: true });
             }
 
             if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
@@ -507,11 +513,12 @@ const ExamDetails: React.FC = () => {
                     <table className="w-full text-left border-collapse">
                         <thead className="bg-slate-900/50 text-slate-400 text-xs uppercase font-bold border-b border-slate-700/50">
                             <tr>
-                                <th className="p-4 cursor-pointer hover:bg-slate-800/50 transition-colors" onClick={() => handleSort('student_id')}>
+                                <th className="p-4 cursor-pointer hover:bg-slate-800/50 transition-colors" onClick={() => handleSort('student_code')}>
                                     <div className="flex items-center gap-1">
-                                        Student {sortConfig.key === 'student_id' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                                        Student ID {sortConfig.key === 'student_code' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
                                     </div>
                                 </th>
+                                <th className="p-4">Student Name</th>
                                 <th className="p-4">Programs</th>
                                 <th className="p-4 text-right cursor-pointer hover:bg-slate-800/50 transition-colors" onClick={() => handleSort('written')}>
                                     <div className="flex items-center justify-end gap-1">
@@ -536,6 +543,9 @@ const ExamDetails: React.FC = () => {
 
                                 return (
                                     <tr key={g.student?.student_id || index} className={isEditing ? "bg-blue-500/5" : "hover:bg-slate-700/30 transition-colors"}>
+                                        <td className="p-4 font-mono text-slate-400">
+                                            {g.student?.student_code || g.student?.student_id || '-'}
+                                        </td>
                                         <td className="p-4 font-medium text-white">
                                             <Link to={`/students/${g.student?.student_id}`} className="hover:text-blue-400 hover:underline flex items-center gap-2">
                                                 <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-xs font-bold text-slate-300">
@@ -594,7 +604,7 @@ const ExamDetails: React.FC = () => {
                             })}
 
                             {!sortedCandidates || sortedCandidates.length === 0 && (
-                                <tr><td colSpan={5} className="p-12 text-center text-slate-500 italic">No students enrolled or results published.</td></tr>
+                                <tr><td colSpan={6} className="p-12 text-center text-slate-500 italic">No students enrolled or results published.</td></tr>
                             )}
                         </tbody>
                     </table>

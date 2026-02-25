@@ -11,23 +11,34 @@ class ResultRepository:
     def submit_bulk_results(self, bulk_data: BulkResultRequest):
         exam_id = bulk_data.exam_id
         
-        # 3. Prepare the data for upsert
-        # We now link result directly to student_id and exam_id
+        # 3. Prepare the data for upsert and delete
+        # If both marks are None, it means the record should be completely deleted (Not Recorded)
         upsert_list = []
+        delete_list = []
+        
         for item in bulk_data.results:
-            upsert_list.append({
-                "student_id": item.student_id,
-                "exam_id": exam_id,
-                "written_marks": item.written_marks,
-                "mcq_marks": item.mcq_marks,
-            })
+            if item.written_marks is None and item.mcq_marks is None:
+                delete_list.append(item.student_id)
+            else:
+                upsert_list.append({
+                    "student_id": item.student_id,
+                    "exam_id": exam_id,
+                    "written_marks": item.written_marks,
+                    "mcq_marks": item.mcq_marks,
+                })
 
-        if not upsert_list:
-            return {"message": "No data to upsert"}
+        upsert_res = None
+        
+        # Process Deletions first
+        if delete_list:
+            supabase.table(self.result_table).delete().eq("exam_id", exam_id).in_("student_id", delete_list).execute()
 
-        # 4. Perform Bulk Upsert
-        response = supabase.table(self.result_table).upsert(upsert_list, on_conflict="student_id, exam_id").execute()
-        return response.data
+        # Process Upserts
+        if upsert_list:
+            response = supabase.table(self.result_table).upsert(upsert_list, on_conflict="student_id, exam_id").execute()
+            upsert_res = response.data
+
+        return {"upserted": upsert_res, "deleted_students": delete_list}
 
         # Fetch results with student details for the Merit List
         # Now linked via student_id directly
@@ -83,22 +94,34 @@ class ResultRepository:
         sum_written = 0
         sum_mcq = 0
         sum_total = 0
-        max_written = 0
-        max_mcq = 0
-        max_total = 0
+        
+        # Track Top Scorers
+        max_written = {"score": -1, "student": None}
+        max_mcq = {"score": -1, "student": None}
+        max_total = {"score": -1, "student": None}
 
         for r in results:
-            w = r.get('written_marks') or 0
-            m = r.get('mcq_marks') or 0
-            t = w + m # Manual sum
+            student_info = r.get('student')
+            w = r.get('written_marks')
+            m = r.get('mcq_marks')
+            
+            # If marks are missing, treat as 0 for sum but skip for high score calculation if we want
+            w_val = w if w is not None else 0
+            m_val = m if m is not None else 0
+            t_val = w_val + m_val
 
-            sum_written += w
-            sum_mcq += m
-            sum_total += t
+            sum_written += w_val
+            sum_mcq += m_val
+            sum_total += t_val
 
-            if w > max_written: max_written = w
-            if m > max_mcq: max_mcq = m
-            if t > max_total: max_total = t
+            if w is not None and w_val > max_written["score"]: 
+                max_written = {"score": w_val, "student": student_info}
+            if m is not None and m_val > max_mcq["score"]: 
+                max_mcq = {"score": m_val, "student": student_info}
+            
+            # For total, if both are None, skip
+            if (w is not None or m is not None) and t_val > max_total["score"]: 
+                max_total = {"score": t_val, "student": student_info}
 
         return {
             "total_students": total_students,
@@ -108,9 +131,12 @@ class ResultRepository:
                 "total": round(sum_total / total_students, 2) if total_students else 0
             },
             "highest": {
-                "written": max_written,
-                "mcq": max_mcq,
-                "total": max_total
+                "written": max_written["score"] if max_written["score"] != -1 else 0,
+                "written_student": max_written["student"],
+                "mcq": max_mcq["score"] if max_mcq["score"] != -1 else 0,
+                "mcq_student": max_mcq["student"],
+                "total": max_total["score"] if max_total["score"] != -1 else 0,
+                "total_student": max_total["student"]
             }
         }
 
@@ -153,9 +179,9 @@ class ResultRepository:
                 candidates_map[student_id] = {
                     "student": student,
                     "result_id": res['result_id'] if res else None,
-                    "written_marks": res['written_marks'] if res else 0,
-                    "mcq_marks": res['mcq_marks'] if res else 0,
-                    "total_score": res['total_score'] if res else 0,
+                    "written_marks": res['written_marks'] if res else None,
+                    "mcq_marks": res['mcq_marks'] if res else None,
+                    "total_score": res['total_score'] if res else None,
                     "has_attended": True if res else False,
                     "enrollments": []
                 }

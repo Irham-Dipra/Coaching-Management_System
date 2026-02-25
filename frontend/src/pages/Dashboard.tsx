@@ -123,25 +123,29 @@ const Dashboard: React.FC = () => {
                     </div>
                 </Link>
 
-                {statCards.slice(2).map((card, index) => (
-                    <div
-                        key={index + 2}
-                        className={`relative overflow-hidden rounded-2xl p-6 border backdrop-blur-md bg-gradient-to-br ${card.bg} ${card.border} shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 animate-slide-up`}
-                        style={{ animationDelay: `${(index + 2) * 100}ms` }}
-                    >
-                        <div className="flex justify-between items-start">
-                            <div>
-                                <p className="text-slate-400 text-xs font-medium uppercase tracking-wider mb-2">{card.title}</p>
-                                <h3 className={`text-2xl font-bold ${card.text}`}>{card.value}</h3>
+                {statCards.slice(2).map((card, index) => {
+                    const TargetLink = card.title === "Revenue This Month" ? "/admin/finance/breakdown/due_monthly" : "/admin/finance/breakdown/due_overall";
+                    return (
+                        <Link
+                            key={index + 2}
+                            to={TargetLink}
+                            className={`relative overflow-hidden rounded-2xl p-6 border backdrop-blur-md bg-gradient-to-br ${card.bg} ${card.border} shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 animate-slide-up text-left block`}
+                            style={{ animationDelay: `${(index + 2) * 100}ms` }}
+                        >
+                            <div className="flex justify-between items-start">
+                                <div>
+                                    <p className="text-slate-400 text-xs font-medium uppercase tracking-wider mb-2">{card.title}</p>
+                                    <h3 className={`text-2xl font-bold ${card.text}`}>{card.value}</h3>
+                                </div>
+                                <div className="p-2 bg-white/5 rounded-lg border border-white/10">
+                                    {card.icon}
+                                </div>
                             </div>
-                            <div className="p-2 bg-white/5 rounded-lg border border-white/10">
-                                {card.icon}
-                            </div>
-                        </div>
-                        {/* Decorative Circle */}
-                        <div className="absolute -bottom-4 -right-4 w-24 h-24 bg-white/5 rounded-full blur-2xl"></div>
-                    </div>
-                ))}
+                            {/* Decorative Circle */}
+                            <div className="absolute -bottom-4 -right-4 w-24 h-24 bg-white/5 rounded-full blur-2xl"></div>
+                        </Link>
+                    )
+                })}
             </div>
 
             {/* Layout Grid: Activity & Quick Actions */}

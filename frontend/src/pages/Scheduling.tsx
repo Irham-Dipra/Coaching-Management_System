@@ -423,12 +423,12 @@ const MasterSchedule: React.FC<{
             {/* CREATE MODAL */}
             {isCreateOpen && (
                 <div className="fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50 backdrop-blur-sm">
-                    <div className="bg-slate-800 rounded-xl shadow-2xl w-full max-w-lg overflow-hidden animate-in fade-in zoom-in duration-200 border border-slate-700">
-                        <div className="px-6 py-4 border-b border-slate-700 bg-slate-900/50 flex justify-between items-center">
+                    <div className="bg-slate-800 rounded-xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-hidden animate-in fade-in zoom-in duration-200 border border-slate-700 flex flex-col">
+                        <div className="px-6 py-4 border-b border-slate-700 bg-slate-900/50 flex justify-between items-center shrink-0">
                             <h3 className="font-bold text-lg text-white">Add New Time Slot</h3>
                             <button onClick={() => { setIsCreateOpen(false); setCreateError(null); }} className="text-slate-400 hover:text-slate-200">&times;</button>
                         </div>
-                        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+                        <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto custom-scrollbar">
                             {createError && (
                                 <div className="bg-red-500/10 border-l-4 border-red-500 p-4 rounded-r shadow-sm animate-pulse">
                                     <div className="flex items-start">

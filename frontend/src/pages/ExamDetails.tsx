@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ExamRepository } from '../repositories/ExamRepository';
-import { FileText, Trophy, AlignLeft, Download, Upload, Edit, Save, X, ArrowLeft } from 'lucide-react';
+import { FileText, Trophy, AlignLeft, Download, Upload, Edit, Save, X, ArrowLeft, Trash } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -14,6 +14,7 @@ const ExamDetails: React.FC = () => {
     const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
+    const [editingRows, setEditingRows] = useState<Record<number, boolean>>({}); // Track which rows are actively being edited
     const [viewDoc, setViewDoc] = useState<{ url: string, title: string } | null>(null);
     const [editedMarks, setEditedMarks] = useState<any>({});
     const queryClient = useQueryClient();
@@ -70,15 +71,16 @@ const ExamDetails: React.FC = () => {
 
             return {
                 ...g,
-                result_written: g.written_marks ?? '-',
-                result_mcq: g.mcq_marks ?? '-',
-                result_total: g.total_score ?? '-',
+                result_written: g.written_marks ?? 'Not Recorded',
+                result_mcq: g.mcq_marks ?? 'Not Recorded',
+                result_total: g.total_score ?? 'Not Recorded',
 
                 // Sorting Values
                 sort_written: isEditing ? (Number(finalEditData.written) || 0) : (g.written_marks || 0),
                 sort_mcq: isEditing ? (Number(finalEditData.mcq) || 0) : (g.mcq_marks || 0),
                 sort_total: isEditing ? ((Number(finalEditData.written) || 0) + (Number(finalEditData.mcq) || 0)) : (g.total_score || 0),
                 sort_student_code: g.student?.student_code || String(studentId || ''),
+                sort_program_id: g.enrollments && g.enrollments.length > 0 ? g.enrollments[0].program_id : 0,
 
                 editData: finalEditData,
                 enrollments: g.enrollments // Already provided by backend
@@ -102,6 +104,9 @@ const ExamDetails: React.FC = () => {
             } else if (sortConfig.key === 'total') {
                 aValue = a.sort_total;
                 bValue = b.sort_total;
+            } else if (sortConfig.key === 'program') {
+                aValue = a.sort_program_id;
+                bValue = b.sort_program_id;
             }
 
             if (sortConfig.key === 'student_code') {
@@ -112,6 +117,12 @@ const ExamDetails: React.FC = () => {
 
             if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
             if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
+
+            // If primary sorting values are equal and we are sorting by program, sort by student code (ALWAYS ascending)
+            if (sortConfig.key === 'program') {
+                return String(a.sort_student_code).localeCompare(String(b.sort_student_code), undefined, { numeric: true });
+            }
+
             return 0;
         });
 
@@ -127,8 +138,8 @@ const ExamDetails: React.FC = () => {
                     // Check existing merit from meritList OR candidate data itself
                     const fromMerit = meritList?.find((r: any) => r.student?.student_id === sId);
 
-                    const written = fromMerit?.written_marks ?? c.written_marks ?? 0;
-                    const mcq = fromMerit?.mcq_marks ?? c.mcq_marks ?? 0;
+                    const written = fromMerit?.written_marks ?? c.written_marks ?? '';
+                    const mcq = fromMerit?.mcq_marks ?? c.mcq_marks ?? '';
 
                     initialMarks[sId] = {
                         student_id: sId,
@@ -141,7 +152,6 @@ const ExamDetails: React.FC = () => {
         }
     }, [isEditing, candidates, meritList]);
 
-    // Mutation
     const bulkUpdateMutation = useMutation({
         mutationFn: (data: any) => ExamRepository.submitBulkResults(data),
         onSuccess: () => {
@@ -149,10 +159,34 @@ const ExamDetails: React.FC = () => {
             queryClient.invalidateQueries({ queryKey: ['merit', id] });
             queryClient.invalidateQueries({ queryKey: ['candidates', id] });
             setIsEditing(false);
+            setEditingRows({}); // Reset editing rows
             setEditedMarks({});
             alert("Marks updated successfully!");
         },
         onError: (err) => alert("Failed to update marks: " + err)
+    });
+
+    const clearMarkMutation = useMutation({
+        mutationFn: (studentId: number) => ExamRepository.submitBulkResults({
+            exam_id: parseInt(id!),
+            results: [{ student_id: studentId, written_marks: null, mcq_marks: null }]
+        }),
+        onSuccess: (_, studentId) => {
+            queryClient.invalidateQueries({ queryKey: ['analytics', id] });
+            queryClient.invalidateQueries({ queryKey: ['merit', id] });
+            queryClient.invalidateQueries({ queryKey: ['candidates', id] });
+            setEditedMarks((prev: any) => {
+                const next = { ...prev };
+                delete next[studentId];
+                return next;
+            });
+            setEditingRows(prev => {
+                const next = { ...prev };
+                delete next[studentId];
+                return next;
+            });
+        },
+        onError: (err) => alert("Failed to clear marks: " + err)
     });
 
     const getEmbedLink = (url: string) => {
@@ -182,11 +216,31 @@ const ExamDetails: React.FC = () => {
     };
 
     const handleSaveManual = () => {
-        const resultsArray = Object.values(editedMarks).map((m: any) => ({
-            student_id: m.student_id,
-            written_marks: m.written === '' ? 0 : (m.written || 0),
-            mcq_marks: m.mcq === '' ? 0 : (m.mcq || 0)
-        }));
+        // Only save marks for rows that were explicitly edited
+        const editedStudentIds = Object.keys(editingRows).filter(id => editingRows[Number(id)]);
+
+        if (editedStudentIds.length === 0) {
+            alert("No changes to save. Please edit at least one student's marks.");
+            return;
+        }
+
+        const resultsArray = editedStudentIds.map(idStr => {
+            const studentId = Number(idStr);
+            const m = editedMarks[studentId] || { student_id: studentId, written: '', mcq: '' };
+
+            let w = m.written === '' ? null : Number(m.written);
+            let mcq = m.mcq === '' ? null : Number(m.mcq);
+
+            // If one mark is provided but the other is missing, default the missing one to 0
+            if (w !== null && mcq === null) mcq = 0;
+            if (mcq !== null && w === null) w = 0;
+
+            return {
+                student_id: m.student_id,
+                written_marks: w,
+                mcq_marks: mcq
+            };
+        });
 
         bulkUpdateMutation.mutate({
             exam_id: parseInt(id!),
@@ -197,30 +251,47 @@ const ExamDetails: React.FC = () => {
     // --- EXPORT FUNCTIONS ---
 
     // 1. Download Excel Template for Re-upload
-    const exportResultTemplate = () => {
-        if (!candidates) return;
+    const exportResultTemplate = (sortBy: 'student_code' | 'program' = 'student_code') => {
+        if (!candidates || candidates.length === 0) {
+            alert("No students found to generate an Excel template.");
+            return;
+        }
 
-        // Prepare Data: ID, Name, Written, MCQ
-        // Sorted by Student ID for easier data entry from physical sheets
-        // Prepare Data: Student Code, Name, Written, MCQ
-        // Sorted by Student Code for easier data entry
-        const templateData = candidates
-            .map((c: any) => ({
-                "Student Code": c.student?.student_code || c.student?.student_id, // Primary Identifier
-                "Student Name": c.student?.name,
-                "Program": c.program?.program_name || (c.enrollments && c.enrollments.map((e: any) => e.program_name).join(', ')),
-                "Written": c.written_marks || '', // Pre-fill if exists, else empty
-                "MCQ": c.mcq_marks || ''           // Pre-fill if exists, else empty
-            }))
-            .sort((a: any, b: any) => String(a["Student Code"]).localeCompare(String(b["Student Code"])));
+        // Create a wrapper array to avoid mutating object keys (which breaks xlsx headers)
+        const wrappers = candidates.map((c: any) => ({
+            _program_id: c.enrollments && c.enrollments.length > 0 ? c.enrollments[0].program_id : 0,
+            _student_code: String(c.student?.student_code || c.student?.student_id || ''),
+            data: {
+                "Student Code": String(c.student?.student_code || c.student?.student_id || ''),
+                "Student Name": String(c.student?.name || ''),
+                "Program Name": String(c.program?.program_name || (c.enrollments && c.enrollments.map((e: any) => e.program_name).join(', ')) || ''),
+                "Written": c.written_marks !== undefined && c.written_marks !== null ? Number(c.written_marks) : null,
+                "MCQ": c.mcq_marks !== undefined && c.mcq_marks !== null ? Number(c.mcq_marks) : null
+            }
+        }));
 
-        const ws = XLSX.utils.json_to_sheet(templateData);
+        if (sortBy === 'program') {
+            wrappers.sort((a: any, b: any) => {
+                if (a._program_id < b._program_id) return -1;
+                if (a._program_id > b._program_id) return 1;
+                return a._student_code.localeCompare(b._student_code, undefined, { numeric: true });
+            });
+        } else {
+            wrappers.sort((a: any, b: any) => a._student_code.localeCompare(b._student_code, undefined, { numeric: true }));
+        }
+
+        const templateData = wrappers.map((w: any) => w.data);
+
+        // Explicitly map exact string column headers to prevent misaligned property injections
+        const ws = XLSX.utils.json_to_sheet(templateData, {
+            header: ["Student Code", "Student Name", "Program Name", "Written", "MCQ"]
+        });
 
         // Adjust column widths
         const wscols = [
             { wch: 15 }, // Student Code
             { wch: 30 }, // Name
-            { wch: 25 }, // Program
+            { wch: 30 }, // Program Name
             { wch: 15 }, // Written
             { wch: 15 }  // MCQ
         ];
@@ -230,16 +301,26 @@ const ExamDetails: React.FC = () => {
         XLSX.utils.book_append_sheet(wb, ws, "Result Entry");
 
         const safeName = (exam.exam_name || 'Exam').replace(/[^a-zA-Z0-9]/g, '_');
+        const fileName = `${safeName}_Result_Template.xlsx`;
 
-        // Generate buffer
-        const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
-        const blob = new Blob([wbout], { type: 'application/octet-stream' });
+        // Safest approach: Base64 encode the binary to avoid modern browser optimizations corrupting byte streams
+        const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'base64' });
+
+        const byteCharacters = atob(wbout);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+            byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+
+        // Microsoft Excel exact format MIME
+        const blob = new Blob([byteArray], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
 
         // Manual Download Trigger
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `${safeName}_Result_Template.xlsx`;
+        a.download = fileName;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
@@ -375,9 +456,20 @@ const ExamDetails: React.FC = () => {
                             )}
                         </div>
                         <h1 className="text-3xl font-bold text-white mt-1">{exam?.exam_name}</h1>
-                        <p className="text-slate-400 mt-2 flex gap-4 text-sm">
+                        <p className="text-slate-400 mt-2 flex gap-4 text-sm items-center">
                             <span>Held on: {exam?.exam_date || 'N/A'}</span>
-                            {exam.subject && <span>Subject: {exam.subject}</span>}
+                            {exam.subject && (
+                                <>
+                                    <span className="text-slate-600">•</span>
+                                    <span>Subject: {exam.subject}</span>
+                                </>
+                            )}
+                            {analytics && (
+                                <>
+                                    <span className="text-slate-600">•</span>
+                                    <span>Participants: <strong className="text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded">{analytics.total_students} / {candidates?.length || 0}</strong></span>
+                                </>
+                            )}
                         </p>
 
                         <div className="flex gap-4 mt-4">
@@ -426,32 +518,79 @@ const ExamDetails: React.FC = () => {
 
                 {/* ANALYTICS */}
                 {analytics && (
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-8 pt-6 border-t border-slate-700/50">
-                        <div className="bg-blue-500/10 p-4 rounded-xl border border-blue-500/20 backdrop-blur-sm">
-                            <h3 className="text-blue-400 font-bold mb-3 flex items-center gap-2 text-sm uppercase tracking-wide">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8 pt-6 border-t border-slate-700/50">
+                        {/* Averages Card */}
+                        <div className="bg-slate-800/80 p-5 rounded-2xl border border-blue-500/20 shadow-lg relative overflow-hidden hover:border-blue-500/40 transition-colors">
+                            <h3 className="text-blue-400 font-bold mb-4 flex items-center gap-2 text-sm uppercase tracking-wider relative z-10">
                                 <AlignLeft size={16} /> Averages
                             </h3>
-                            <div className="text-sm text-blue-200/80 space-y-1.5">
-                                <p className="flex justify-between"><span>Written:</span> <b className="text-white">{analytics?.averages?.written}</b></p>
-                                <p className="flex justify-between"><span>MCQ:</span> <b className="text-white">{analytics?.averages?.mcq}</b></p>
-                                <p className="flex justify-between mt-1 pt-1 border-t border-blue-500/20"><span>Total:</span> <b className="text-white">{analytics?.averages?.total}</b></p>
+                            <div className="space-y-3 relative z-10">
+                                <div className="flex justify-between items-center bg-slate-900/50 px-3 py-2 rounded-lg">
+                                    <span className="text-slate-400 text-sm">Written</span>
+                                    <span className="text-white font-mono font-bold">{analytics?.averages?.written}</span>
+                                </div>
+                                <div className="flex justify-between items-center bg-slate-900/50 px-3 py-2 rounded-lg">
+                                    <span className="text-slate-400 text-sm">MCQ</span>
+                                    <span className="text-white font-mono font-bold">{analytics?.averages?.mcq}</span>
+                                </div>
+                                <div className="flex justify-between items-center bg-blue-500/10 border border-blue-500/20 px-3 py-2 rounded-lg">
+                                    <span className="text-blue-300 font-medium text-sm">Total</span>
+                                    <span className="text-blue-400 font-mono font-bold text-lg">{analytics?.averages?.total}</span>
+                                </div>
                             </div>
                         </div>
 
-                        <div className="bg-purple-500/10 p-4 rounded-xl border border-purple-500/20 backdrop-blur-sm">
-                            <h3 className="text-purple-400 font-bold mb-3 flex items-center gap-2 text-sm uppercase tracking-wide">
+                        {/* Top Scores Card */}
+                        <div className="bg-slate-800/80 p-5 rounded-2xl border border-purple-500/20 shadow-lg relative overflow-hidden hover:border-purple-500/40 transition-colors">
+                            <h3 className="text-purple-400 font-bold mb-4 flex items-center gap-2 text-sm uppercase tracking-wider relative z-10">
                                 <Trophy size={16} /> Top Scores
                             </h3>
-                            <div className="text-sm text-purple-200/80 space-y-1.5">
-                                <p className="flex justify-between"><span>Highest Written:</span> <b className="text-white">{analytics?.highest?.written}</b></p>
-                                <p className="flex justify-between"><span>Highest MCQ:</span> <b className="text-white">{analytics?.highest?.mcq}</b></p>
-                                <p className="flex justify-between mt-1 pt-1 border-t border-purple-500/20"><span>Highest Total:</span> <b className="text-white">{analytics?.highest?.total}</b></p>
-                            </div>
-                        </div>
+                            <div className="space-y-3 relative z-10">
+                                <div className="flex justify-between items-center bg-slate-900/50 px-3 py-2 rounded-lg relative overflow-hidden">
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-slate-400 text-xs uppercase font-bold tracking-wider w-16 inline-block">Written</span>
+                                        {analytics?.highest?.written_student && (
+                                            <>
+                                                <span className="text-slate-600">|</span>
+                                                <Link to={`/students/${analytics.highest.written_student.student_id}`} className="text-purple-400 text-sm font-medium hover:text-purple-300 hover:underline truncate max-w-[200px]">
+                                                    {analytics.highest.written_student.name}
+                                                </Link>
+                                            </>
+                                        )}
+                                    </div>
+                                    <span className="text-white font-mono font-bold text-sm bg-slate-800 px-2 py-0.5 rounded-md border border-slate-700">{analytics?.highest?.written}</span>
+                                </div>
 
-                        <div className="bg-slate-700/30 p-4 rounded-xl border border-slate-600/30 flex flex-col justify-center items-center text-center backdrop-blur-sm">
-                            <p className="text-slate-400 text-sm font-bold uppercase tracking-wide">Participants</p>
-                            <p className="text-4xl font-bold text-white mt-2">{analytics?.total_students}</p>
+                                <div className="flex justify-between items-center bg-slate-900/50 px-3 py-2 rounded-lg relative overflow-hidden">
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-slate-400 text-xs uppercase font-bold tracking-wider w-16 inline-block">MCQ</span>
+                                        {analytics?.highest?.mcq_student && (
+                                            <>
+                                                <span className="text-slate-600">|</span>
+                                                <Link to={`/students/${analytics.highest.mcq_student.student_id}`} className="text-purple-400 text-sm font-medium hover:text-purple-300 hover:underline truncate max-w-[200px]">
+                                                    {analytics.highest.mcq_student.name}
+                                                </Link>
+                                            </>
+                                        )}
+                                    </div>
+                                    <span className="text-white font-mono font-bold text-sm bg-slate-800 px-2 py-0.5 rounded-md border border-slate-700">{analytics?.highest?.mcq}</span>
+                                </div>
+
+                                <div className="flex justify-between items-center bg-purple-500/10 border border-purple-500/20 px-3 py-2 rounded-lg relative overflow-hidden">
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-purple-300 text-xs uppercase font-bold tracking-wider w-16 inline-block">Total</span>
+                                        {analytics?.highest?.total_student && (
+                                            <>
+                                                <span className="text-purple-400/50">|</span>
+                                                <Link to={`/students/${analytics.highest.total_student.student_id}`} className="text-white text-sm font-bold hover:text-white/80 hover:underline truncate max-w-[200px]">
+                                                    {analytics.highest.total_student.name}
+                                                </Link>
+                                            </>
+                                        )}
+                                    </div>
+                                    <span className="text-purple-400 font-mono font-bold text-lg">{analytics?.highest?.total}</span>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 )}
@@ -476,7 +615,10 @@ const ExamDetails: React.FC = () => {
                                 <Save size={18} /> Save Changes
                             </button>
                             <button
-                                onClick={() => setIsEditing(false)}
+                                onClick={() => {
+                                    setIsEditing(false);
+                                    setEditingRows({}); // Reset row states when cancelling
+                                }}
                                 className="flex items-center gap-2 text-slate-400 hover:text-white px-4 py-2 hover:bg-slate-700/50 rounded-lg transition-colors"
                             >
                                 <X size={18} /> Cancel
@@ -487,7 +629,7 @@ const ExamDetails: React.FC = () => {
                             onClick={() => setIsEditing(true)}
                             className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg shadow-lg shadow-blue-500/20 hover:bg-blue-500 font-bold transition-all"
                         >
-                            <Edit size={18} /> Enter Marks Manually
+                            <Edit size={18} /> Edit Marks
                         </button>
                     )}
                 </div>
@@ -519,7 +661,11 @@ const ExamDetails: React.FC = () => {
                                     </div>
                                 </th>
                                 <th className="p-4">Student Name</th>
-                                <th className="p-4">Programs</th>
+                                <th className="p-4 cursor-pointer hover:bg-slate-800/50 transition-colors" onClick={() => handleSort('program')}>
+                                    <div className="flex items-center gap-1">
+                                        Programs {sortConfig.key === 'program' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                                    </div>
+                                </th>
                                 <th className="p-4 text-right cursor-pointer hover:bg-slate-800/50 transition-colors" onClick={() => handleSort('written')}>
                                     <div className="flex items-center justify-end gap-1">
                                         Written {sortConfig.key === 'written' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
@@ -535,6 +681,7 @@ const ExamDetails: React.FC = () => {
                                         Total Score {sortConfig.key === 'total' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
                                     </div>
                                 </th>
+                                {isEditing && <th className="p-4 text-center">Action</th>}
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-700/50 text-slate-300">
@@ -566,7 +713,7 @@ const ExamDetails: React.FC = () => {
                                             ))}
                                         </td>
 
-                                        {isEditing ? (
+                                        {isEditing && editingRows[g.student?.student_id] ? (
                                             <>
                                                 <td className="p-4 text-right">
                                                     <input
@@ -594,17 +741,61 @@ const ExamDetails: React.FC = () => {
                                             </>
                                         ) : (
                                             <>
-                                                <td className="p-4 text-right font-mono text-slate-400">{g.result_written}</td>
-                                                <td className="p-4 text-right font-mono text-slate-400">{g.result_mcq}</td>
-                                                <td className="p-4 text-right font-bold text-blue-400 text-lg">{g.result_total}</td>
+                                                <td className="p-4 text-right font-mono text-slate-400 text-sm">
+                                                    {g.result_written === 'Not Recorded' ? <span className="text-xs text-slate-500 italic">Not Recorded</span> : g.result_written}
+                                                </td>
+                                                <td className="p-4 text-right font-mono text-slate-400 text-sm">
+                                                    {g.result_mcq === 'Not Recorded' ? <span className="text-xs text-slate-500 italic">Not Recorded</span> : g.result_mcq}
+                                                </td>
+                                                <td className={`p-4 text-right font-bold ${g.result_total === 'Not Recorded' ? 'text-slate-500 italic text-xs' : 'text-blue-400 text-lg'}`}>
+                                                    {g.result_total}
+                                                </td>
                                             </>
+                                        )}
+                                        {isEditing && (
+                                            <td className="p-4 text-center">
+                                                <div className="flex justify-center items-center gap-2">
+                                                    <button
+                                                        onClick={() => {
+                                                            const sId = g.student?.student_id;
+                                                            if (sId) {
+                                                                setEditingRows(prev => ({
+                                                                    ...prev,
+                                                                    [sId]: !prev[sId]
+                                                                }));
+                                                            }
+                                                        }}
+                                                        className={`px-3 py-1.5 rounded text-xs font-bold transition-colors ${editingRows[g.student?.student_id]
+                                                            ? 'bg-slate-600/50 text-slate-300 hover:bg-slate-600'
+                                                            : 'bg-blue-500/10 text-blue-400 border border-blue-500/20 hover:bg-blue-500/20'}`}
+                                                    >
+                                                        {editingRows[g.student?.student_id] ? 'Cancel Edit' : 'Edit Row'}
+                                                    </button>
+
+                                                    {g.result_total !== 'Not Recorded' && !editingRows[g.student?.student_id] && (
+                                                        <button
+                                                            onClick={() => {
+                                                                if (window.confirm("Are you sure you want to delete the recorded marks for this student?")) {
+                                                                    const sId = g.student?.student_id;
+                                                                    if (sId) clearMarkMutation.mutate(sId);
+                                                                }
+                                                            }}
+                                                            title="Clear Recorded Marks"
+                                                            disabled={clearMarkMutation.isPending}
+                                                            className="px-2 py-1.5 rounded bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 transition-colors flex items-center justify-center disabled:opacity-50"
+                                                        >
+                                                            <Trash size={14} />
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </td>
                                         )}
                                     </tr>
                                 );
                             })}
 
                             {!sortedCandidates || sortedCandidates.length === 0 && (
-                                <tr><td colSpan={6} className="p-12 text-center text-slate-500 italic">No students enrolled or results published.</td></tr>
+                                <tr><td colSpan={isEditing ? 7 : 6} className="p-12 text-center text-slate-500 italic">No students enrolled or results published.</td></tr>
                             )}
                         </tbody>
                     </table>
@@ -612,25 +803,27 @@ const ExamDetails: React.FC = () => {
             </div>
 
             {/* Document Viewer Modal using simple overlay for now */}
-            {viewDoc && (
-                <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex flex-col items-center justify-center p-4 animate-fade-in">
-                    <div className="bg-slate-900 w-full h-full max-w-5xl rounded-xl shadow-2xl flex flex-col overflow-hidden border border-slate-700">
-                        <div className="flex justify-between items-center p-4 border-b border-slate-700 bg-slate-800">
-                            <h3 className="font-bold text-lg text-white">{viewDoc.title}</h3>
-                            <button onClick={() => setViewDoc(null)} className="text-slate-400 hover:text-white transition-colors">
-                                <X size={24} />
-                            </button>
-                        </div>
-                        <div className="flex-1 bg-slate-900 p-2 relative">
-                            <iframe
-                                src={viewDoc.url}
-                                className="w-full h-full border-none rounded bg-white"
-                                title="Document Viewer"
-                            />
+            {
+                viewDoc && (
+                    <div className="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex flex-col items-center justify-center p-4 animate-fade-in">
+                        <div className="bg-slate-900 w-full h-full max-w-5xl rounded-xl shadow-2xl flex flex-col overflow-hidden border border-slate-700">
+                            <div className="flex justify-between items-center p-4 border-b border-slate-700 bg-slate-800">
+                                <h3 className="font-bold text-lg text-white">{viewDoc.title}</h3>
+                                <button onClick={() => setViewDoc(null)} className="text-slate-400 hover:text-white transition-colors">
+                                    <X size={24} />
+                                </button>
+                            </div>
+                            <div className="flex-1 bg-slate-900 p-2 relative">
+                                <iframe
+                                    src={viewDoc.url}
+                                    className="w-full h-full border-none rounded bg-white"
+                                    title="Document Viewer"
+                                />
+                            </div>
                         </div>
                     </div>
-                </div>
-            )}
+                )
+            }
 
             <UploadResultsModal
                 isOpen={isUploadModalOpen}
@@ -651,7 +844,7 @@ const ExamDetails: React.FC = () => {
                 onClose={() => setIsEditModalOpen(false)}
                 examData={exam}
             />
-        </div>
+        </div >
     );
 };
 

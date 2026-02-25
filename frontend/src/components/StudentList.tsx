@@ -333,7 +333,7 @@ const StudentList: React.FC<StudentListProps> = ({ fixedBatchId, hideHeader }) =
                                                 <div className="flex flex-col gap-1.5">
                                                     {student.enrollment?.map((enroll, idx) => (
                                                         <span key={idx} className="text-xs bg-slate-800 px-2.5 py-1 rounded-md border border-slate-700 text-slate-300 whitespace-nowrap inline-block w-fit">
-                                                            <span className="font-bold text-blue-400">{enroll.roll_no || 'N/A'}</span> â€¢ <span className="text-slate-400">{enroll.program?.program_name}</span>
+                                                            <span className="font-bold text-blue-400">{enroll.roll_no || 'N/A'}</span> &bull; <span className="text-slate-400">{enroll.program?.program_name}</span>
                                                         </span>
                                                     ))}
                                                     {(!student.enrollment || student.enrollment.length === 0) && <span className="text-slate-600 text-xs italic">Not Enrolled</span>}
@@ -346,7 +346,7 @@ const StudentList: React.FC<StudentListProps> = ({ fixedBatchId, hideHeader }) =
                                                 </span>
                                             </td>
                                             <td className="p-4 text-slate-400 text-sm">{student.school || '-'}</td>
-                                            <td className="p-4 text-slate-400 text-sm font-mono">{student.contact || '-'}</td>
+                                            <td className="p-4 text-slate-400 text-sm font-mono">{student.contact ? String(student.contact).replace(/\.0$/, '') : '-'}</td>
                                             <td className="p-4 text-right">
                                                 <div className="flex items-center justify-end gap-2">
                                                     <button

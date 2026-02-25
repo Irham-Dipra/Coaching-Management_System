@@ -237,7 +237,7 @@ class ScheduleRepository:
     def get_window_details(window_id: int):
         # 1. Fetch Window + Room + Programs + Enrollments
         res = supabase.table('schedule_window')\
-            .select('*, room(room_name), program_schedule(program(program_id, program_name, enrollment(roll_no, status, student(student_id, name, contact))))')\
+            .select('*, room(capacity, room_name), program_schedule(program(program_id, program_name, batch(batch_name), enrollment(roll_no, status, student(student_id, name, contact, student_code, school))))')\
             .eq('window_id', window_id)\
             .single()\
             .execute()
@@ -249,17 +249,21 @@ class ScheduleRepository:
         students = []
         programs = window.get('program_schedule', [])
         for ps in programs:
+            if not ps.get('program'): continue
             prog = ps['program']
+            prog['active_students'] = 0
             enrolls = prog.get('enrollment', [])
             for enroll in enrolls:
                 if enroll.get('status') != 'Active': continue # Filter Withdrawn/Deleted
-
-                student = enroll['student']
-                if not any(s['student_id'] == student['student_id'] for s in students):
+                
+                prog['active_students'] += 1
+                student = enroll.get('student')
+                if student and not any(s['student_id'] == student['student_id'] for s in students):
                     students.append({
                         **student,
-                        'roll_no': enroll['roll_no'],
-                        'program_name': prog['program_name']
+                        'roll_no': enroll.get('roll_no', ''),
+                        'program_name': prog.get('program_name', ''),
+                        'batch_name': prog.get('batch', {}).get('batch_name', 'No Batch') if prog.get('batch') else 'No Batch'
                     })
         
         window['students'] = students

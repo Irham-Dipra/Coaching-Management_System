@@ -8,7 +8,7 @@ interface UploadResultsModalProps {
     isOpen: boolean;
     onClose: () => void;
     examId: string;
-    onDownloadTemplate?: () => void;
+    onDownloadTemplate?: (sortBy: 'student_code' | 'program') => void;
     studentLookup?: Record<string, number>; // Maps "student_code" -> student_id
 }
 
@@ -17,6 +17,7 @@ const UploadResultsModal: React.FC<UploadResultsModalProps> = ({ isOpen, onClose
     const [file, setFile] = useState<File | null>(null);
     const [previewData, setPreviewData] = useState<any[]>([]);
     const [isParsing, setIsParsing] = useState(false);
+    const [templateSortMode, setTemplateSortMode] = useState<'student_code' | 'program'>('student_code');
 
     // Mutation to send data to backend
     const uploadMutation = useMutation({
@@ -67,12 +68,22 @@ const UploadResultsModal: React.FC<UploadResultsModalProps> = ({ isOpen, onClose
                         if (lookupId) resolvedId = lookupId;
                     }
 
+                    const wRaw = row['Written'] ?? row['written'] ?? row['Written Marks'] ?? row['written_marks'];
+                    const mcqRaw = row['MCQ'] ?? row['mcq'] ?? row['MCQ Marks'] ?? row['mcq_marks'];
+
+                    let w = (wRaw === '' || wRaw === undefined || wRaw === null) ? null : Number(wRaw);
+                    let mcq = (mcqRaw === '' || mcqRaw === undefined || mcqRaw === null) ? null : Number(mcqRaw);
+
+                    // If one mark is provided but the other is missing, default the missing one to 0
+                    if (w !== null && mcq === null) mcq = 0;
+                    if (mcq !== null && w === null) w = 0;
+
                     return {
                         student_id: resolvedId,
-                        written_marks: Number(row['Written'] || row['written'] || row['Written Marks'] || row['written_marks'] || 0),
-                        mcq_marks: Number(row['MCQ'] || row['mcq'] || row['MCQ Marks'] || row['mcq_marks'] || 0)
+                        written_marks: w,
+                        mcq_marks: mcq
                     };
-                }).filter((r: any) => r.student_id); // Filter out empty rows
+                }).filter((r: any) => r.student_id && (r.written_marks !== null || r.mcq_marks !== null)); // Filter out empty rows
 
                 setPreviewData(formattedData);
             } catch (err) {
@@ -98,18 +109,34 @@ const UploadResultsModal: React.FC<UploadResultsModalProps> = ({ isOpen, onClose
 
                 <div className="space-y-6">
                     {/* Template Download */}
-                    <div className="bg-blue-900/20 p-4 rounded-lg border border-blue-500/20 flex justify-between items-center">
+                    <div className="bg-blue-900/20 p-4 rounded-lg border border-blue-500/20 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                         <div>
                             <h3 className="text-sm font-bold text-blue-400">Need a format?</h3>
-                            <p className="text-xs text-blue-300/70">Download the pre-filled Excel template.</p>
+                            <p className="text-xs text-blue-300/70 mb-2">Download the pre-filled Excel template.</p>
+                            <div className="flex items-center gap-2">
+                                <span className="text-xs text-slate-400 font-medium whitespace-nowrap">Sort by:</span>
+                                <select
+                                    className="bg-slate-800 text-xs text-white border border-slate-700 rounded px-2 py-1 outline-none focus:border-blue-500 cursor-pointer"
+                                    value={templateSortMode}
+                                    onChange={(e) => setTemplateSortMode(e.target.value as any)}
+                                >
+                                    <option value="student_code">Student Code (Ascending)</option>
+                                    <option value="program">Programs</option>
+                                </select>
+                            </div>
                         </div>
                         <button
-                            onClick={onDownloadTemplate}
+                            onClick={() => onDownloadTemplate && onDownloadTemplate(templateSortMode)}
                             disabled={!onDownloadTemplate}
-                            className="text-xs bg-slate-800 border border-blue-500/30 text-blue-400 px-3 py-1.5 rounded-lg hover:bg-blue-500/10 flex items-center gap-1 transition-colors font-semibold disabled:opacity-50"
+                            className="text-xs bg-slate-800 border border-blue-500/30 text-blue-400 px-3 py-1.5 rounded-lg hover:bg-blue-500/10 flex items-center gap-1 transition-colors font-semibold disabled:opacity-50 whitespace-nowrap"
                         >
                             <Download size={14} /> Download Template
                         </button>
+                    </div>
+
+                    <div className="bg-amber-500/10 border border-amber-500/20 p-3 rounded-lg flex gap-2 items-start text-xs text-amber-200/90 shadow-inner">
+                        <span className="text-amber-400 font-bold mt-0.5">Note:</span>
+                        <p>The uploaded file is treated as the absolute source of truth for all candidates. If a student is completely omitted from the uploaded file or their marks are left blank, their existing marks will be <strong>deleted</strong> and reset to "Not Recorded".</p>
                     </div>
 
                     {/* File Input */}
@@ -141,40 +168,23 @@ const UploadResultsModal: React.FC<UploadResultsModalProps> = ({ isOpen, onClose
                         </div>
                     </div>
 
-                    {/* Preview (First 3 rows) */}
-                    {previewData.length > 0 && (
-                        <div>
-                            <p className="text-xs font-bold text-slate-500 uppercase mb-2">Preview (First 3 rows)</p>
-                            <div className="bg-slate-800 rounded-lg border border-slate-700 overflow-hidden text-sm">
-                                <table className="w-full text-left">
-                                    <thead className="bg-slate-900 text-slate-400">
-                                        <tr>
-                                            <th className="p-2 pl-3">ID / Code</th>
-                                            <th className="p-2">Written</th>
-                                            <th className="p-2">MCQ</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-slate-700/50 text-slate-300">
-                                        {previewData.slice(0, 3).map((row, i) => (
-                                            <tr key={i} className="">
-                                                <td className="p-2 pl-3 font-mono text-emerald-400">{row.student_id}</td>
-                                                <td className="p-2">{row.written_marks}</td>
-                                                <td className="p-2">{row.mcq_marks}</td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    )}
+                    {/* Preview removed as per request */}
 
                     <div className="flex justify-end pt-4 gap-3 border-t border-slate-700/50">
                         <button onClick={onClose} className="px-4 py-2 text-slate-400 hover:text-white font-medium transition-colors">
                             Cancel
                         </button>
                         <button
-                            onClick={() => uploadMutation.mutate(previewData)}
-                            disabled={!file || uploadMutation.isPending || previewData.length === 0}
+                            onClick={() => {
+                                const presentIds = new Set(previewData.map(r => r.student_id));
+                                const allIds = studentLookup ? new Set(Object.values(studentLookup)) : new Set();
+                                const missingRecords = Array.from(allIds)
+                                    .filter(id => !presentIds.has(id as number))
+                                    .map(id => ({ student_id: id, written_marks: null, mcq_marks: null }));
+
+                                uploadMutation.mutate([...previewData, ...missingRecords]);
+                            }}
+                            disabled={!file || uploadMutation.isPending}
                             className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-500 shadow-lg shadow-blue-500/20 flex items-center gap-2 font-bold disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none transition-all"
                         >
                             {uploadMutation.isPending ? <Loader2 className="animate-spin" size={18} /> : <Upload size={18} />}

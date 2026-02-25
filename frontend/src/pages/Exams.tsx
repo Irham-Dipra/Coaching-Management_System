@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router-dom';
 import { ExamRepository } from '../repositories/ExamRepository';
 import { ProgramRepository } from '../repositories/ProgramRepository';
-import { Search, Filter, FileText, Calendar } from 'lucide-react';
+import { Search, Filter, FileText, Calendar, Trash } from 'lucide-react';
 
 import CreateExamModal from '../components/CreateExamModal';
 import { Plus } from 'lucide-react';
@@ -12,6 +12,7 @@ const Exams: React.FC = () => {
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedProgram, setSelectedProgram] = useState('');
     const [isCreateOpen, setIsCreateOpen] = useState(false);
+    const queryClient = useQueryClient();
 
     const { data: exams, isLoading: isExamsLoading } = useQuery({
         queryKey: ['all-exams'],
@@ -21,6 +22,15 @@ const Exams: React.FC = () => {
     const { data: programs } = useQuery({
         queryKey: ['programs'],
         queryFn: ProgramRepository.getAllPrograms
+    });
+
+    const deleteExamMutation = useMutation({
+        mutationFn: (id: string | number) => ExamRepository.deleteExam(String(id)),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['all-exams'] });
+            alert("Exam deleted successfully.");
+        },
+        onError: (err) => alert("Failed to delete exam: " + err)
     });
 
     if (isExamsLoading) return <div className="p-8 text-slate-400">Loading exams...</div>;
@@ -102,7 +112,23 @@ const Exams: React.FC = () => {
                                 }`}>
                                 {exam.exam_type}
                             </span>
-                            <span className="text-slate-500 text-xs font-mono">#{exam.exam_id}</span>
+                            <div className="flex items-center gap-2">
+                                <span className="text-slate-500 text-xs font-mono">#{exam.exam_id}</span>
+                                <button
+                                    onClick={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        if (window.confirm("WARNING: Are you sure you want to completely delete this exam and ALL associated student marks?")) {
+                                            deleteExamMutation.mutate(exam.exam_id);
+                                        }
+                                    }}
+                                    disabled={deleteExamMutation.isPending}
+                                    title="Delete Exam"
+                                    className="text-red-500 hover:text-red-400 p-1 hover:bg-red-500/10 rounded transition-colors disabled:opacity-50"
+                                >
+                                    <Trash size={14} />
+                                </button>
+                            </div>
                         </div>
 
                         <h3 className="text-xl font-bold text-slate-100 group-hover:text-blue-400 transition-colors mb-2">

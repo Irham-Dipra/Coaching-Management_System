@@ -54,6 +54,10 @@ class ExamRepository:
         return new_exam
 
     def delete_exam(self, exam_id: int):
+        # Explicit cascade deletions for safety if DB constraints omit it
+        supabase.table("student_individual_result").delete().eq("exam_id", exam_id).execute()
+        supabase.table("program_exam").delete().eq("exam_id", exam_id).execute()
+        # Delete root exam
         supabase.table(self.table).delete().eq("exam_id", exam_id).execute()
         return True
 

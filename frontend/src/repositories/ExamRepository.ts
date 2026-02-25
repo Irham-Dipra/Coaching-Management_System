@@ -44,6 +44,15 @@ export const ExamRepository = {
         return await response.json();
     },
 
+    // 3c. Delete Exam
+    async deleteExam(examId: string) {
+        const response = await fetch(`${API_BASE_URL}/exams/${examId}`, {
+            method: "DELETE",
+        });
+        if (!response.ok) throw new Error("Failed to delete exam");
+        return await response.json();
+    },
+
     // 4. Get Analytics
     async getAnalytics(examId: string) {
         const response = await fetch(`${API_BASE_URL}/exams/${examId}/analytics`);

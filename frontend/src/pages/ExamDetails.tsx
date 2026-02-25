@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ExamRepository } from '../repositories/ExamRepository';
 import { FileText, Trophy, AlignLeft, Download, Upload, Edit, Save, X, ArrowLeft, Trash } from 'lucide-react';
@@ -18,6 +18,7 @@ const ExamDetails: React.FC = () => {
     const [viewDoc, setViewDoc] = useState<{ url: string, title: string } | null>(null);
     const [editedMarks, setEditedMarks] = useState<any>({});
     const queryClient = useQueryClient();
+    const navigate = useNavigate();
 
     // Queries
     const { data: exam, isError: isExamError } = useQuery({
@@ -187,6 +188,16 @@ const ExamDetails: React.FC = () => {
             });
         },
         onError: (err) => alert("Failed to clear marks: " + err)
+    });
+
+    const deleteExamMutation = useMutation({
+        mutationFn: () => ExamRepository.deleteExam(id!),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['exams'] });
+            alert("Exam and all related records have been deleted.");
+            navigate('/exams');
+        },
+        onError: (err) => alert("Failed to delete exam: " + err)
     });
 
     const getEmbedLink = (url: string) => {
@@ -507,12 +518,25 @@ const ExamDetails: React.FC = () => {
                             <p className="text-xs text-slate-500 uppercase font-bold tracking-wider">Total Marks</p>
                             <p className="text-3xl font-bold text-blue-400">{exam?.total_marks}</p>
                         </div>
-                        <button
-                            onClick={() => setIsEditModalOpen(true)}
-                            className="text-sm text-slate-400 hover:text-white flex items-center gap-1 border border-slate-600 px-3 py-1.5 rounded-lg hover:bg-slate-700 transition-colors"
-                        >
-                            <Edit size={14} /> Edit Details
-                        </button>
+                        <div className="flex gap-2">
+                            <button
+                                onClick={() => setIsEditModalOpen(true)}
+                                className="text-sm text-slate-400 hover:text-white flex items-center gap-1 border border-slate-600 px-3 py-1.5 rounded-lg hover:bg-slate-700 transition-colors"
+                            >
+                                <Edit size={14} /> Edit Details
+                            </button>
+                            <button
+                                onClick={() => {
+                                    if (window.confirm("WARNING: Are you sure you want to completely delete this exam and ALL associated student marks? This action cannot be undone.")) {
+                                        deleteExamMutation.mutate();
+                                    }
+                                }}
+                                disabled={deleteExamMutation.isPending}
+                                className="text-sm text-red-500 hover:text-red-400 flex items-center gap-1 border border-red-500/50 px-3 py-1.5 rounded-lg hover:bg-red-500/10 transition-colors disabled:opacity-50"
+                            >
+                                <Trash size={14} /> Delete Exam
+                            </button>
+                        </div>
                     </div>
                 </div>
 

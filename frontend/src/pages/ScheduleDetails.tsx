@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ScheduleRepository } from '../repositories/ScheduleRepository';
 import { StudentRepository } from '../repositories/StudentRepository';
 import {
-    ArrowLeft, Clock, MapPin, Users, Edit2, Save, X, Plus, Trash2,
+    ArrowLeft, Clock, MapPin, Users, Edit2, Save, Plus, Trash2,
     DollarSign, Search, AlertCircle
 } from 'lucide-react';
 import BatchPaymentModal from '../components/BatchPaymentModal';

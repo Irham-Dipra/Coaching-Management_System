@@ -14,7 +14,6 @@ const ExamDetails: React.FC = () => {
     const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
-    const [editingRows, setEditingRows] = useState<Record<number, boolean>>({}); // Track which rows are actively being edited
     const [viewDoc, setViewDoc] = useState<{ url: string, title: string } | null>(null);
     const [editedMarks, setEditedMarks] = useState<any>({});
     const queryClient = useQueryClient();
@@ -160,7 +159,6 @@ const ExamDetails: React.FC = () => {
             queryClient.invalidateQueries({ queryKey: ['merit', id] });
             queryClient.invalidateQueries({ queryKey: ['candidates', id] });
             setIsEditing(false);
-            setEditingRows({}); // Reset editing rows
             setEditedMarks({});
             alert("Marks updated successfully!");
         },
@@ -177,11 +175,6 @@ const ExamDetails: React.FC = () => {
             queryClient.invalidateQueries({ queryKey: ['merit', id] });
             queryClient.invalidateQueries({ queryKey: ['candidates', id] });
             setEditedMarks((prev: any) => {
-                const next = { ...prev };
-                delete next[studentId];
-                return next;
-            });
-            setEditingRows(prev => {
                 const next = { ...prev };
                 delete next[studentId];
                 return next;
@@ -227,31 +220,31 @@ const ExamDetails: React.FC = () => {
     };
 
     const handleSaveManual = () => {
-        // Only save marks for rows that were explicitly edited
-        const editedStudentIds = Object.keys(editingRows).filter(id => editingRows[Number(id)]);
-
-        if (editedStudentIds.length === 0) {
-            alert("No changes to save. Please edit at least one student's marks.");
+        // Evaluate all students that exist in the candidate list
+        if (!candidates || candidates.length === 0) {
+            alert("No students to save.");
             return;
         }
 
-        const resultsArray = editedStudentIds.map(idStr => {
-            const studentId = Number(idStr);
+        const resultsArray = candidates.map((c: any) => {
+            const studentId = c.student?.student_id;
+            if (!studentId) return null;
+
             const m = editedMarks[studentId] || { student_id: studentId, written: '', mcq: '' };
 
-            let w = m.written === '' ? null : Number(m.written);
-            let mcq = m.mcq === '' ? null : Number(m.mcq);
+            let w = (m.written === '' || m.written === undefined || m.written === null) ? null : Number(m.written);
+            let mcq = (m.mcq === '' || m.mcq === undefined || m.mcq === null) ? null : Number(m.mcq);
 
             // If one mark is provided but the other is missing, default the missing one to 0
             if (w !== null && mcq === null) mcq = 0;
             if (mcq !== null && w === null) w = 0;
 
             return {
-                student_id: m.student_id,
+                student_id: studentId,
                 written_marks: w,
                 mcq_marks: mcq
             };
-        });
+        }).filter(Boolean);
 
         bulkUpdateMutation.mutate({
             exam_id: parseInt(id!),
@@ -641,7 +634,6 @@ const ExamDetails: React.FC = () => {
                             <button
                                 onClick={() => {
                                     setIsEditing(false);
-                                    setEditingRows({}); // Reset row states when cancelling
                                 }}
                                 className="flex items-center gap-2 text-slate-400 hover:text-white px-4 py-2 hover:bg-slate-700/50 rounded-lg transition-colors"
                             >
@@ -705,7 +697,7 @@ const ExamDetails: React.FC = () => {
                                         Total Score {sortConfig.key === 'total' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
                                     </div>
                                 </th>
-                                {isEditing && <th className="p-4 text-center">Action</th>}
+                                {isEditing ? <th className="p-4 text-center">Status</th> : null}
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-700/50 text-slate-300">
@@ -737,14 +729,14 @@ const ExamDetails: React.FC = () => {
                                             ))}
                                         </td>
 
-                                        {isEditing && editingRows[g.student?.student_id] ? (
+                                        {isEditing ? (
                                             <>
                                                 <td className="p-4 text-right">
                                                     <input
                                                         type="number"
                                                         className="w-20 p-1.5 border border-slate-600 rounded-lg text-right bg-slate-800 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 font-bold [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none transition-all"
                                                         value={editData.written}
-                                                        placeholder="0"
+                                                        placeholder="-"
                                                         onChange={(e) => g.student?.student_id && handleMarkChange(g.student.student_id, 'written', e.target.value)}
                                                         onWheel={(e) => e.currentTarget.blur()}
                                                     />
@@ -754,13 +746,42 @@ const ExamDetails: React.FC = () => {
                                                         type="number"
                                                         className="w-20 p-1.5 border border-slate-600 rounded-lg text-right bg-slate-800 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 font-bold [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none transition-all"
                                                         value={editData.mcq}
-                                                        placeholder="0"
+                                                        placeholder="-"
                                                         onChange={(e) => g.student?.student_id && handleMarkChange(g.student.student_id, 'mcq', e.target.value)}
                                                         onWheel={(e) => e.currentTarget.blur()}
                                                     />
                                                 </td>
                                                 <td className="p-4 text-right text-slate-500 text-sm font-mono">
                                                     {(Number(editData.written) || 0) + (Number(editData.mcq) || 0)}
+                                                </td>
+                                                <td className="p-4 text-center">
+                                                    <div className="flex justify-center items-center gap-2">
+                                                        {(editData.written === '' || editData.written === null || editData.written === undefined) &&
+                                                            (editData.mcq === '' || editData.mcq === null || editData.mcq === undefined) ? (
+                                                            <span className="bg-slate-800 text-slate-400 border border-slate-700 px-3 py-1.5 rounded text-xs font-bold w-24 inline-block text-center shadow-inner">
+                                                                Absent
+                                                            </span>
+                                                        ) : (
+                                                            <div className="flex bg-blue-500/10 border border-blue-500/20 rounded overflow-hidden shadow-sm">
+                                                                <span className="text-blue-400 px-3 py-1.5 text-xs font-bold min-w-[70px] flex items-center justify-center">
+                                                                    Present
+                                                                </span>
+                                                                <button
+                                                                    onClick={() => {
+                                                                        const sId = g.student?.student_id;
+                                                                        if (sId) {
+                                                                            handleMarkChange(sId, 'written', '');
+                                                                            handleMarkChange(sId, 'mcq', '');
+                                                                        }
+                                                                    }}
+                                                                    className="bg-red-500/10 hover:bg-red-500/20 text-red-400 px-2 py-1.5 transition-colors border-l border-blue-500/20"
+                                                                    title="Clear to Absent"
+                                                                >
+                                                                    <X size={14} />
+                                                                </button>
+                                                            </div>
+                                                        )}
+                                                    </div>
                                                 </td>
                                             </>
                                         ) : (
@@ -775,44 +796,6 @@ const ExamDetails: React.FC = () => {
                                                     {g.result_total}
                                                 </td>
                                             </>
-                                        )}
-                                        {isEditing && (
-                                            <td className="p-4 text-center">
-                                                <div className="flex justify-center items-center gap-2">
-                                                    <button
-                                                        onClick={() => {
-                                                            const sId = g.student?.student_id;
-                                                            if (sId) {
-                                                                setEditingRows(prev => ({
-                                                                    ...prev,
-                                                                    [sId]: !prev[sId]
-                                                                }));
-                                                            }
-                                                        }}
-                                                        className={`px-3 py-1.5 rounded text-xs font-bold transition-colors ${editingRows[g.student?.student_id]
-                                                            ? 'bg-slate-600/50 text-slate-300 hover:bg-slate-600'
-                                                            : 'bg-blue-500/10 text-blue-400 border border-blue-500/20 hover:bg-blue-500/20'}`}
-                                                    >
-                                                        {editingRows[g.student?.student_id] ? 'Cancel Edit' : 'Edit Row'}
-                                                    </button>
-
-                                                    {g.result_total !== 'Not Recorded' && !editingRows[g.student?.student_id] && (
-                                                        <button
-                                                            onClick={() => {
-                                                                if (window.confirm("Are you sure you want to delete the recorded marks for this student?")) {
-                                                                    const sId = g.student?.student_id;
-                                                                    if (sId) clearMarkMutation.mutate(sId);
-                                                                }
-                                                            }}
-                                                            title="Clear Recorded Marks"
-                                                            disabled={clearMarkMutation.isPending}
-                                                            className="px-2 py-1.5 rounded bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 transition-colors flex items-center justify-center disabled:opacity-50"
-                                                        >
-                                                            <Trash size={14} />
-                                                        </button>
-                                                    )}
-                                                </div>
-                                            </td>
                                         )}
                                     </tr>
                                 );

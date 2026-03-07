@@ -165,23 +165,6 @@ const ExamDetails: React.FC = () => {
         onError: (err) => alert("Failed to update marks: " + err)
     });
 
-    const clearMarkMutation = useMutation({
-        mutationFn: (studentId: number) => ExamRepository.submitBulkResults({
-            exam_id: parseInt(id!),
-            results: [{ student_id: studentId, written_marks: null, mcq_marks: null }]
-        }),
-        onSuccess: (_, studentId) => {
-            queryClient.invalidateQueries({ queryKey: ['analytics', id] });
-            queryClient.invalidateQueries({ queryKey: ['merit', id] });
-            queryClient.invalidateQueries({ queryKey: ['candidates', id] });
-            setEditedMarks((prev: any) => {
-                const next = { ...prev };
-                delete next[studentId];
-                return next;
-            });
-        },
-        onError: (err) => alert("Failed to clear marks: " + err)
-    });
 
     const deleteExamMutation = useMutation({
         mutationFn: () => ExamRepository.deleteExam(id!),

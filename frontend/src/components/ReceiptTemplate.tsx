@@ -6,13 +6,13 @@ interface ReceiptProps {
 
 const ReceiptTemplate: React.FC<ReceiptProps> = ({ payment }) => {
     return (
-        <div className="w-[210mm] h-[92mm] bg-white border-b border-dashed border-black p-6 print:p-4 mb-0 page-break-inside-avoid flex flex-col justify-between relative">
+        <div className="w-[210mm] h-[92mm] bg-white border-b border-dashed border-black py-6 pl-1 pr-10 print:py-4 print:pl-1 print:pr-10 mb-0 page-break-inside-avoid flex flex-col justify-between relative">
             {/* Header */}
             <div className="flex justify-between items-start mb-2">
                 <div>
                     <h1 className="text-lg font-bold text-black leading-tight">SCIENCE POINT</h1>
                     <p className="text-xs font-bold text-black">by Dr. Talha</p>
-                    <p className="text-[10px] text-black mt-0.5">Main Road, Pabna | 01700000000</p>
+                    <p className="text-[10px] text-black mt-0.5">Barishal Sadar,Barishal | 01797752306</p>
                 </div>
                 <div className="text-right">
                     <div className="inline-block border border-black px-2 py-0.5 rounded text-xs font-bold text-black mb-0.5">

@@ -11,6 +11,9 @@
 
 # 1. IMPORT STATEMENTS
 from fastapi.encoders import jsonable_encoder
+from app.core.supabase import supabase
+from app.core.stats_cache import invalidate_stats_cache
+from app.schemas.program import ProgramCreate, BatchCreate
 # 'jsonable_encoder' is a FastAPI utility. Pydantic models (schemas) are strict objects.
 # Databases often expect simple "JSON-like" types (strings, integers, lists, dicts).
 # This function converts complex objects (like Dates, Pydantic Models) into standard Python dicts/lists.
@@ -184,6 +187,7 @@ class ProgramRepository:
             .eq("program_id", program_id)\
             .execute()
 
+        invalidate_stats_cache()  # Program deletion affects dues
         return response.data[0] if response.data else None
 
     # ==========================================

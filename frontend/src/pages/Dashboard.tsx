@@ -9,74 +9,56 @@ import {
     Plus,
     CreditCard,
     TrendingUp,
-    Activity
+    Activity,
+    Loader2
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
+const StatCardSkeleton: React.FC = () => (
+    <div className="relative overflow-hidden rounded-2xl p-6 border border-slate-700 bg-slate-800/50 animate-pulse">
+        <div className="flex justify-between items-start">
+            <div>
+                <div className="h-3 w-24 bg-slate-700 rounded mb-3" />
+                <div className="h-6 w-16 bg-slate-700 rounded" />
+            </div>
+            <div className="w-10 h-10 bg-slate-700 rounded-lg" />
+        </div>
+    </div>
+);
+
+const DueCardLoading: React.FC<{ title: string; icon: React.ReactNode; bg: string; border: string; to: string }> = ({ title, icon, bg, border, to }) => (
+    <Link to={to} className={`relative overflow-hidden rounded-2xl p-6 border backdrop-blur-md bg-gradient-to-br ${bg} ${border} shadow-lg block`}>
+        <div className="flex justify-between items-start">
+            <div>
+                <p className="text-slate-400 text-xs font-medium uppercase tracking-wider mb-2">{title}</p>
+                <div className="flex items-center gap-2">
+                    <Loader2 size={18} className="animate-spin text-slate-400" />
+                    <span className="text-slate-400 text-sm">Calculating…</span>
+                </div>
+            </div>
+            <div className="p-2 bg-white/5 rounded-lg border border-white/10">{icon}</div>
+        </div>
+    </Link>
+);
+
 const Dashboard: React.FC = () => {
-    // 1. Fetch Stats
-    const { data: stats, isLoading: statsLoading } = useQuery({
-        queryKey: ['finance-stats'],
-        queryFn: PaymentRepository.getFinanceStats,
-        refetchInterval: 60000 // Refresh every minute
+    // Fast stats — loads in ~300ms
+    const { data: quick, isLoading: quickLoading } = useQuery({
+        queryKey: ['finance-stats-quick'],
+        queryFn: PaymentRepository.getFinanceStatsQuick,
     });
 
-    // 2. Fetch Recent Activity
+    // Heavy due stats — loads in 2-5s, shown with per-card spinner
+    const { data: dues, isLoading: duesLoading } = useQuery({
+        queryKey: ['finance-stats-dues'],
+        queryFn: PaymentRepository.getFinanceStatsDues,
+    });
+
+    // Recent Activity — loads independently
     const { data: recentPayments, isLoading: historyLoading } = useQuery({
         queryKey: ['recent-payments'],
         queryFn: () => PaymentRepository.getRecentPayments(1, 10)
     });
-
-    // Loading Skeleton
-    if (statsLoading || historyLoading) {
-        return (
-            <div className="p-6 space-y-6 animate-pulse">
-                <div className="h-8 w-48 bg-gray-200 rounded mb-4"></div>
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-                    {[1, 2, 3, 4].map((i) => (
-                        <div key={i} className="h-32 bg-gray-200 rounded-xl"></div>
-                    ))}
-                </div>
-                <div className="h-64 bg-gray-200 rounded-xl"></div>
-            </div>
-        );
-    }
-
-    // Prepare Data
-    const statCards = [
-        {
-            title: "Total Students",
-            value: stats?.total_students || 0,
-            icon: <Users size={24} className="text-blue-400" />,
-            bg: "from-blue-500/10 to-blue-600/10",
-            border: "border-blue-500/20",
-            text: "text-blue-100" // Light text for dark theme
-        },
-        {
-            title: "Active Programs",
-            value: stats?.total_programs || 0,
-            icon: <BookOpen size={24} className="text-purple-400" />,
-            bg: "from-purple-500/10 to-purple-600/10",
-            border: "border-purple-500/20",
-            text: "text-purple-100"
-        },
-        {
-            title: "Revenue This Month",
-            value: `৳${stats?.revenue_this_month?.toLocaleString() || 0}`,
-            icon: <Banknote size={24} className="text-emerald-400" />,
-            bg: "from-emerald-500/10 to-emerald-600/10",
-            border: "border-emerald-500/20",
-            text: "text-emerald-100"
-        },
-        {
-            title: "Total Due Overall",
-            value: `৳${stats?.total_due?.toLocaleString() || 0}`,
-            icon: <AlertCircle size={24} className="text-rose-400" />,
-            bg: "from-rose-500/10 to-rose-600/10",
-            border: "border-rose-500/20",
-            text: "text-rose-100"
-        }
-    ];
 
     return (
         <div className="min-h-screen bg-slate-900 text-white p-6 space-y-8 font-sans">
@@ -93,65 +75,99 @@ const Dashboard: React.FC = () => {
                 </div>
             </div>
 
-            {/* Stats Grid */}
+            {/* Stats Grid — progressive: fast cards first, due cards with spinner */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <Link
-                    to="/students"
-                    className={`relative overflow-hidden rounded-2xl p-6 border backdrop-blur-md bg-gradient-to-br ${statCards[0].bg} ${statCards[0].border} shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 animate-slide-up text-left block`}
-                    style={{ animationDelay: '0ms' }}
-                >
-                    <div className="flex justify-between items-start">
-                        <div>
-                            <p className="text-slate-400 text-xs font-medium uppercase tracking-wider mb-2">{statCards[0].title}</p>
-                            <h3 className={`text-2xl font-bold ${statCards[0].text}`}>{statCards[0].value}</h3>
-                        </div>
-                        <div className="p-2 bg-white/5 rounded-lg border border-white/10">{statCards[0].icon}</div>
-                    </div>
-                </Link>
 
-                <Link
-                    to="/programs"
-                    className={`relative overflow-hidden rounded-2xl p-6 border backdrop-blur-md bg-gradient-to-br ${statCards[1].bg} ${statCards[1].border} shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 animate-slide-up text-left block`}
-                    style={{ animationDelay: '100ms' }}
-                >
-                    <div className="flex justify-between items-start">
-                        <div>
-                            <p className="text-slate-400 text-xs font-medium uppercase tracking-wider mb-2">{statCards[1].title}</p>
-                            <h3 className={`text-2xl font-bold ${statCards[1].text}`}>{statCards[1].value}</h3>
-                        </div>
-                        <div className="p-2 bg-white/5 rounded-lg border border-white/10">{statCards[1].icon}</div>
-                    </div>
-                </Link>
-
-                {statCards.slice(2).map((card, index) => {
-                    const TargetLink = card.title === "Revenue This Month" ? "/admin/finance/breakdown/due_monthly" : "/admin/finance/breakdown/due_overall";
-                    return (
-                        <Link
-                            key={index + 2}
-                            to={TargetLink}
-                            className={`relative overflow-hidden rounded-2xl p-6 border backdrop-blur-md bg-gradient-to-br ${card.bg} ${card.border} shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 animate-slide-up text-left block`}
-                            style={{ animationDelay: `${(index + 2) * 100}ms` }}
-                        >
-                            <div className="flex justify-between items-start">
-                                <div>
-                                    <p className="text-slate-400 text-xs font-medium uppercase tracking-wider mb-2">{card.title}</p>
-                                    <h3 className={`text-2xl font-bold ${card.text}`}>{card.value}</h3>
-                                </div>
-                                <div className="p-2 bg-white/5 rounded-lg border border-white/10">
-                                    {card.icon}
-                                </div>
+                {/* Total Students */}
+                {quickLoading ? <StatCardSkeleton /> : (
+                    <Link to="/students"
+                        className="relative overflow-hidden rounded-2xl p-6 border backdrop-blur-md bg-gradient-to-br from-blue-500/10 to-blue-600/10 border-blue-500/20 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 animate-slide-up text-left block"
+                        style={{ animationDelay: '0ms' }}
+                    >
+                        <div className="flex justify-between items-start">
+                            <div>
+                                <p className="text-slate-400 text-xs font-medium uppercase tracking-wider mb-2">Total Students</p>
+                                <h3 className="text-2xl font-bold text-blue-100">{quick?.total_students ?? 0}</h3>
                             </div>
-                            {/* Decorative Circle */}
-                            <div className="absolute -bottom-4 -right-4 w-24 h-24 bg-white/5 rounded-full blur-2xl"></div>
-                        </Link>
-                    )
-                })}
+                            <div className="p-2 bg-white/5 rounded-lg border border-white/10">
+                                <Users size={24} className="text-blue-400" />
+                            </div>
+                        </div>
+                    </Link>
+                )}
+
+                {/* Active Programs */}
+                {quickLoading ? <StatCardSkeleton /> : (
+                    <Link to="/programs"
+                        className="relative overflow-hidden rounded-2xl p-6 border backdrop-blur-md bg-gradient-to-br from-purple-500/10 to-purple-600/10 border-purple-500/20 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 animate-slide-up text-left block"
+                        style={{ animationDelay: '100ms' }}
+                    >
+                        <div className="flex justify-between items-start">
+                            <div>
+                                <p className="text-slate-400 text-xs font-medium uppercase tracking-wider mb-2">Active Programs</p>
+                                <h3 className="text-2xl font-bold text-purple-100">{quick?.total_programs ?? 0}</h3>
+                            </div>
+                            <div className="p-2 bg-white/5 rounded-lg border border-white/10">
+                                <BookOpen size={24} className="text-purple-400" />
+                            </div>
+                        </div>
+                    </Link>
+                )}
+
+                {/* Revenue This Month */}
+                {quickLoading ? <StatCardSkeleton /> : (
+                    <Link to="/admin/finance/breakdown/due_monthly"
+                        className="relative overflow-hidden rounded-2xl p-6 border backdrop-blur-md bg-gradient-to-br from-emerald-500/10 to-emerald-600/10 border-emerald-500/20 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 animate-slide-up text-left block"
+                        style={{ animationDelay: '200ms' }}
+                    >
+                        <div className="flex justify-between items-start">
+                            <div>
+                                <p className="text-slate-400 text-xs font-medium uppercase tracking-wider mb-2">Revenue This Month</p>
+                                <h3 className="text-2xl font-bold text-emerald-100">
+                                    ৳{quick?.revenue_this_month?.toLocaleString() ?? 0}
+                                </h3>
+                            </div>
+                            <div className="p-2 bg-white/5 rounded-lg border border-white/10">
+                                <Banknote size={24} className="text-emerald-400" />
+                            </div>
+                        </div>
+                    </Link>
+                )}
+
+                {/* Total Due — shows spinner while heavy calc runs */}
+                {duesLoading ? (
+                    <DueCardLoading
+                        title="Total Due Overall"
+                        icon={<AlertCircle size={24} className="text-rose-400" />}
+                        bg="from-rose-500/10 to-rose-600/10"
+                        border="border-rose-500/20"
+                        to="/admin/finance/breakdown/due_overall"
+                    />
+                ) : (
+                    <Link to="/admin/finance/breakdown/due_overall"
+                        className="relative overflow-hidden rounded-2xl p-6 border backdrop-blur-md bg-gradient-to-br from-rose-500/10 to-rose-600/10 border-rose-500/20 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1 animate-slide-up text-left block"
+                        style={{ animationDelay: '300ms' }}
+                    >
+                        <div className="flex justify-between items-start">
+                            <div>
+                                <p className="text-slate-400 text-xs font-medium uppercase tracking-wider mb-2">Total Due Overall</p>
+                                <h3 className="text-2xl font-bold text-rose-100">
+                                    ৳{dues?.total_due?.toLocaleString() ?? 0}
+                                </h3>
+                            </div>
+                            <div className="p-2 bg-white/5 rounded-lg border border-white/10">
+                                <AlertCircle size={24} className="text-rose-400" />
+                            </div>
+                        </div>
+                        <div className="absolute -bottom-4 -right-4 w-24 h-24 bg-white/5 rounded-full blur-2xl" />
+                    </Link>
+                )}
             </div>
 
             {/* Layout Grid: Activity & Quick Actions */}
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
-                {/* 1. Recent Activity Feed (Takes 2 columns) */}
+                {/* 1. Recent Activity Feed */}
                 <div className="lg:col-span-2 space-y-4 animate-slide-up" style={{ animationDelay: '400ms' }}>
                     <div className="flex items-center justify-between">
                         <h2 className="text-xl font-semibold flex items-center gap-2">
@@ -172,23 +188,26 @@ const Dashboard: React.FC = () => {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-700/50">
+                                {historyLoading && (
+                                    <tr>
+                                        <td colSpan={4} className="p-8 text-center text-slate-500">
+                                            <Loader2 size={18} className="animate-spin inline mr-2" />Loading activity…
+                                        </td>
+                                    </tr>
+                                )}
                                 {recentPayments?.data?.slice(0, 5).map((pay: any) => (
                                     <tr key={pay.sort_id || pay.payment_ids?.[0] || Math.random()} className="hover:bg-slate-700/30 transition-colors">
-                                        <td className="p-4 font-medium text-slate-200">
-                                            {pay.student_name || 'Unknown Student'}
-                                        </td>
+                                        <td className="p-4 font-medium text-slate-200">{pay.student_name || 'Unknown Student'}</td>
                                         <td className="p-4 text-emerald-400 font-bold">
                                             +৳{pay.total_amount?.toLocaleString() || pay.amount?.toLocaleString()}
                                         </td>
                                         <td className="p-4 text-slate-400">
                                             {pay.program_name} <span className="text-xs text-slate-500">({pay.date_display})</span>
                                         </td>
-                                        <td className="p-4 text-slate-500">
-                                            {new Date(pay.payment_date).toLocaleDateString()}
-                                        </td>
+                                        <td className="p-4 text-slate-500">{new Date(pay.payment_date).toLocaleDateString()}</td>
                                     </tr>
                                 ))}
-                                {!recentPayments?.data?.length && (
+                                {!historyLoading && !recentPayments?.data?.length && (
                                     <tr>
                                         <td colSpan={4} className="p-8 text-center text-slate-500 italic">No recent activity found.</td>
                                     </tr>
@@ -198,7 +217,7 @@ const Dashboard: React.FC = () => {
                     </div>
                 </div>
 
-                {/* 2. Quick Actions Sidebar (Takes 1 column) */}
+                {/* 2. Quick Actions */}
                 <div className="space-y-4 animate-slide-up" style={{ animationDelay: '500ms' }}>
                     <h2 className="text-xl font-semibold flex items-center gap-2">
                         <TrendingUp size={20} className="text-purple-400" />
@@ -227,14 +246,13 @@ const Dashboard: React.FC = () => {
                         </Link>
                     </div>
 
-                    {/* Mini Promo / Status */}
                     <div className="mt-6 p-6 rounded-2xl bg-gradient-to-br from-indigo-600 to-purple-700 text-white shadow-lg relative overflow-hidden">
                         <div className="relative z-10">
                             <h3 className="font-bold text-lg mb-1">System Healthy</h3>
                             <p className="text-indigo-100 text-sm mb-3">All services are running smoothly.</p>
                         </div>
-                        <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-3xl -mr-10 -mt-10"></div>
-                        <div className="absolute bottom-0 left-0 w-24 h-24 bg-black/10 rounded-full blur-2xl -ml-10 -mb-10"></div>
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-3xl -mr-10 -mt-10" />
+                        <div className="absolute bottom-0 left-0 w-24 h-24 bg-black/10 rounded-full blur-2xl -ml-10 -mb-10" />
                     </div>
                 </div>
             </div>

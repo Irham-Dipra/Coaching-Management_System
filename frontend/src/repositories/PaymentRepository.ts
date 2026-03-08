@@ -85,10 +85,24 @@ export const PaymentRepository = {
         return await response.json();
     },
 
-    // Get Overall Stats
+    // Get Overall Stats (combined, backward compat)
     async getFinanceStats() {
         const response = await fetch(`${API_BASE_URL}/finance/stats`);
         if (!response.ok) throw new Error("Failed to fetch finance stats");
+        return await response.json();
+    },
+
+    // Fast stats: student/program counts + revenue (~300ms)
+    async getFinanceStatsQuick() {
+        const response = await fetch(`${API_BASE_URL}/finance/stats/quick`);
+        if (!response.ok) throw new Error("Failed to fetch quick stats");
+        return await response.json();
+    },
+
+    // Heavy due stats: cached on backend after first call
+    async getFinanceStatsDues() {
+        const response = await fetch(`${API_BASE_URL}/finance/stats/dues`);
+        if (!response.ok) throw new Error("Failed to fetch due stats");
         return await response.json();
     },
 

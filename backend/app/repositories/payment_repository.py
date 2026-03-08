@@ -1,4 +1,9 @@
 from app.core.supabase import supabase
+from app.core.stats_cache import (
+    get_cached_quick, set_cached_quick,
+    get_cached_dues, set_cached_dues,
+    invalidate_stats_cache
+)
 from datetime import datetime, date
 
 class PaymentRepository:
@@ -133,9 +138,9 @@ class PaymentRepository:
                 print(f"Executing Batch Insert for Group {group_id}")
                 response = supabase.table(self.table).insert(batch_payload).execute()
                 inserted_data = response.data
+                invalidate_stats_cache()  # Revenue + dues changed
             except Exception as e:
                 print(f"Bulk Insert Failed: {e}")
-                # If the batch fails (system error), re-raise
                 raise e
                 
         return {
@@ -232,10 +237,12 @@ class PaymentRepository:
             "remarks": updates.get("remarks", current["remarks"])
         }
         
-        return supabase.table(self.table)\
+        result = supabase.table(self.table)\
             .update(safe_updates)\
             .eq("payment_id", payment_id)\
             .execute().data
+        invalidate_stats_cache()  # Payment amount changed — revenue affected
+        return result
 
     def delete_payment(self, payment_id: int):
         """
@@ -259,9 +266,11 @@ class PaymentRepository:
             
         if newer_exists:
             raise Exception("Integrity Error: You can only delete the most recent transaction for this student to maintain ledger consistency.")
-            
+
         # 3. Delete
-        return supabase.table(self.table).delete().eq("payment_id", payment_id).execute().data
+        result = supabase.table(self.table).delete().eq("payment_id", payment_id).execute().data
+        invalidate_stats_cache()  # Revenue + dues changed
+        return result
 
     def get_payment_status(self, enrollment_id: int):
         """
@@ -851,15 +860,13 @@ class PaymentRepository:
             
         return results
 
-    def get_finance_stats(self):
-        """
-        Finance dashboard stats.
-        Due figures delegate to get_due_breakdown_list / get_due_breakdown_monthly
-        to guarantee they match the breakdown pages exactly.
-        """
-        today = date.today()
+    def get_finance_stats_quick(self):
+        """Fast stats: student count, program count, revenue. Cached with short TTL."""
+        cached = get_cached_quick()
+        if cached:
+            return cached
 
-        # --- Revenue ---
+        today = date.today()
         revenue_data = supabase.table(self.table).select("paid_amount, payment_date").execute().data
         total_revenue = sum(float(p['paid_amount'] or 0) for p in revenue_data)
         curr_month_prefix = f"{today.year}-{today.month:02d}"
@@ -867,33 +874,44 @@ class PaymentRepository:
             float(p['paid_amount'] or 0) for p in revenue_data
             if p.get('payment_date') and p['payment_date'].startswith(curr_month_prefix)
         )
-
-        # --- Counts ---
         student_res = supabase.table("student").select("*", count="exact", head=True).execute()
-        unique_students = student_res.count or 0
-
         prog_res = supabase.table("program").select("*", count="exact", head=True).execute()
-        total_programs = prog_res.count or 0
 
-        # --- Total Due (all time) ---
-        # Reuse get_due_breakdown_list — already correct and bulk-optimised
-        overall = self.get_due_breakdown_list()
-        total_due = sum(s.get('total_due', 0) for s in overall.get('students', []))
-
-        # --- Due This Month ---
-        # Reuse get_due_breakdown_monthly for the current month
-        monthly = self.get_due_breakdown_monthly(today.month, today.year)
-        due_this_month = sum(s.get('due_amount', s.get('total_due', 0)) for s in monthly.get('students', []))
-
-        return {
-            "total_students": unique_students,
-            "total_programs": total_programs,
+        result = {
+            "total_students": student_res.count or 0,
+            "total_programs": prog_res.count or 0,
             "revenue_this_month": revenue_this_month,
             "revenue_total": total_revenue,
+        }
+        set_cached_quick(result)
+        return result
+
+    def get_finance_stats_dues(self):
+        """Heavy due stats: total_due + due_this_month. Cached with longer TTL."""
+        cached = get_cached_dues()
+        if cached:
+            return cached
+
+        today = date.today()
+        overall = self.get_due_breakdown_list()
+        total_due = sum(s.get('total_due', 0) for s in overall.get('students', []))
+        monthly = self.get_due_breakdown_monthly(today.month, today.year)
+        due_this_month = sum(s.get('total_due', 0) for s in monthly.get('students', []))
+
+        result = {
             "total_due": total_due,
             "due_total": total_due,
-            "due_this_month": due_this_month
+            "due_this_month": due_this_month,
         }
+        set_cached_dues(result)
+        return result
+
+    def get_finance_stats(self):
+        """Combined stats for backward compatibility. Merges quick + dues."""
+        quick = self.get_finance_stats_quick()
+        dues = self.get_finance_stats_dues()
+        return {**quick, **dues}
+
 
     def get_student_financial_summary(self, student_id: int):
         """

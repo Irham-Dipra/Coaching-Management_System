@@ -125,7 +125,8 @@ const BatchPaymentModal: React.FC<BatchPaymentModalProps> = ({ isOpen, onClose, 
         mutationFn: (payments: any[]) => PaymentRepository.createBulkPayment(payments),
         onSuccess: (data) => {
             queryClient.invalidateQueries({ queryKey: ['payments'] });
-            queryClient.invalidateQueries({ queryKey: ['finance'] });
+            queryClient.invalidateQueries({ queryKey: ['finance-stats-quick'] });
+            queryClient.invalidateQueries({ queryKey: ['finance-stats-dues'] });
 
             // Check response structure
             if (data && (data.success !== undefined || data.failed !== undefined)) {

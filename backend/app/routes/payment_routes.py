@@ -90,6 +90,17 @@ def get_student_payments(student_id: int):
 def get_finance_stats():
     return payment_repo.get_finance_stats()
 
+@router.get("/finance/stats/quick")
+def get_finance_stats_quick():
+    """Fast stats: student/program counts + revenue. Returns in ~300ms."""
+    return payment_repo.get_finance_stats_quick()
+
+@router.get("/finance/stats/dues")
+def get_finance_stats_dues():
+    """Heavy due stats: total_due + due_this_month. Cached after first call."""
+    return payment_repo.get_finance_stats_dues()
+
+
 @router.get("/finance/programs")
 def get_program_finance_stats():
     return payment_repo.get_program_finance_stats()

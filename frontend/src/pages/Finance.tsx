@@ -76,17 +76,24 @@ const Finance: React.FC = () => {
     const { data: batches } = useQuery({ queryKey: ['batches'], queryFn: ProgramRepository.getAllBatches });
     const { data: allPrograms } = useQuery({ queryKey: ['programs'], queryFn: ProgramRepository.getAllPrograms });
 
-    // Fetch Global Stats
-    const { data: stats } = useQuery({
-        queryKey: ['finance', 'stats'],
-        queryFn: PaymentRepository.getFinanceStats
+    // Fetch Stats — split for progressive loading
+    const { data: quickStats } = useQuery({
+        queryKey: ['finance-stats-quick'],
+        queryFn: PaymentRepository.getFinanceStatsQuick
     });
+    const { data: dueStats } = useQuery({
+        queryKey: ['finance-stats-dues'],
+        queryFn: PaymentRepository.getFinanceStatsDues
+    });
+    // Merge for places that use 'stats'
+    const stats = quickStats && dueStats ? { ...quickStats, ...dueStats } : quickStats ?? dueStats;
 
     const deleteMutation = useMutation({
         mutationFn: PaymentRepository.deletePayment,
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['payments'] });
-            queryClient.invalidateQueries({ queryKey: ['finance'] });
+            queryClient.invalidateQueries({ queryKey: ['finance-stats-quick'] });
+            queryClient.invalidateQueries({ queryKey: ['finance-stats-dues'] });
             alert("Payment Deleted Successfully!");
         },
         onError: (err) => alert("Failed to delete: " + err)
@@ -753,6 +760,8 @@ const AddPaymentModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ i
         onSuccess: (data) => {
             queryClient.invalidateQueries({ queryKey: ['payments'] });
             queryClient.invalidateQueries({ queryKey: ['payment_status'] });
+            queryClient.invalidateQueries({ queryKey: ['finance-stats-quick'] });
+            queryClient.invalidateQueries({ queryKey: ['finance-stats-dues'] });
             if (data && (data.success !== undefined || data.failed !== undefined)) {
                 // Handle Bulk Response (Auto-detect based on shape)
                 const successCount = data.success || 0;

@@ -74,9 +74,10 @@ const EditPaymentModal: React.FC<EditPaymentModalProps> = ({ isOpen, onClose, pa
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['payments'] });
-            queryClient.invalidateQueries({ queryKey: ['finance'] });
-            queryClient.invalidateQueries({ queryKey: ['program_finance'] }); // For Program Details
-            queryClient.invalidateQueries({ queryKey: ['finance_breakdown'] }); // For Breakdown
+            queryClient.invalidateQueries({ queryKey: ['finance-stats-quick'] });
+            queryClient.invalidateQueries({ queryKey: ['finance-stats-dues'] });
+            queryClient.invalidateQueries({ queryKey: ['program_finance'] });
+            queryClient.invalidateQueries({ queryKey: ['finance_breakdown'] });
             queryClient.invalidateQueries({ queryKey: ['payment_status'] });
             onClose();
             alert("Payment Updated!");

@@ -1,5 +1,6 @@
 # Imports the 'supabase' connection object we created in app/core/supabase.py
 from app.core.supabase import supabase
+from app.core.stats_cache import invalidate_stats_cache
 from app.schemas.student import StudentCreate
 
 class StudentRepository:
@@ -192,6 +193,7 @@ class StudentRepository:
         # 4. Delete Results
         supabase.table('student_individual_result').delete().eq('student_id', student_id).execute()
 
+        invalidate_stats_cache()  # Student removal affects dues
         return {"message": "Student soft deleted successfully"}
 
     def register_student_with_enrollment(self, student_data: StudentCreate, program_ids: list[int], enrollment_date: str = None, custom_fees: dict = None):

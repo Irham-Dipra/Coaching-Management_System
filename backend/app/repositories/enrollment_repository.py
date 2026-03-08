@@ -1,4 +1,5 @@
 from app.core.supabase import supabase
+from app.core.stats_cache import invalidate_stats_cache
 from app.schemas.enrollment import EnrollmentCreate
 from fastapi.encoders import jsonable_encoder
 from datetime import date, datetime
@@ -140,6 +141,7 @@ class EnrollmentRepository:
             print(f"Hard deleting enrollment {enrollment_id} (No payments)")
             response = supabase.table(self.table).delete().eq("enrollment_id", enrollment_id).execute()
 
+        invalidate_stats_cache()  # Enrollment change affects dues
         return response.data
 
     def enroll_student_bulk(self, student_ids: list[int], program_ids: list[int], enrollment_date: str = None, custom_fees: dict = None):
@@ -285,6 +287,6 @@ class EnrollmentRepository:
             "effective_year": new_dt.year
         }
         supabase.table("enrollment_fee_history").insert(history_data).execute()
-        
+        invalidate_stats_cache()  # Fee change affects future dues
         return {"success": True, "message": "Fee updated successfully", "new_fee": new_fee, "effective_date": effective_date}
 

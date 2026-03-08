@@ -85,7 +85,7 @@ const StudentProfile: React.FC = () => {
                 custom_fees: customFees
             });
         },
-        onSuccess: (data: any) => {
+        onSuccess: () => {
             setShowEnrollModal(false);
             setIsBulkModalOpen(false);
             queryClient.invalidateQueries({ queryKey: ['enrollments', id] });

@@ -164,37 +164,70 @@ class StudentRepository:
     def delete_student(self, student_id: int):
         """
         Soft delete a student:
-        1. Set is_active = False
-        2. Set all enrollments to 'Withdrawn'
-        3. Delete all results from student_individual_result
-        4. (Payments are preserved)
+        1. Hard-delete all enrollment_fee_history for this student's enrollments
+        2. Set is_active = False
+        3. Set all enrollments to 'Withdrawn'
+        4. Delete all results from student_individual_result
+        5. (Payments are preserved)
         """
-        # 1. Soft Delete Student
+        # 1. Fetch all enrollment IDs for this student
+        enrollment_res = supabase.table('enrollment')\
+            .select('enrollment_id')\
+            .eq('student_id', student_id)\
+            .execute()
+
+        if enrollment_res.data:
+            enrollment_ids = [e['enrollment_id'] for e in enrollment_res.data]
+            chunk_size = 200
+            for i in range(0, len(enrollment_ids), chunk_size):
+                chunk = enrollment_ids[i:i + chunk_size]
+                supabase.table('enrollment_fee_history').delete().in_('enrollment_id', chunk).execute()
+
+        # 2. Soft Delete Student
         supabase.table(self.table).update({'is_active': False}).eq('student_id', student_id).execute()
-        
-        # 2. Withdraw Enrollments
+
+        # 3. Withdraw Enrollments
         supabase.table('enrollment').update({'status': 'Withdrawn'}).eq('student_id', student_id).execute()
-        
-        # 3. Delete Results
+
+        # 4. Delete Results
         supabase.table('student_individual_result').delete().eq('student_id', student_id).execute()
-        
+
         return {"message": "Student soft deleted successfully"}
 
-    def register_student_with_enrollment(self, student_data: StudentCreate, program_ids: list[int]):
+    def register_student_with_enrollment(self, student_data: StudentCreate, program_ids: list[int], enrollment_date: str = None, custom_fees: dict = None):
         # Convert Pydantic object to a dictionary
         data_dict = student_data.dict()
         
         # FIX: The database column is named "class", but our Pydantic field is "class_grade"
         if 'class_grade' in data_dict:
-            data_dict['class_grade'] = data_dict.pop('class_grade') # RPC expects 'class_grade' key for logic inside
+            data_dict['class'] = data_dict.pop('class_grade')
 
-        # Call the RPC
-        response = supabase.rpc('register_student_with_enrollment', {
-            'p_student_data': data_dict,
-            'p_program_ids': program_ids
-        }).execute()
+        # 1. Insert Student directly
+        res = supabase.table('student').insert(data_dict).execute()
         
-        return response.data
+        if not res.data:
+            raise Exception("Failed to insert student")
+            
+        student_id = res.data[0]['student_id']
+
+        # Custom fee key mapping (frontend uses dummy ID "0" for the uncreated student)
+        mapped_fees = None
+        if custom_fees:
+            mapped_fees = {}
+            for pid, fees in custom_fees.items():
+                mapped_fees[pid] = {str(student_id): fees.get("0", 0)}
+
+        # 2. Use the standard robust bulk enrollment flow to create enrollments + history logs!
+        from app.repositories.enrollment_repository import EnrollmentRepository
+        enroll_repo = EnrollmentRepository()
+        enroll_repo.enroll_student_bulk(
+            student_ids=[student_id], 
+            program_ids=program_ids,
+            enrollment_date=enrollment_date,
+            custom_fees=mapped_fees
+        )
+        
+        return res.data[0]
 
     def get_student_analytics(self, student_id: int):
         """Get performance analytics for a single student across all their exams."""

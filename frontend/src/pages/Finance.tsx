@@ -636,7 +636,7 @@ const AddPaymentModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ i
         id: e.program.program_id,
         enrollment_id: e.enrollment_id, // Critical for backend
         name: e.program.program_name,
-        fee: e.program.monthly_fee,
+        fee: e.current_agreed_fee ?? e.program.monthly_fee,
         enrollment_date: e.enrollment_date
     })) || [];
 
@@ -718,9 +718,12 @@ const AddPaymentModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ i
             if (currM === paymentStatus?.fum?.month && currY === paymentStatus?.fum?.year) {
                 total += (paymentStatus.fum.due || 0);
             } else {
-                // Future months are full fee
+                // Future months or past unpaid months
                 if (!isMonthPaid(currM, currY)) {
-                    total += (selectedProgram.fee || 0);
+                    // Pull the exact atomic fee from the ledger if it exists, otherwise fallback to current agreed fee
+                    const ledgerRow = paymentStatus?.ledger?.find((l: any) => l.month === currM && l.year === currY);
+                    const monthFee = ledgerRow?.fee ?? selectedProgram?.fee ?? 0;
+                    total += monthFee;
                 }
             }
 
@@ -808,7 +811,10 @@ const AddPaymentModal: React.FC<{ isOpen: boolean; onClose: () => void }> = ({ i
 
             while ((currY * 12 + currM) <= endTotal) {
                 // Determine Amount: FUM Due vs Full Fee
-                let amount = selectedProgram.fee;
+                let amount = selectedProgram?.fee ?? 0;
+                const ledgerRow = paymentStatus?.ledger?.find((l: any) => l.month === currM && l.year === currY);
+                if (ledgerRow && ledgerRow.fee !== undefined) amount = ledgerRow.fee;
+
                 let isFum = (currM === paymentStatus?.fum?.month && currY === paymentStatus?.fum?.year);
 
                 if (isFum) {

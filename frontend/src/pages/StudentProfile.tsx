@@ -6,7 +6,8 @@ import { ProgramRepository } from '../repositories/ProgramRepository';
 import StudentFinancialStatus from '../components/StudentFinancialStatus';
 import StudentPerformance from './StudentPerformance';
 import WithdrawalModal from '../components/WithdrawalModal';
-import { User, BookOpen, CreditCard, Edit2, Save, Trash2, Plus, TrendingUp, ArrowLeft } from 'lucide-react';
+import AdjustFeeModal from '../components/AdjustFeeModal';
+import { User, BookOpen, CreditCard, Edit2, Save, Trash2, Plus, TrendingUp, ArrowLeft, DollarSign } from 'lucide-react';
 import { useReactToPrint } from 'react-to-print';
 import IDCardTemplate from '../components/IDCardTemplate';
 
@@ -18,6 +19,7 @@ const StudentProfile: React.FC = () => {
     const [showEnrollModal, setShowEnrollModal] = useState(false);
     const [selectedProgramId, setSelectedProgramId] = useState('');
     const [withdrawEnrollment, setWithdrawEnrollment] = useState<any>(null);
+    const [adjustFeeEnrollment, setAdjustFeeEnrollment] = useState<any>(null);
     const [activeTab, setActiveTab] = useState<'overview' | 'performance'>('overview');
 
     // Print Handler (Must be before early returns)
@@ -343,13 +345,22 @@ const StudentProfile: React.FC = () => {
                                                     {enroll.status === 'Withdrawn' && <span className="text-red-400 bg-red-500/10 px-2 rounded border border-red-500/20">Withdrawn</span>}
                                                 </div>
                                             </div>
-                                            <button
-                                                onClick={() => setWithdrawEnrollment(enroll)}
-                                                className="text-red-400 hover:text-red-300 p-2 opacity-0 group-hover:opacity-100 transition-opacity bg-red-500/10 rounded-lg hover:bg-red-500/20"
-                                                title="Withdraw / Delete Enrollment"
-                                            >
-                                                <Trash2 size={20} />
-                                            </button>
+                                            <div className="flex items-center gap-2">
+                                                <button
+                                                    onClick={() => setAdjustFeeEnrollment(enroll)}
+                                                    className="text-blue-400 hover:text-blue-300 p-2 opacity-0 group-hover:opacity-100 transition-opacity bg-blue-500/10 rounded-lg hover:bg-blue-500/20"
+                                                    title="Adjust Custom Fee"
+                                                >
+                                                    <DollarSign size={20} />
+                                                </button>
+                                                <button
+                                                    onClick={() => setWithdrawEnrollment(enroll)}
+                                                    className="text-red-400 hover:text-red-300 p-2 opacity-0 group-hover:opacity-100 transition-opacity bg-red-500/10 rounded-lg hover:bg-red-500/20"
+                                                    title="Withdraw / Delete Enrollment"
+                                                >
+                                                    <Trash2 size={20} />
+                                                </button>
+                                            </div>
                                         </div>
                                     ))}
                                     {(!student.enrollment || student.enrollment.length === 0) && (
@@ -383,6 +394,14 @@ const StudentProfile: React.FC = () => {
                     }}
                 />
             )}
+
+            {/* ADJUST FEE MODAL */}
+            <AdjustFeeModal
+                isOpen={!!adjustFeeEnrollment}
+                onClose={() => setAdjustFeeEnrollment(null)}
+                enrollment={adjustFeeEnrollment}
+                studentId={id!}
+            />
 
             {/* Hidden Print Area */}
             <div className="hidden">

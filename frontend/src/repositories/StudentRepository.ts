@@ -103,7 +103,7 @@ export const StudentRepository = {
   },
 
   // 6.5 Sudo Bulk Enroll
-  async enrollStudentsBulk(data: { student_ids: number[], program_ids: number[] }) {
+  async enrollStudentsBulk(data: { student_ids: number[], program_ids: number[], enrollment_date?: string, custom_fees?: any }) {
     const response = await fetch(`${API_BASE_URL}/enrollments/bulk`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -140,6 +140,19 @@ export const StudentRepository = {
     a.remove();
   },
 
+  // 8.5 Update Agreed Fee
+  async updateAgreedFee(enrollmentId: number, data: { new_fee: number; effective_date: string }) {
+    const response = await fetch(`${API_BASE_URL}/enrollments/${enrollmentId}/fee`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(data),
+    });
+    if (!response.ok) {
+      throw new Error("Failed to update agreed fee");
+    }
+    return await response.json();
+  },
+
   // 9. Import Students
   async importStudents(file: File, batchId?: number | string) {
     const formData = new FormData();
@@ -161,7 +174,7 @@ export const StudentRepository = {
   },
 
   // 10. Register Student with Enrollment (Atomic)
-  async registerStudentWithEnrollment(data: { student: any, program_ids: number[] }) {
+  async registerStudentWithEnrollment(data: { student: any, program_ids: number[], enrollment_date?: string, custom_fees?: any }) {
     const response = await fetch(`${API_BASE_URL}/students/register-with-enrollment`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },

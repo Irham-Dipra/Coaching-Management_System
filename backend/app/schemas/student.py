@@ -40,3 +40,5 @@ class StudentCreate(BaseModel):
 class StudentEnrollmentRequest(BaseModel):
     student: StudentCreate
     program_ids: list[int]
+    enrollment_date: Optional[str] = None
+    custom_fees: Optional[dict[str, dict[str, float]]] = None

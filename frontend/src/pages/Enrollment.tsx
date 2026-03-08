@@ -4,6 +4,7 @@ import { StudentRepository } from '../repositories/StudentRepository';
 import { ProgramRepository } from '../repositories/ProgramRepository';
 import { Search, CheckCircle, Loader2, UserPlus, Users, ArrowRight } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import BulkFeeModal from '../components/BulkFeeModal';
 
 const Enrollment: React.FC = () => {
     const queryClient = useQueryClient();
@@ -35,7 +36,8 @@ const Enrollment: React.FC = () => {
         school: '',
         contact: '',
         class_grade: '',
-        batch_id: ''
+        batch_id: '',
+        enrollment_date: new Date().toISOString().split('T')[0]
     });
     const [newStudentPrograms, setNewStudentPrograms] = useState<number[]>([]);
 
@@ -52,16 +54,23 @@ const Enrollment: React.FC = () => {
     }) || [];
 
     // ====================
+    // STATE: MODAL
+    // ====================
+    const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
+
+    // ====================
     // MUTATIONS
     // ====================
     const enrollExistingMutation = useMutation({
-        mutationFn: async () => {
+        mutationFn: async ({ enrollmentDate, customFees }: { enrollmentDate: string, customFees: any }) => {
             if (selectedStudentIds.length === 0) throw new Error("No students selected");
 
             // Call Bulk API
             return StudentRepository.enrollStudentsBulk({
                 student_ids: selectedStudentIds,
-                program_ids: selectedPrograms
+                program_ids: selectedPrograms,
+                enrollment_date: enrollmentDate,
+                custom_fees: customFees
             });
         },
         onSuccess: (data) => {
@@ -69,6 +78,7 @@ const Enrollment: React.FC = () => {
             alert(`Successfully processed enrollment for ${data.length} records!`);
             setSelectedStudentIds([]);
             setSelectedPrograms([]);
+            setIsBulkModalOpen(false);
         },
         onError: (err) => alert("Failed to enroll: " + err)
     });
@@ -76,7 +86,7 @@ const Enrollment: React.FC = () => {
     // ... (createAndEnrollMutation remains same)
 
     const createAndEnrollMutation = useMutation({
-        mutationFn: async () => {
+        mutationFn: async ({ enrollmentDate, customFees }: { enrollmentDate: string, customFees: any }) => {
             return StudentRepository.registerStudentWithEnrollment({
                 student: {
                     name: newStudent.name,
@@ -86,12 +96,15 @@ const Enrollment: React.FC = () => {
                     class_grade: newStudent.class_grade ? parseInt(newStudent.class_grade) : undefined,
                     batch_id: newStudent.batch_id ? parseInt(newStudent.batch_id) : undefined
                 },
-                program_ids: newStudentPrograms
+                program_ids: newStudentPrograms,
+                enrollment_date: enrollmentDate,
+                custom_fees: customFees
             });
         },
         onSuccess: (data) => {
             queryClient.invalidateQueries({ queryKey: ['students'] });
             const studentId = data.student_id;
+            setIsBulkModalOpen(false);
             navigate(`/students?highlight=${studentId}`);
         },
         onError: (err) => alert("Failed to register: " + err)
@@ -321,6 +334,15 @@ const Enrollment: React.FC = () => {
                                         placeholder="Current School"
                                     />
                                 </div>
+                                <div className="md:col-span-2">
+                                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1.5 block">Enrollment Date</label>
+                                    <input
+                                        type="date"
+                                        className="w-full p-3 bg-slate-900/50 border border-slate-700 rounded-lg text-white focus:border-blue-500 outline-none font-mono"
+                                        value={newStudent.enrollment_date}
+                                        onChange={e => setNewStudent({ ...newStudent, enrollment_date: e.target.value })}
+                                    />
+                                </div>
                             </div>
                         </div>
                     )}
@@ -387,7 +409,7 @@ const Enrollment: React.FC = () => {
                                     enrollExistingMutation.isPending ||
                                     createAndEnrollMutation.isPending
                                 }
-                                onClick={() => activeTab === 'existing' ? enrollExistingMutation.mutate() : createAndEnrollMutation.mutate()}
+                                onClick={() => setIsBulkModalOpen(true)}
                                 className="w-full py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-xl font-bold shadow-lg shadow-blue-900/30 hover:shadow-blue-900/50 hover:scale-[1.02] transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
                             >
                                 {(enrollExistingMutation.isPending || createAndEnrollMutation.isPending) ? (
@@ -406,6 +428,31 @@ const Enrollment: React.FC = () => {
                 </div>
 
             </div>
+
+            {/* Bulk Fee Pop-up Modal */}
+            <BulkFeeModal
+                isOpen={isBulkModalOpen}
+                onClose={() => setIsBulkModalOpen(false)}
+                onSubmit={(date, fees) => {
+                    if (activeTab === 'existing') {
+                        enrollExistingMutation.mutate({ enrollmentDate: date, customFees: fees });
+                    } else {
+                        createAndEnrollMutation.mutate({ enrollmentDate: date, customFees: fees });
+                    }
+                }}
+                selectedStudents={
+                    activeTab === 'existing'
+                        ? (students?.filter((s: any) => selectedStudentIds.includes(s.student_id)) || [])
+                        : [{ student_id: 0, name: newStudent.name, student_code: 'New', class: newStudent.class_grade }]
+                }
+                selectedPrograms={
+                    activeTab === 'existing'
+                        ? (programs?.filter((p: any) => selectedPrograms.includes(p.program_id)) || [])
+                        : (programs?.filter((p: any) => newStudentPrograms.includes(p.program_id)) || [])
+                }
+                isSubmitting={enrollExistingMutation.isPending || createAndEnrollMutation.isPending}
+                initialDate={activeTab === 'existing' ? new Date().toISOString().split('T')[0] : newStudent.enrollment_date}
+            />
         </div>
     );
 };

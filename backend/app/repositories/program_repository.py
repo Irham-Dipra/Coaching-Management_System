@@ -154,21 +154,36 @@ class ProgramRepository:
     def delete_program(self, program_id: int):
         """
         Soft Delete:
-        1. Set is_active = False
-        2. Set end_date = TODAY (to stop due calculation)
+        1. Hard-delete all enrollment_fee_history for the program's enrollments
+        2. Set is_active = False
+        3. Set end_date = TODAY (to stop due calculation)
         """
         from datetime import date
-        
+
+        # 1. Find all enrollments for this program and delete their fee histories
+        enrollments = supabase.table("enrollment")\
+            .select("enrollment_id")\
+            .eq("program_id", program_id)\
+            .execute().data
+
+        if enrollments:
+            enrollment_ids = [e['enrollment_id'] for e in enrollments]
+            chunk_size = 200
+            for i in range(0, len(enrollment_ids), chunk_size):
+                chunk = enrollment_ids[i:i + chunk_size]
+                supabase.table("enrollment_fee_history").delete().in_("enrollment_id", chunk).execute()
+
+        # 2. Soft-delete the program itself
         updates = {
             "is_active": False,
             "end_date": str(date.today())
         }
-        
+
         response = supabase.table(self.program_table)\
             .update(updates)\
             .eq("program_id", program_id)\
             .execute()
-            
+
         return response.data[0] if response.data else None
 
     # ==========================================

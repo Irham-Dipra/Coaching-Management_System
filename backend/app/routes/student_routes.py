@@ -1,9 +1,9 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
+from typing import List
 from app.repositories.student_repository import StudentRepository
-from app.schemas.student import StudentCreate
 from app.repositories.enrollment_repository import EnrollmentRepository
 from app.repositories.payment_repository import PaymentRepository
-from app.schemas.enrollment import EnrollmentCreate, EnrollmentResponse, EnrollmentBulkRequest
+from app.schemas.enrollment import EnrollmentCreate, EnrollmentResponse, EnrollmentBulkRequest, EnrollmentFeeUpdate
 from app.schemas.student import StudentCreate, StudentEnrollmentRequest
 
 # 1. Create a Router (like a mini-app for students)
@@ -84,7 +84,7 @@ def create_student(student: StudentCreate):
 @router.post("/students/register-with-enrollment")
 def register_student_with_enrollment(request: StudentEnrollmentRequest):
     try:
-        return repo.register_student_with_enrollment(request.student, request.program_ids)
+        return repo.register_student_with_enrollment(request.student, request.program_ids, request.enrollment_date, request.custom_fees)
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -119,11 +119,20 @@ def enroll_student(enrollment: EnrollmentCreate):
 
 @router.post("/enrollments/bulk")
 def enroll_students_bulk(request: EnrollmentBulkRequest):
-    return enrollment_repo.enroll_student_bulk(request.student_ids, request.program_ids)
+    return enrollment_repo.enroll_student_bulk(
+        request.student_ids, 
+        request.program_ids,
+        request.enrollment_date,
+        request.custom_fees
+    )
 
 @router.delete("/enrollments/{enrollment_id}")
 def delete_enrollment(enrollment_id: int):
     return enrollment_repo.delete_enrollment(enrollment_id)
+
+@router.patch("/enrollments/{enrollment_id}/fee")
+def update_enrollment_fee(enrollment_id: int, fee_update: EnrollmentFeeUpdate):
+    return enrollment_repo.update_agreed_fee(enrollment_id, fee_update.new_fee, fee_update.effective_date)
 
 @router.get("/students/{student_id}/financial-summary")
 def get_student_financial_summary(student_id: int):

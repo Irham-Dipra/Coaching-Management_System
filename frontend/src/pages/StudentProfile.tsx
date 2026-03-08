@@ -10,6 +10,7 @@ import AdjustFeeModal from '../components/AdjustFeeModal';
 import { User, BookOpen, CreditCard, Edit2, Save, Trash2, Plus, TrendingUp, ArrowLeft, DollarSign } from 'lucide-react';
 import { useReactToPrint } from 'react-to-print';
 import IDCardTemplate from '../components/IDCardTemplate';
+import BulkFeeModal from '../components/BulkFeeModal';
 
 const StudentProfile: React.FC = () => {
     const { id } = useParams<{ id: string }>();
@@ -18,6 +19,7 @@ const StudentProfile: React.FC = () => {
     const [editForm, setEditForm] = useState<any>({});
     const [showEnrollModal, setShowEnrollModal] = useState(false);
     const [selectedProgramId, setSelectedProgramId] = useState('');
+    const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
     const [withdrawEnrollment, setWithdrawEnrollment] = useState<any>(null);
     const [adjustFeeEnrollment, setAdjustFeeEnrollment] = useState<any>(null);
     const [activeTab, setActiveTab] = useState<'overview' | 'performance'>('overview');
@@ -75,18 +77,20 @@ const StudentProfile: React.FC = () => {
     });
 
     const enrollMutation = useMutation({
-        mutationFn: (programId: number) => StudentRepository.enrollStudent({
-            student_id: parseInt(id!),
-            program_id: programId
-        }),
+        mutationFn: async ({ enrollmentDate, customFees }: { enrollmentDate: string, customFees: any }) => {
+            return StudentRepository.enrollStudentsBulk({
+                student_ids: [parseInt(id!)],
+                program_ids: [parseInt(selectedProgramId)],
+                enrollment_date: enrollmentDate,
+                custom_fees: customFees
+            });
+        },
         onSuccess: (data: any) => {
             setShowEnrollModal(false);
+            setIsBulkModalOpen(false);
             queryClient.invalidateQueries({ queryKey: ['enrollments', id] });
-            if (data.is_reenrollment) {
-                alert("Student re-enrolled successfully. Enrollment date has been updated to today.");
-            } else {
-                alert("Student enrolled successfully.");
-            }
+            alert("Student enrolled successfully.");
+            setSelectedProgramId('');
         },
         onError: (err: any) => {
             alert(err.message);
@@ -322,13 +326,13 @@ const StudentProfile: React.FC = () => {
                                             </select>
                                             <div className="flex gap-2">
                                                 <button
-                                                    onClick={() => enrollMutation.mutate(parseInt(selectedProgramId))}
+                                                    onClick={() => setIsBulkModalOpen(true)}
                                                     className="bg-blue-600 text-white px-6 py-2.5 rounded-lg shadow-lg hover:bg-blue-500 transition-all font-bold disabled:opacity-50 disabled:cursor-not-allowed"
                                                     disabled={!selectedProgramId}
                                                 >
-                                                    Confirm
+                                                    Configure Fee & Enroll
                                                 </button>
-                                                <button onClick={() => setShowEnrollModal(false)} className="text-slate-400 px-4 hover:text-white transition-colors">Cancel</button>
+                                                <button onClick={() => { setShowEnrollModal(false); setSelectedProgramId(''); }} className="text-slate-400 px-4 hover:text-white transition-colors">Cancel</button>
                                             </div>
                                         </div>
                                     </div>
@@ -401,6 +405,19 @@ const StudentProfile: React.FC = () => {
                 onClose={() => setAdjustFeeEnrollment(null)}
                 enrollment={adjustFeeEnrollment}
                 studentId={id!}
+            />
+
+            {/* BULK FEE MODAL FOR ENROLLMENT */}
+            <BulkFeeModal
+                isOpen={isBulkModalOpen}
+                onClose={() => setIsBulkModalOpen(false)}
+                onSubmit={(date, fees) => {
+                    enrollMutation.mutate({ enrollmentDate: date, customFees: fees });
+                }}
+                selectedStudents={[student].filter(Boolean)}
+                selectedPrograms={allPrograms?.filter((p: any) => p.program_id === parseInt(selectedProgramId)) || []}
+                isSubmitting={enrollMutation.isPending}
+                initialDate={new Date().toISOString().split('T')[0]}
             />
 
             {/* Hidden Print Area */}

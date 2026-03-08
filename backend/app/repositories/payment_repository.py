@@ -888,10 +888,26 @@ class PaymentRepository:
         revenue_data = supabase.table(self.table).select("paid_amount, payment_date").execute().data
         total_revenue = sum(float(p['paid_amount'] or 0) for p in revenue_data)
         curr_month_prefix = f"{today.year}-{today.month:02d}"
+        if today.month == 1:
+            last_month_prefix = f"{today.year - 1}-12"
+        else:
+            last_month_prefix = f"{today.year}-{today.month - 1:02d}"
+
         revenue_this_month = sum(
             float(p['paid_amount'] or 0) for p in revenue_data
             if p.get('payment_date') and p['payment_date'].startswith(curr_month_prefix)
         )
+        
+        revenue_last_month = sum(
+            float(p['paid_amount'] or 0) for p in revenue_data
+            if p.get('payment_date') and p['payment_date'].startswith(last_month_prefix)
+        )
+
+        if revenue_last_month > 0:
+            growth_percent = round(((revenue_this_month - revenue_last_month) / revenue_last_month) * 100, 1)
+        else:
+            growth_percent = 100.0 if revenue_this_month > 0 else 0.0
+
         student_res = supabase.table("student").select("*", count="exact", head=True).execute()
         prog_res = supabase.table("program").select("*", count="exact", head=True).execute()
 
@@ -899,6 +915,8 @@ class PaymentRepository:
             "total_students": student_res.count or 0,
             "total_programs": prog_res.count or 0,
             "revenue_this_month": revenue_this_month,
+            "revenue_last_month": revenue_last_month,
+            "growth_percent": growth_percent,
             "revenue_total": total_revenue,
         }
         set_cached_quick(result)

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ExamRepository } from '../repositories/ExamRepository';
-import { FileText, Trophy, AlignLeft, Download, Upload, Edit, Save, X, ArrowLeft, Trash } from 'lucide-react';
+import { FileText, Trophy, AlignLeft, Download, Upload, Edit, Save, X, ArrowLeft, Trash, Search } from 'lucide-react';
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -16,6 +16,7 @@ const ExamDetails: React.FC = () => {
     const [isEditing, setIsEditing] = useState(false);
     const [viewDoc, setViewDoc] = useState<{ url: string, title: string } | null>(null);
     const [editedMarks, setEditedMarks] = useState<any>({});
+    const [studentSearchTerm, setStudentSearchTerm] = useState(''); // New search state
     const queryClient = useQueryClient();
     const navigate = useNavigate();
 
@@ -127,6 +128,18 @@ const ExamDetails: React.FC = () => {
         });
 
     }, [candidates, meritList, sortConfig, editedMarks, isEditing]);
+
+    // Apply search filter separately to keep sorting pure
+    const filteredAndSortedCandidates = React.useMemo(() => {
+        if (!sortedCandidates) return [];
+        if (!studentSearchTerm) return sortedCandidates;
+
+        const searchLower = studentSearchTerm.toLowerCase();
+        return sortedCandidates.filter((c: any) => {
+            return c.student?.name?.toLowerCase().includes(searchLower) ||
+                String(c.student?.student_code || c.student?.student_id || '').toLowerCase().includes(searchLower);
+        });
+    }, [sortedCandidates, studentSearchTerm]);
 
     // Effect: Initialize marks
     useEffect(() => {
@@ -646,9 +659,23 @@ const ExamDetails: React.FC = () => {
 
             {/* TABLE */}
             <div className="bg-slate-800/50 backdrop-blur-md rounded-xl shadow-lg border border-slate-700/50 overflow-hidden">
-                <div className="p-4 border-b border-slate-700/50 bg-slate-900/30 font-bold text-slate-200 flex justify-between items-center">
-                    <span>Student List</span>
-                    <span className="text-xs text-slate-500 font-normal">Click headers to sort</span>
+                <div className="p-4 border-b border-slate-700/50 bg-slate-900/30 flex justify-between items-center gap-4 flex-wrap">
+                    <div className="flex flex-col">
+                        <span className="font-bold text-slate-200">Student List</span>
+                        <span className="text-xs text-slate-500 font-normal">Click headers to sort</span>
+                    </div>
+                    <div className="relative w-full sm:w-72">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <Search size={16} className="text-slate-400" />
+                        </div>
+                        <input
+                            type="text"
+                            placeholder="Search student by name or ID..."
+                            value={studentSearchTerm}
+                            onChange={(e) => setStudentSearchTerm(e.target.value)}
+                            className="w-full pl-10 pr-4 py-2 bg-slate-900/80 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors placeholder:text-slate-500"
+                        />
+                    </div>
                 </div>
                 <div className="overflow-x-auto custom-scrollbar">
                     <table className="w-full text-left border-collapse">
@@ -684,7 +711,7 @@ const ExamDetails: React.FC = () => {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-700/50 text-slate-300">
-                            {sortedCandidates?.map((g: any, index: number) => {
+                            {filteredAndSortedCandidates?.map((g: any, index: number) => {
                                 const editData = g.editData;
 
                                 return (
@@ -784,8 +811,12 @@ const ExamDetails: React.FC = () => {
                                 );
                             })}
 
-                            {!sortedCandidates || sortedCandidates.length === 0 && (
-                                <tr><td colSpan={isEditing ? 7 : 6} className="p-12 text-center text-slate-500 italic">No students enrolled or results published.</td></tr>
+                            {(!filteredAndSortedCandidates || filteredAndSortedCandidates.length === 0) && (
+                                <tr>
+                                    <td colSpan={isEditing ? 7 : 6} className="p-12 text-center text-slate-500 italic">
+                                        {studentSearchTerm ? `No students found matching "${studentSearchTerm}".` : "No students enrolled or results published."}
+                                    </td>
+                                </tr>
                             )}
                         </tbody>
                     </table>

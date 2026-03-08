@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ProgramRepository } from '../repositories/ProgramRepository';
-import { Users, FileText, DollarSign, Calendar, GraduationCap, Clock, Plus, X, Trash2, AlertCircle, Edit, ExternalLink, TrendingUp, Award, ArrowLeft } from 'lucide-react';
+import { Users, FileText, DollarSign, Calendar, GraduationCap, Clock, Plus, X, Trash2, AlertCircle, Edit, ExternalLink, TrendingUp, Award, ArrowLeft, Search } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import CreateExamModal from '../components/CreateExamModal';
 import EditProgramModal from '../components/EditProgramModal';
@@ -21,6 +21,7 @@ const ProgramDetails: React.FC = () => {
     const [attendanceDate, setAttendanceDate] = useState(new Date().toISOString().split('T')[0]);
     const [attendanceData, setAttendanceData] = useState<any[]>([]);
     const [withdrawEnrollment, setWithdrawEnrollment] = useState<any>(null); // New state for modal
+    const [studentSearchTerm, setStudentSearchTerm] = useState(''); // New state for search
     const queryClient = useQueryClient();
 
     const { data: program, isLoading } = useQuery({
@@ -311,52 +312,84 @@ const ProgramDetails: React.FC = () => {
                 <div className="p-8">
                     {/* STUDENTS TAB */}
                     {activeTab === 'students' && (
-                        <div className="overflow-x-auto">
-                            <table className="w-full text-left border-collapse">
-                                <thead className="bg-slate-900/50 text-slate-400 text-xs uppercase font-semibold border-b border-slate-700">
-                                    <tr>
-                                        <th className="p-4 border-b border-slate-700">ID</th>
-                                        <th className="p-4 border-b border-slate-700">Name</th>
-                                        <th className="p-4 border-b border-slate-700">Roll</th>
-                                        <th className="p-4 border-b border-slate-700">Contact</th>
-                                        <th className="p-4 border-b border-slate-700">Joined Date</th>
-                                        <th className="p-4 border-b border-slate-700 w-16"></th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-700/50">
-                                    {program.enrollment
-                                        ?.filter((enroll: any) => enroll.status !== 'Withdrawn') // Filter out soft-deleted
-                                        .map((enroll: any) => (
-                                            <tr key={enroll.enrollment_id} className="hover:bg-slate-700/30 transition-colors group">
-                                                <td className="p-4 text-slate-500 text-sm">#{enroll.student.student_code || enroll.student.student_id}</td>
-                                                <td className="p-4 font-medium text-slate-200">
-                                                    <Link to={`/students/${enroll.student.student_id}`} className="hover:text-blue-400 hover:underline">
-                                                        {enroll.student.name}
-                                                    </Link>
-                                                </td>
-                                                <td className="p-4 text-slate-400 text-sm font-mono">{enroll.roll_no}</td>
-                                                <td className="p-4 text-slate-400 text-sm">{enroll.student.contact || '-'}</td>
-                                                <td className="p-4 text-slate-500 text-sm">{enroll.enrollment_date || '-'}</td>
-                                                <td className="p-4">
-                                                    <button
-                                                        onClick={() => setWithdrawEnrollment(enroll)}
-                                                        className="text-slate-500 hover:text-red-400 hover:bg-red-400/10 p-2 rounded-full transition-all opacity-0 group-hover:opacity-100"
-                                                        title="Withdraw / Remove Student"
-                                                    >
-                                                        <Trash2 size={18} />
-                                                    </button>
+                        <div className="space-y-4">
+                            <div className="flex justify-between items-center bg-slate-800/50 p-4 rounded-xl border border-slate-700">
+                                <h3 className="text-white font-bold">Enrolled Students List</h3>
+                                <div className="relative w-64">
+                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                        <Search size={16} className="text-slate-400" />
+                                    </div>
+                                    <input
+                                        type="text"
+                                        placeholder="Search by name or code..."
+                                        value={studentSearchTerm}
+                                        onChange={(e) => setStudentSearchTerm(e.target.value)}
+                                        className="w-full pl-10 pr-4 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors placeholder:text-slate-500"
+                                    />
+                                </div>
+                            </div>
+                            <div className="overflow-x-auto rounded-xl border border-slate-700">
+                                <table className="w-full text-left border-collapse">
+                                    <thead className="bg-slate-900/50 text-slate-400 text-xs uppercase font-semibold border-b border-slate-700">
+                                        <tr>
+                                            <th className="p-4 border-b border-slate-700">ID</th>
+                                            <th className="p-4 border-b border-slate-700">Name</th>
+                                            <th className="p-4 border-b border-slate-700">Roll</th>
+                                            <th className="p-4 border-b border-slate-700">Contact</th>
+                                            <th className="p-4 border-b border-slate-700">Joined Date</th>
+                                            <th className="p-4 border-b border-slate-700 w-16"></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-700/50">
+                                        {program.enrollment
+                                            ?.filter((enroll: any) => enroll.status !== 'Withdrawn')
+                                            ?.filter((enroll: any) => {
+                                                const searchLower = studentSearchTerm.toLowerCase();
+                                                return enroll.student.name?.toLowerCase().includes(searchLower) ||
+                                                    String(enroll.student.student_code || enroll.student.student_id).toLowerCase().includes(searchLower);
+                                            })
+                                            .map((enroll: any) => (
+                                                <tr key={enroll.enrollment_id} className="hover:bg-slate-700/30 transition-colors group">
+                                                    <td className="p-4 text-slate-500 text-sm">#{enroll.student.student_code || enroll.student.student_id}</td>
+                                                    <td className="p-4 font-medium text-slate-200">
+                                                        <Link to={`/students/${enroll.student.student_id}`} className="hover:text-blue-400 hover:underline">
+                                                            {enroll.student.name}
+                                                        </Link>
+                                                    </td>
+                                                    <td className="p-4 text-slate-400 text-sm font-mono">{enroll.roll_no}</td>
+                                                    <td className="p-4 text-slate-400 text-sm">{enroll.student.contact || '-'}</td>
+                                                    <td className="p-4 text-slate-500 text-sm">{enroll.enrollment_date || '-'}</td>
+                                                    <td className="p-4">
+                                                        <button
+                                                            onClick={() => setWithdrawEnrollment(enroll)}
+                                                            className="text-slate-500 hover:text-red-400 hover:bg-red-400/10 p-2 rounded-full transition-all opacity-0 group-hover:opacity-100"
+                                                            title="Withdraw / Remove Student"
+                                                        >
+                                                            <Trash2 size={18} />
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        {totalEnrolled === 0 && (
+                                            <tr>
+                                                <td colSpan={6} className="text-center py-12 text-slate-500 italic">
+                                                    No students enrolled yet.
                                                 </td>
                                             </tr>
-                                        ))}
-                                    {totalEnrolled === 0 && (
-                                        <tr>
-                                            <td colSpan={6} className="text-center py-12 text-slate-500 italic">
-                                                No students enrolled yet.
-                                            </td>
-                                        </tr>
-                                    )}
-                                </tbody>
-                            </table>
+                                        )}
+                                        {totalEnrolled > 0 && program.enrollment?.filter((e: any) => e.status !== 'Withdrawn').filter((e: any) => {
+                                            const searchLower = studentSearchTerm.toLowerCase();
+                                            return e.student.name?.toLowerCase().includes(searchLower) || String(e.student.student_code || e.student.student_id).toLowerCase().includes(searchLower);
+                                        }).length === 0 && (
+                                                <tr>
+                                                    <td colSpan={6} className="text-center py-12 text-slate-500 italic">
+                                                        No students found matching "{studentSearchTerm}".
+                                                    </td>
+                                                </tr>
+                                            )}
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     )}
 

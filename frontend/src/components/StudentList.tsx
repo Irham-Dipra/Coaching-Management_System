@@ -66,12 +66,13 @@ const StudentList: React.FC<StudentListProps> = ({ fixedBatchId, hideHeader }) =
             batch_id: batchFilter,
             program_id: programFilter
         }),
-        placeholderData: keepPreviousData
+        placeholderData: keepPreviousData,
+        staleTime: 30_000, // Consider data fresh for 30s — prevents redundant re-fetches on navigation
     });
 
     // Fetch Metadata
-    const { data: batches } = useQuery({ queryKey: ['batches'], queryFn: ProgramRepository.getAllBatches });
-    const { data: allPrograms } = useQuery({ queryKey: ['programs'], queryFn: ProgramRepository.getAllPrograms });
+    const { data: batches } = useQuery({ queryKey: ['batches'], queryFn: ProgramRepository.getAllBatches, staleTime: 5 * 60_000 });
+    const { data: allPrograms } = useQuery({ queryKey: ['programs'], queryFn: ProgramRepository.getAllPrograms, staleTime: 5 * 60_000 });
 
     const students: Student[] = studentData?.data || [];
     const totalCount = studentData?.total_count || 0;

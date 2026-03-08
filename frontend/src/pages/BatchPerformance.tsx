@@ -43,6 +43,7 @@ const BatchPerformance = ({ batchId }: { batchId: string }) => {
         queryKey: ['batchAnalytics', batchId],
         queryFn: () => ProgramRepository.getBatchAnalytics(batchId),
         refetchOnWindowFocus: false,
+        staleTime: 5 * 60 * 1000, // Cache for 5 minutes
     });
 
     const [isChartReady, setIsChartReady] = useState(false);

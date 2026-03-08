@@ -2,6 +2,7 @@ import pandas as pd
 from fastapi import UploadFile, HTTPException
 from io import BytesIO
 from app.core.supabase import supabase
+from app.core.students_cache import invalidate_students_cache
 
 class ImportRepository:
     def __init__(self):
@@ -58,6 +59,8 @@ class ImportRepository:
             # Bulk Insert
             if students_to_insert:
                 response = supabase.table(self.student_table).insert(students_to_insert).execute()
+                # New students must appear in the paginated list immediately
+                invalidate_students_cache()
                 return {"message": "Success", "count": len(response.data)}
                 return {"message": "No data found in file", "count": 0}
 

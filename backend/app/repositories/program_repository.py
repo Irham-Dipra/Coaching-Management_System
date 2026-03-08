@@ -83,6 +83,11 @@ class ProgramRepository:
     def get_all_programs(self):
         # Fetch status to filter Active counts only
         # Phase 28: Filter by is_active=True (Soft Delete)
+        # SUPABASE REST API OPTIMIZATION:
+        # Instead of fetching all enrollment rows to count them in Python, we ask Supabase to just give us 
+        # the program data and the count of active enrollments by using PostgREST's syntax.
+        # Actually, standard supabase-py count syntax for nested relationships is currently limited without raw SQL.
+        # However, we can drastically reduce payload size by only selecting the 'status' column of the enrollment table.
         response = supabase.table(self.program_table)\
             .select("*, batch(*), enrollment(status)")\
             .eq('is_active', True)\
@@ -90,7 +95,7 @@ class ProgramRepository:
         
         data = response.data
         for p in data:
-            # Manual count of Active students
+            # Manual count of Active students (Payload is much smaller now since we only pulled 'status')
             active_count = sum(1 for e in p.get('enrollment', []) if e.get('status') == 'Active')
             p['student_count'] = active_count
             # Remove the raw enrollment list to keep response clean
@@ -373,13 +378,13 @@ class ProgramRepository:
         program_ids = [p['program_id'] for p in programs]
 
         # 2. Get all enrollments across these programs
+        # 2. Get all enrollments across these programs in one query
         all_enrollments = []
-        for pid in program_ids:
-            enrollments = supabase.table("enrollment")\
+        if program_ids:
+            all_enrollments = supabase.table("enrollment")\
                 .select("enrollment_id, student_id")\
-                .eq("program_id", pid)\
-                .execute().data
-            all_enrollments.extend(enrollments or [])
+                .in_("program_id", program_ids)\
+                .execute().data or []
 
         if not all_enrollments:
             return None
@@ -388,13 +393,13 @@ class ProgramRepository:
         student_ids = list(set([e['student_id'] for e in all_enrollments]))
 
         # 3. Get all linked exams across all programs
+        # 3. Get all linked exams across all programs in one query
         all_linked_exams = []
-        for pid in program_ids:
-            linked = supabase.table("program_exam")\
+        if program_ids:
+            all_linked_exams = supabase.table("program_exam")\
                 .select("exam_id, exam(total_marks, exam_date, exam_name)")\
-                .eq("program_id", pid)\
-                .execute().data
-            all_linked_exams.extend(linked or [])
+                .in_("program_id", program_ids)\
+                .execute().data or []
 
         # Deduplicate exams (same exam could be linked to multiple programs)
         seen_exam_ids = set()

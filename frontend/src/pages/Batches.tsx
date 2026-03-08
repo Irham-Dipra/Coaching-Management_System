@@ -12,7 +12,8 @@ const Batches: React.FC = () => {
     // Fetch Batches
     const { data: batches, isLoading } = useQuery({
         queryKey: ['batches'],
-        queryFn: ProgramRepository.getAllBatches
+        queryFn: ProgramRepository.getAllBatches,
+        staleTime: 5 * 60 * 1000, // 5 minutes cache
     });
 
     // Create Mutation
@@ -31,7 +32,30 @@ const Batches: React.FC = () => {
         createMutation.mutate(newBatchName);
     };
 
-    if (isLoading) return <div className="p-8 text-slate-400">Loading batches...</div>;
+    if (isLoading) {
+        return (
+            <div className="space-y-6 max-w-6xl mx-auto animate-fade-in">
+                <div className="flex justify-between items-center mb-6">
+                    <div>
+                        <div className="h-8 w-48 bg-slate-800 rounded-lg animate-pulse mb-2"></div>
+                        <div className="h-4 w-64 bg-slate-800 rounded-lg animate-pulse"></div>
+                    </div>
+                    <div className="h-10 w-32 bg-slate-800 rounded-xl animate-pulse"></div>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {[1, 2, 3, 4, 5, 6].map(i => (
+                        <div key={i} className="bg-slate-800/20 p-6 rounded-xl border border-slate-700/30 h-48 flex flex-col justify-between animate-pulse">
+                            <div>
+                                <div className="w-12 h-12 rounded-xl bg-slate-700/50 mb-4"></div>
+                                <div className="h-6 w-3/4 bg-slate-700/50 rounded mt-2"></div>
+                            </div>
+                            <div className="h-4 w-1/3 bg-slate-700/50 rounded mt-4"></div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-6 max-w-6xl mx-auto animate-fade-in">

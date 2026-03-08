@@ -16,12 +16,14 @@ const Exams: React.FC = () => {
 
     const { data: exams, isLoading: isExamsLoading } = useQuery({
         queryKey: ['all-exams'],
-        queryFn: ExamRepository.getAllExams
+        queryFn: ExamRepository.getAllExams,
+        staleTime: 5 * 60 * 1000,
     });
 
     const { data: programs } = useQuery({
         queryKey: ['programs'],
-        queryFn: ProgramRepository.getAllPrograms
+        queryFn: ProgramRepository.getAllPrograms,
+        staleTime: 5 * 60 * 1000,
     });
 
     const deleteExamMutation = useMutation({
@@ -33,7 +35,41 @@ const Exams: React.FC = () => {
         onError: (err) => alert("Failed to delete exam: " + err)
     });
 
-    if (isExamsLoading) return <div className="p-8 text-slate-400">Loading exams...</div>;
+    if (isExamsLoading) {
+        return (
+            <div className="space-y-6 animate-fade-in">
+                <div className="flex justify-between items-center mb-6">
+                    <div>
+                        <div className="h-8 w-48 bg-slate-800 rounded-lg animate-pulse mb-2"></div>
+                        <div className="h-4 w-64 bg-slate-800 rounded-lg animate-pulse"></div>
+                    </div>
+                    <div className="h-10 w-32 bg-slate-800 rounded-xl animate-pulse"></div>
+                </div>
+
+                {/* Skeleton Search Bar */}
+                <div className="h-16 w-full bg-slate-800/50 rounded-xl border border-slate-700/50 mb-6 animate-pulse"></div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {[1, 2, 3, 4, 5, 6].map(i => (
+                        <div key={i} className="bg-slate-800/20 p-6 rounded-xl border border-slate-700/30 h-48 flex flex-col justify-between animate-pulse">
+                            <div>
+                                <div className="h-6 w-20 bg-slate-700/50 rounded-full mb-4"></div>
+                                <div className="h-6 w-3/4 bg-slate-700/50 rounded mb-4"></div>
+                                <div className="flex gap-2 mb-2">
+                                    <div className="h-4 w-16 bg-slate-700/50 rounded"></div>
+                                    <div className="h-4 w-16 bg-slate-700/50 rounded"></div>
+                                </div>
+                            </div>
+                            <div className="flex justify-between items-center border-t border-slate-700/50 pt-4 mt-4">
+                                <div className="h-4 w-20 bg-slate-700/50 rounded"></div>
+                                <div className="h-6 w-12 bg-slate-700/50 rounded-lg"></div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </div>
+        );
+    }
 
     // Filter Logic
     const filteredExams = exams?.filter((exam: any) => {

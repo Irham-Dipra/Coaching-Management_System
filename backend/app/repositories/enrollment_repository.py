@@ -1,5 +1,6 @@
 from app.core.supabase import supabase
 from app.core.stats_cache import invalidate_stats_cache
+from app.core.students_cache import invalidate_students_cache
 from app.schemas.enrollment import EnrollmentCreate
 from fastapi.encoders import jsonable_encoder
 from datetime import date, datetime
@@ -78,6 +79,8 @@ class EnrollmentRepository:
                     }
                     supabase.table("enrollment_fee_history").insert(history_data).execute()
                     
+                    # Re-enrollment: program badges on student row changed
+                    invalidate_students_cache()
                     return result
 
             # 1. NEW ENROLLMENT (Generate Roll Number)
@@ -112,6 +115,8 @@ class EnrollmentRepository:
             }
             supabase.table("enrollment_fee_history").insert(history_data).execute()
             
+            # New enrollment: program badge appears on student row
+            invalidate_students_cache()
             return result
         except Exception as e:
             print(f"ERROR in enroll_student: {e}")
@@ -141,7 +146,8 @@ class EnrollmentRepository:
             print(f"Hard deleting enrollment {enrollment_id} (No payments)")
             response = supabase.table(self.table).delete().eq("enrollment_id", enrollment_id).execute()
 
-        invalidate_stats_cache()  # Enrollment change affects dues
+        invalidate_stats_cache()           # Enrollment change affects dues
+        invalidate_students_cache()         # Enrollment badge removed from student row
         return response.data
 
     def enroll_student_bulk(self, student_ids: list[int], program_ids: list[int], enrollment_date: str = None, custom_fees: dict = None):
@@ -237,10 +243,12 @@ class EnrollmentRepository:
                         "effective_year": dt.year
                     })
             
-            # 4. Insert History Logging Wait!
+            # 4. Insert History Logging
             if history_inserts:
                 supabase.table("enrollment_fee_history").insert(history_inserts).execute()
 
+        # Enrollment badges on student rows have changed
+        invalidate_students_cache()
         return results
 
     def update_agreed_fee(self, enrollment_id: int, new_fee: float, effective_date: str):

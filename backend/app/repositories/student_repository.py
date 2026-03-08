@@ -1,6 +1,7 @@
 # Imports the 'supabase' connection object we created in app/core/supabase.py
 from app.core.supabase import supabase
 from app.core.stats_cache import invalidate_stats_cache
+from app.core.students_cache import get_cached_students, set_cached_students, make_key, invalidate_students_cache
 from app.schemas.student import StudentCreate
 
 class StudentRepository:
@@ -32,7 +33,15 @@ class StudentRepository:
     def get_students_paginated(self, page: int = 1, page_size: int = 50, search: str = None, roll_search: str = None, filters: dict = None):
         """
         Fetches students with server-side pagination, search, and filters.
+        Results are cached in memory for 60 seconds per unique parameter set.
+        The cache is invalidated on any student or enrollment mutation.
         """
+        # --- CACHE CHECK ---
+        cache_key = make_key(page, page_size, search, roll_search, filters)
+        cached = get_cached_students(cache_key)
+        if cached:
+            return cached
+
         # Base Query
         # We perform a joined query to filter by nested fields if needed (program, roll)
         # Note: 'enrollment!inner' forces students to have at least one enrollment if we filter by it.
@@ -96,11 +105,12 @@ class StudentRepository:
                     e for e in student['enrollment'] 
                     if e.get('status') == 'Active' and e.get('program', {}).get('is_active') is not False
                 ]
-                
-        return {
-            "data": data,
-            "total_count": count
-        }
+        
+        result = {"data": data, "total_count": count}
+        
+        # --- CACHE SET ---
+        set_cached_students(cache_key, result)
+        return result
 
     def enroll_new_student(self, student_data: StudentCreate):
         # Convert Pydantic object to a dictionary
@@ -113,6 +123,9 @@ class StudentRepository:
 
         # Insert the corrected dictionary
         response = supabase.table(self.table).insert(data_dict).execute()
+        
+        # New student changes the list
+        invalidate_students_cache()
         
         # Return only the 'data' part (ignoring status codes, etc.)
         return response.data[0]
@@ -160,6 +173,9 @@ class StudentRepository:
             .update(updates)\
             .eq("student_id", student_id)\
             .execute()
+        
+        # Name/class/contact changes should be visible in the list immediately
+        invalidate_students_cache()
         return response.data[0] if response.data else None
 
     def delete_student(self, student_id: int):
@@ -193,7 +209,8 @@ class StudentRepository:
         # 4. Delete Results
         supabase.table('student_individual_result').delete().eq('student_id', student_id).execute()
 
-        invalidate_stats_cache()  # Student removal affects dues
+        invalidate_stats_cache()       # Student removal affects dues
+        invalidate_students_cache()     # Student must disappear from paginated list
         return {"message": "Student soft deleted successfully"}
 
     def register_student_with_enrollment(self, student_data: StudentCreate, program_ids: list[int], enrollment_date: str = None, custom_fees: dict = None):
@@ -228,7 +245,9 @@ class StudentRepository:
             enrollment_date=enrollment_date,
             custom_fees=mapped_fees
         )
-        
+        # enroll_student_bulk already invalidates students cache; also invalidate here
+        # for the student row itself being newly visible in the list.
+        invalidate_students_cache()
         return res.data[0]
 
     def get_student_analytics(self, student_id: int):
@@ -247,13 +266,16 @@ class StudentRepository:
         exam_ids = list(set([r['exam_id'] for r in raw_results]))
 
         exam_map = {}
-        for eid in exam_ids:
+        if exam_ids:
+            # FIX: N+1 loop replaced by bulk IN query
             exam_data = supabase.table("exam")\
                 .select("exam_id, exam_name, exam_date, total_marks")\
-                .eq("exam_id", eid)\
+                .in_("exam_id", exam_ids)\
                 .execute().data
+            
             if exam_data:
-                exam_map[eid] = exam_data[0]
+                for ed in exam_data:
+                    exam_map[ed['exam_id']] = ed
 
         # 3. Process per-exam metrics
         exam_analytics = []

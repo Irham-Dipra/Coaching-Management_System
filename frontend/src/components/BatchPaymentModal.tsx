@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { PaymentRepository } from '../repositories/PaymentRepository';
 import { ProgramRepository } from '../repositories/ProgramRepository';
-import { X, Check, DollarSign, Users, AlertCircle } from 'lucide-react';
+import { X, Check, DollarSign, Users, AlertCircle, Search } from 'lucide-react';
 
 interface BatchPaymentModalProps {
     isOpen: boolean;
@@ -21,6 +21,9 @@ const BatchPaymentModal: React.FC<BatchPaymentModalProps> = ({ isOpen, onClose, 
 
     const [selectedFullIds, setSelectedFullIds] = useState<number[]>([]);
     const [selectedPartialIds, setSelectedPartialIds] = useState<number[]>([]);
+
+    // Search
+    const [searchQuery, setSearchQuery] = useState('');
 
     // New: Clear All Modes
     const [isFullClearAll, setIsFullClearAll] = useState(false);
@@ -80,6 +83,27 @@ const BatchPaymentModal: React.FC<BatchPaymentModalProps> = ({ isOpen, onClose, 
 
         return { fullDueList: full, partialDueList: partial };
     }, [statusData]);
+
+    // Filtered lists based on searchQuery
+    const filteredFullDueList = useMemo(() => {
+        if (!searchQuery.trim()) return fullDueList;
+        const q = searchQuery.toLowerCase();
+        return fullDueList.filter((s: any) =>
+            s.name?.toLowerCase().includes(q) ||
+            String(s.student_id).includes(q) ||
+            String(s.student_code || '').toLowerCase().includes(q)
+        );
+    }, [fullDueList, searchQuery]);
+
+    const filteredPartialDueList = useMemo(() => {
+        if (!searchQuery.trim()) return partialDueList;
+        const q = searchQuery.toLowerCase();
+        return partialDueList.filter((s: any) =>
+            s.name?.toLowerCase().includes(q) ||
+            String(s.student_id).includes(q) ||
+            String(s.student_code || '').toLowerCase().includes(q)
+        );
+    }, [partialDueList, searchQuery]);
 
     // Reset Clear All modes if list chances
     useEffect(() => {
@@ -356,123 +380,150 @@ const BatchPaymentModal: React.FC<BatchPaymentModalProps> = ({ isOpen, onClose, 
                 })()}
 
                 {/* Content */}
-                <div className="flex-1 overflow-hidden flex flex-col md:flex-row bg-slate-900">
-                    {!selectedProgramId ? (
-                        <div className="flex-1 flex items-center justify-center text-slate-500 italic p-10">
-                            Please select a program to view dues.
+                <div className="flex-1 overflow-hidden flex flex-col bg-slate-900">
+                    {/* Search Bar */}
+                    {selectedProgramId && !isLoading && (
+                        <div className="px-4 py-3 border-b border-slate-700 bg-slate-800/30">
+                            <div className="relative">
+                                <Search className="absolute left-3 top-2.5 text-slate-500" size={16} />
+                                <input
+                                    type="text"
+                                    placeholder="Search by name or student code..."
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    className="w-full pl-9 pr-8 py-2 text-sm bg-slate-900 border border-slate-700 rounded-lg text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500"
+                                />
+                                {searchQuery && (
+                                    <button
+                                        onClick={() => setSearchQuery('')}
+                                        className="absolute right-2.5 top-2 text-slate-500 hover:text-slate-300 transition-colors"
+                                    >
+                                        <X size={16} />
+                                    </button>
+                                )}
+                            </div>
                         </div>
-                    ) : isLoading ? (
-                        <div className="flex-1 flex items-center justify-center p-10 text-slate-400">Loading...</div>
-                    ) : (
-                        <>
-                            {/* Full Due List */}
-                            <div className="flex-1 border-r border-slate-700 flex flex-col min-h-0">
-                                <div className="p-3 bg-red-900/20 border-b border-red-900/30 flex justify-between items-center">
-                                    <span className="font-semibold text-red-400 flex items-center gap-2">
-                                        <AlertCircle size={16} /> Full Dues ({fullDueList.length})
-                                    </span>
-                                    <div className="flex items-center gap-2">
-                                        <input
-                                            type="checkbox"
-                                            checked={isFullClearAll}
-                                            onChange={toggleFullClearAll}
-                                            className="w-4 h-4 text-red-500 rounded bg-slate-800 border-slate-600 focus:ring-red-500"
-                                        />
-                                        <span className="text-xs text-red-400 font-medium">Clear All Dues</span>
-                                    </div>
-                                </div>
-                                <div className="flex-1 overflow-y-auto p-2 space-y-2 bg-slate-900 custom-scrollbar">
-                                    {fullDueList.length === 0 && <p className="text-center text-slate-500 text-sm mt-4">No pending full dues.</p>}
-                                    {fullDueList.map((s: any) => {
-                                        const isSelected = selectedFullIds.includes(s.student_id);
-                                        // Greyed out if Clear All is ON
-                                        const isLocked = isFullClearAll;
-
-                                        return (
-                                            <div key={s.student_id} className={`p-3 rounded-lg border flex items-center justify-between transition-colors ${isSelected ? 'bg-red-900/10 border-red-500/30' : 'hover:bg-slate-800 border-slate-800'} ${isLocked ? 'opacity-50 pointer-events-none' : ''}`}>
-                                                <div className="flex items-center gap-3 flex-1">
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={isSelected}
-                                                        onChange={() => toggleFullId(s.student_id)}
-                                                        className="w-4 h-4 text-red-500 rounded bg-slate-800 border-slate-600 focus:ring-red-500"
-                                                        disabled={isLocked}
-                                                    />
-                                                    <div>
-                                                        <p className="font-medium text-slate-200">{s.name}</p>
-                                                        <p className="text-xs text-slate-500">ID: {s.student_id} | Due: {s.due_amount}</p>
-                                                    </div>
-                                                </div>
-                                                <div className="w-24">
-                                                    <input
-                                                        type="number"
-                                                        disabled={isLocked}
-                                                        className={`w-full text-right p-1 text-sm border rounded bg-slate-800 border-slate-600 text-white ${isLocked ? 'text-slate-500' : 'focus:ring-1 focus:ring-red-500 outline-none'}`}
-                                                        value={customAmounts[s.student_id] ?? (isSelected ? s.due_amount : '')}
-                                                        placeholder={String(s.due_amount)}
-                                                        onChange={(e) => handleAmountChange(s.student_id, e.target.value)}
-                                                    />
-                                                </div>
-                                            </div>
-                                        )
-                                    })}
-                                </div>
-                            </div>
-
-                            {/* Partial Due List */}
-                            <div className="flex-1 flex flex-col min-h-0">
-                                <div className="p-3 bg-yellow-900/20 border-b border-yellow-900/30 flex justify-between items-center">
-                                    <span className="font-semibold text-yellow-500 flex items-center gap-2">
-                                        <DollarSign size={16} /> Partial / Remaining ({partialDueList.length})
-                                    </span>
-                                    <div className="flex items-center gap-2">
-                                        <input
-                                            type="checkbox"
-                                            checked={isPartialClearAll}
-                                            onChange={togglePartialClearAll}
-                                            className="w-4 h-4 text-yellow-500 rounded bg-slate-800 border-slate-600 focus:ring-yellow-500"
-                                        />
-                                        <span className="text-xs text-yellow-500 font-medium">Clear All Dues</span>
-                                    </div>
-                                </div>
-                                <div className="flex-1 overflow-y-auto p-2 space-y-2 bg-slate-900 custom-scrollbar">
-                                    {partialDueList.length === 0 && <p className="text-center text-slate-500 text-sm mt-4">No partial dues.</p>}
-                                    {partialDueList.map((s: any) => {
-                                        const isSelected = selectedPartialIds.includes(s.student_id);
-                                        const isLocked = isPartialClearAll;
-
-                                        return (
-                                            <div key={s.student_id} className={`p-3 rounded-lg border flex items-center justify-between transition-colors ${isSelected ? 'bg-yellow-900/10 border-yellow-500/30' : 'hover:bg-slate-800 border-slate-800'} ${isLocked ? 'opacity-50 pointer-events-none' : ''}`}>
-                                                <div className="flex items-center gap-3 flex-1">
-                                                    <input
-                                                        type="checkbox"
-                                                        checked={isSelected}
-                                                        onChange={() => togglePartialId(s.student_id)}
-                                                        className="w-4 h-4 text-yellow-500 rounded bg-slate-800 border-slate-600 focus:ring-yellow-500"
-                                                        disabled={isLocked}
-                                                    />
-                                                    <div>
-                                                        <p className="font-medium text-slate-200">{s.name}</p>
-                                                        <p className="text-xs text-slate-500">ID: {s.student_id} | Due: {s.due_amount}</p>
-                                                    </div>
-                                                </div>
-                                                <div className="w-24">
-                                                    <input
-                                                        type="number"
-                                                        disabled={isLocked}
-                                                        className={`w-full text-right p-1 text-sm border rounded bg-slate-800 border-slate-600 text-white ${isLocked ? 'text-slate-500' : 'focus:ring-1 focus:ring-yellow-500 outline-none'}`}
-                                                        placeholder={String(s.due_amount)}
-                                                        value={customAmounts[s.student_id] ?? (isSelected ? s.due_amount : '')}
-                                                        onChange={(e) => handleAmountChange(s.student_id, e.target.value)}
-                                                    />
-                                                </div>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                            </div>
-                        </>
                     )}
+                    <div className="flex-1 overflow-hidden flex flex-col md:flex-row">
+                        {!selectedProgramId ? (
+                            <div className="flex-1 flex items-center justify-center text-slate-500 italic p-10">
+                                Please select a program to view dues.
+                            </div>
+                        ) : isLoading ? (
+                            <div className="flex-1 flex items-center justify-center p-10 text-slate-400">Loading...</div>
+                        ) : (
+                            <>
+                                {/* Full Due List */}
+                                <div className="flex-1 border-r border-slate-700 flex flex-col min-h-0">
+                                    <div className="p-3 bg-red-900/20 border-b border-red-900/30 flex justify-between items-center">
+                                        <span className="font-semibold text-red-400 flex items-center gap-2">
+                                            <AlertCircle size={16} /> Full Dues ({filteredFullDueList.length}{searchQuery ? `/${fullDueList.length}` : ''})
+                                        </span>
+                                        <div className="flex items-center gap-2">
+                                            <input
+                                                type="checkbox"
+                                                checked={isFullClearAll}
+                                                onChange={toggleFullClearAll}
+                                                className="w-4 h-4 text-red-500 rounded bg-slate-800 border-slate-600 focus:ring-red-500"
+                                            />
+                                            <span className="text-xs text-red-400 font-medium">Clear All Dues</span>
+                                        </div>
+                                    </div>
+                                    <div className="flex-1 overflow-y-auto p-2 space-y-2 bg-slate-900 custom-scrollbar">
+                                        {fullDueList.length === 0 && <p className="text-center text-slate-500 text-sm mt-4">No pending full dues.</p>}
+                                        {fullDueList.length > 0 && filteredFullDueList.length === 0 && <p className="text-center text-slate-500 text-sm mt-4">No results match your search.</p>}
+                                        {filteredFullDueList.map((s: any) => {
+                                            const isSelected = selectedFullIds.includes(s.student_id);
+                                            // Greyed out if Clear All is ON
+                                            const isLocked = isFullClearAll;
+
+                                            return (
+                                                <div key={s.student_id} className={`p-3 rounded-lg border flex items-center justify-between transition-colors ${isSelected ? 'bg-red-900/10 border-red-500/30' : 'hover:bg-slate-800 border-slate-800'} ${isLocked ? 'opacity-50 pointer-events-none' : ''}`}>
+                                                    <div className="flex items-center gap-3 flex-1">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={isSelected}
+                                                            onChange={() => toggleFullId(s.student_id)}
+                                                            className="w-4 h-4 text-red-500 rounded bg-slate-800 border-slate-600 focus:ring-red-500"
+                                                            disabled={isLocked}
+                                                        />
+                                                        <div>
+                                                            <p className="font-medium text-slate-200">{s.name}</p>
+                                                            <p className="text-xs text-slate-500">ID: {s.student_id} | Due: {s.due_amount}</p>
+                                                        </div>
+                                                    </div>
+                                                    <div className="w-24">
+                                                        <input
+                                                            type="number"
+                                                            disabled={isLocked}
+                                                            className={`w-full text-right p-1 text-sm border rounded bg-slate-800 border-slate-600 text-white ${isLocked ? 'text-slate-500' : 'focus:ring-1 focus:ring-red-500 outline-none'}`}
+                                                            value={customAmounts[s.student_id] ?? (isSelected ? s.due_amount : '')}
+                                                            placeholder={String(s.due_amount)}
+                                                            onChange={(e) => handleAmountChange(s.student_id, e.target.value)}
+                                                        />
+                                                    </div>
+                                                </div>
+                                            )
+                                        })}
+                                    </div>
+                                </div>
+
+                                {/* Partial Due List */}
+                                <div className="flex-1 flex flex-col min-h-0">
+                                    <div className="p-3 bg-yellow-900/20 border-b border-yellow-900/30 flex justify-between items-center">
+                                        <span className="font-semibold text-yellow-500 flex items-center gap-2">
+                                            <DollarSign size={16} /> Partial / Remaining ({filteredPartialDueList.length}{searchQuery ? `/${partialDueList.length}` : ''})
+                                        </span>
+                                        <div className="flex items-center gap-2">
+                                            <input
+                                                type="checkbox"
+                                                checked={isPartialClearAll}
+                                                onChange={togglePartialClearAll}
+                                                className="w-4 h-4 text-yellow-500 rounded bg-slate-800 border-slate-600 focus:ring-yellow-500"
+                                            />
+                                            <span className="text-xs text-yellow-500 font-medium">Clear All Dues</span>
+                                        </div>
+                                    </div>
+                                    <div className="flex-1 overflow-y-auto p-2 space-y-2 bg-slate-900 custom-scrollbar">
+                                        {partialDueList.length === 0 && <p className="text-center text-slate-500 text-sm mt-4">No partial dues.</p>}
+                                        {partialDueList.length > 0 && filteredPartialDueList.length === 0 && <p className="text-center text-slate-500 text-sm mt-4">No results match your search.</p>}
+                                        {filteredPartialDueList.map((s: any) => {
+                                            const isSelected = selectedPartialIds.includes(s.student_id);
+                                            const isLocked = isPartialClearAll;
+
+                                            return (
+                                                <div key={s.student_id} className={`p-3 rounded-lg border flex items-center justify-between transition-colors ${isSelected ? 'bg-yellow-900/10 border-yellow-500/30' : 'hover:bg-slate-800 border-slate-800'} ${isLocked ? 'opacity-50 pointer-events-none' : ''}`}>
+                                                    <div className="flex items-center gap-3 flex-1">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={isSelected}
+                                                            onChange={() => togglePartialId(s.student_id)}
+                                                            className="w-4 h-4 text-yellow-500 rounded bg-slate-800 border-slate-600 focus:ring-yellow-500"
+                                                            disabled={isLocked}
+                                                        />
+                                                        <div>
+                                                            <p className="font-medium text-slate-200">{s.name}</p>
+                                                            <p className="text-xs text-slate-500">ID: {s.student_id} | Due: {s.due_amount}</p>
+                                                        </div>
+                                                    </div>
+                                                    <div className="w-24">
+                                                        <input
+                                                            type="number"
+                                                            disabled={isLocked}
+                                                            className={`w-full text-right p-1 text-sm border rounded bg-slate-800 border-slate-600 text-white ${isLocked ? 'text-slate-500' : 'focus:ring-1 focus:ring-yellow-500 outline-none'}`}
+                                                            placeholder={String(s.due_amount)}
+                                                            value={customAmounts[s.student_id] ?? (isSelected ? s.due_amount : '')}
+                                                            onChange={(e) => handleAmountChange(s.student_id, e.target.value)}
+                                                        />
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            </>
+                        )}
+                    </div>
                 </div>
 
                 {/* Footer */}

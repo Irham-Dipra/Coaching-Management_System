@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import ReactDOM from 'react-dom';
 import { X, Search, CheckCircle } from 'lucide-react';
 
 interface BulkFeeModalProps {
@@ -76,8 +77,8 @@ const BulkFeeModal: React.FC<BulkFeeModalProps> = ({
         return searchRegex.test(s.name) || searchRegex.test(s.student_code || String(s.student_id));
     });
 
-    return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm">
+    return ReactDOM.createPortal(
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm">
             <div className="bg-slate-800 border border-slate-700/50 rounded-2xl w-full max-w-4xl shadow-2xl flex flex-col max-h-[90vh]">
                 {/* Header */}
                 <div className="flex justify-between items-center p-6 border-b border-slate-700/50 flex-shrink-0">
@@ -189,7 +190,7 @@ const BulkFeeModal: React.FC<BulkFeeModalProps> = ({
                 </div>
             </div>
         </div>
-    );
+        , document.body);
 };
 
 export default BulkFeeModal;

@@ -228,12 +228,22 @@ const Enrollment: React.FC = () => {
                                     {filteredStudents.length} students found
                                 </span>
                                 {filteredStudents.length > 0 && (
-                                    <button
-                                        onClick={toggleSelectAll}
-                                        className="text-sm text-emerald-400 hover:text-emerald-300 font-medium"
-                                    >
-                                        {selectedStudentIds.length === filteredStudents.length ? 'Deselect All' : 'Select All'}
-                                    </button>
+                                    <div className="flex items-center gap-3">
+                                        {selectedStudentIds.length > 0 && selectedStudentIds.length !== filteredStudents.length && (
+                                            <button
+                                                onClick={() => setSelectedStudentIds([])}
+                                                className="text-sm text-red-400 hover:text-red-300 font-medium transition-colors"
+                                            >
+                                                Clear Selection
+                                            </button>
+                                        )}
+                                        <button
+                                            onClick={toggleSelectAll}
+                                            className="text-sm text-emerald-400 hover:text-emerald-300 font-medium transition-colors"
+                                        >
+                                            {selectedStudentIds.length === filteredStudents.length ? 'Deselect All' : 'Select All'}
+                                        </button>
+                                    </div>
                                 )}
                             </div>
 
@@ -396,10 +406,24 @@ const Enrollment: React.FC = () => {
 
                         <div className="mt-6 pt-6 border-t border-slate-700/50">
                             <div className="flex justify-between items-center mb-4 text-sm text-slate-400">
-                                <span>Selected Programs:</span>
-                                <span className="text-white font-bold">
-                                    {activeTab === 'existing' ? selectedPrograms.length : newStudentPrograms.length}
-                                </span>
+                                <div className="flex items-center gap-2">
+                                    <span>Selected Programs:</span>
+                                    <span className="text-white font-bold">
+                                        {activeTab === 'existing' ? selectedPrograms.length : newStudentPrograms.length}
+                                    </span>
+                                </div>
+                                {((activeTab === 'existing' && selectedPrograms.length > 0) ||
+                                    (activeTab === 'new' && newStudentPrograms.length > 0)) && (
+                                        <button
+                                            onClick={() => {
+                                                if (activeTab === 'existing') setSelectedPrograms([]);
+                                                else setNewStudentPrograms([]);
+                                            }}
+                                            className="text-sm text-red-400 hover:text-red-300 font-medium transition-colors"
+                                        >
+                                            Clear Selection
+                                        </button>
+                                    )}
                             </div>
 
                             <button

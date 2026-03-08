@@ -506,8 +506,26 @@ class PaymentRepository:
         4. Fetch details only for the payments in the current page.
         """
         # --- Step 1: Fetch Search/Filter Hits (IDs only) ---
+        # Detect whether any filters require joining enrollment/student/program tables.
+        # month, year, start_date, end_date are flat payment columns — no join needed.
+        needs_join = bool(search) or bool(
+            filters and (
+                filters.get('program_id') or
+                filters.get('roll_no') or
+                filters.get('class') or
+                filters.get('batch_id')
+            )
+        )
+
+        if needs_join:
+            # Full join required: filters touch enrollment/student columns
+            select_clause = "payment_id, transaction_group_id, enrollment!inner(enrollment_id, roll_no, student!inner(name, class, batch_id), program(program_id))"
+        else:
+            # Slim select: enrollment_id is a flat FK column on the payment table — no join overhead
+            select_clause = "payment_id, transaction_group_id, enrollment_id"
+
         query = supabase.table(self.table)\
-            .select("payment_id, transaction_group_id, enrollment!inner(enrollment_id, roll_no, student!inner(name, class, batch_id), program(program_id))")\
+            .select(select_clause)\
             .order("payment_id", desc=True)
 
         # Apply Search
@@ -531,12 +549,12 @@ class PaymentRepository:
                 query = query.eq("enrollment.student.class", int(filters['class']))
             if filters.get('batch_id'):
                 query = query.eq("enrollment.student.batch_id", int(filters['batch_id']))
-            # Date Range Filters
+            # Date Range Filters (flat payment columns — work with both selects)
             if filters.get('start_date'):
                 query = query.gte("payment_date", filters['start_date'])
             if filters.get('end_date'):
                 query = query.lte("payment_date", filters['end_date'])
-        
+
         # Execute (Fetch ALL simplified rows)
         try:
             # We request a large range to simulate "Fetch All".
@@ -610,9 +628,9 @@ class PaymentRepository:
              if pids:
                  first_pid = pids[0]
                  if first_pid in all_hits_pid_map:
-                     # Access enrollment_id from the partial data in all_hits_pid_map
-                     # enrollment is nested now
-                     eid = all_hits_pid_map[first_pid].get('enrollment', {}).get('enrollment_id')
+                     # enrollment_id may be flat (slim select) or nested (join select)
+                     row = all_hits_pid_map[first_pid]
+                     eid = row.get('enrollment_id') or row.get('enrollment', {}).get('enrollment_id')
                      if eid: page_enrollment_ids.add(eid)
 
         # 2. Fetch MAX(payment_id) for each of these enrollments

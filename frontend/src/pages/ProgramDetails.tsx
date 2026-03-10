@@ -2,9 +2,10 @@ import React, { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ProgramRepository } from '../repositories/ProgramRepository';
-import { Users, FileText, DollarSign, Calendar, Clock, Plus, X, Trash2, AlertCircle, ExternalLink, TrendingUp, Award, ArrowLeft, Search } from 'lucide-react';
+import { Users, FileText, DollarSign, Calendar, Clock, Plus, X, Trash2, AlertCircle, Edit, ExternalLink, TrendingUp, Award, ArrowLeft, Search } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import CreateExamModal from '../components/CreateExamModal';
+import EditProgramModal from '../components/EditProgramModal';
 import { AttendanceRepository } from '../repositories/AttendanceRepository';
 import { ScheduleRepository } from '../repositories/ScheduleRepository';
 import WithdrawalModal from '../components/WithdrawalModal';
@@ -14,10 +15,13 @@ const ProgramDetails: React.FC = () => {
     const { id } = useParams<{ id: string }>();
     const [activeTab, setActiveTab] = useState<'students' | 'exams' | 'attendance' | 'schedule' | 'performance'>('students');
     const [isExamModalOpen, setIsExamModalOpen] = useState(false);
+    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [attendanceDate, setAttendanceDate] = useState(new Date().toISOString().split('T')[0]);
     const [attendanceData, setAttendanceData] = useState<any[]>([]);
     const [withdrawEnrollment, setWithdrawEnrollment] = useState<any>(null); // New state for modal
     const [studentSearchTerm, setStudentSearchTerm] = useState(''); // New state for search
+    const [studentPage, setStudentPage] = useState(1);
+    const studentsPerPage = 10;
     const queryClient = useQueryClient();
 
     const { data: program, isLoading } = useQuery({
@@ -63,6 +67,42 @@ const ProgramDetails: React.FC = () => {
         })).filter(r => r.status);
         attendanceMutation.mutate(records);
     };
+
+    // --- Students Pagination (Hooks must be before early returns) ---
+    const filteredAndPaginatedStudents = React.useMemo(() => {
+        if (!program?.enrollment) return { students: [], totalPages: 0, totalFiltered: 0, currentPage: 1 };
+
+        // 1. Filter out withdrawn and by search term
+        const searchLower = studentSearchTerm.toLowerCase();
+        const activeAndFiltered = program.enrollment.filter((enroll: any) => {
+            if (enroll.status === 'Withdrawn') return false;
+
+            if (searchLower) {
+                const matchName = enroll.student.name?.toLowerCase().includes(searchLower);
+                const matchCode = String(enroll.student.student_code || enroll.student.student_id).toLowerCase().includes(searchLower);
+                return matchName || matchCode;
+            }
+            return true;
+        });
+
+        // 2. Paginate
+        const totalFiltered = activeAndFiltered.length;
+        const totalPages = Math.ceil(totalFiltered / studentsPerPage) || 1;
+
+        // Ensure page is within bounds (e.g., if search reduces total pages)
+        const currentPage = Math.min(studentPage, totalPages);
+
+        const startIndex = (currentPage - 1) * studentsPerPage;
+        const endIndex = startIndex + studentsPerPage;
+        const paginated = activeAndFiltered.slice(startIndex, endIndex);
+
+        return { students: paginated, totalPages, totalFiltered, currentPage };
+    }, [program?.enrollment, studentSearchTerm, studentPage, studentsPerPage]);
+
+    // Reset to page 1 when search changes
+    React.useEffect(() => {
+        setStudentPage(1);
+    }, [studentSearchTerm]);
 
     if (isLoading) return <div className="p-8">Loading details...</div>;
     if (!program) return <div className="p-8">Program not found</div>;
@@ -128,6 +168,13 @@ const ProgramDetails: React.FC = () => {
                     </div>
 
                     <div className="flex flex-wrap items-center gap-3 shrink-0">
+                        <button
+                            onClick={() => setIsEditModalOpen(true)}
+                            className="bg-slate-700 hover:bg-slate-600 text-slate-200 border border-slate-600 p-3 rounded-xl shadow-lg transition-all hover:-translate-y-0.5"
+                            title="Edit Program Details"
+                        >
+                            <Edit size={20} />
+                        </button>
                         <button
                             onClick={() => {
                                 if (window.confirm("Are you sure you want to delete this program? This action cannot be undone.")) {
@@ -277,19 +324,67 @@ const ProgramDetails: React.FC = () => {
                     {/* STUDENTS TAB */}
                     {activeTab === 'students' && (
                         <div className="space-y-4">
-                            <div className="flex justify-between items-center bg-slate-800/50 p-4 rounded-xl border border-slate-700">
-                                <h3 className="text-white font-bold">Enrolled Students List</h3>
-                                <div className="relative w-64">
-                                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                        <Search size={16} className="text-slate-400" />
+                            <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-slate-800/50 p-4 rounded-xl border border-slate-700">
+                                <div>
+                                    <h3 className="text-white font-bold text-lg">Enrolled Students List</h3>
+                                    {filteredAndPaginatedStudents.totalPages > 1 && (
+                                        <span className="text-sm text-slate-400 mt-1 block">
+                                            Showing <span className="font-medium text-slate-200">{((filteredAndPaginatedStudents.currentPage - 1) * studentsPerPage) + 1}</span> to <span className="font-medium text-slate-200">{Math.min(filteredAndPaginatedStudents.currentPage * studentsPerPage, filteredAndPaginatedStudents.totalFiltered)}</span> of <span className="font-medium text-slate-200">{filteredAndPaginatedStudents.totalFiltered}</span> results
+                                        </span>
+                                    )}
+                                </div>
+                                <div className="flex flex-wrap items-center gap-4 w-full md:w-auto justify-end">
+                                    {/* Pagination Controls */}
+                                    {filteredAndPaginatedStudents.totalPages > 1 && (
+                                        <div className="flex gap-1.5">
+                                            <button
+                                                onClick={() => setStudentPage(p => Math.max(1, p - 1))}
+                                                disabled={filteredAndPaginatedStudents.currentPage === 1}
+                                                className="px-2.5 py-1.5 rounded-lg border border-slate-600 text-sm font-medium text-slate-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-700 transition-colors"
+                                            >
+                                                Prev
+                                            </button>
+                                            <div className="flex items-center gap-1 hidden sm:flex">
+                                                {Array.from({ length: filteredAndPaginatedStudents.totalPages }, (_, i) => i + 1)
+                                                    .filter(page => page === 1 || page === filteredAndPaginatedStudents.totalPages || Math.abs(page - filteredAndPaginatedStudents.currentPage) <= 1)
+                                                    .map((page, index, array) => (
+                                                        <React.Fragment key={page}>
+                                                            {index > 0 && array[index - 1] !== page - 1 && (
+                                                                <span className="text-slate-500 px-1">...</span>
+                                                            )}
+                                                            <button
+                                                                onClick={() => setStudentPage(page)}
+                                                                className={`w-8 h-8 rounded-lg text-sm font-medium transition-colors ${filteredAndPaginatedStudents.currentPage === page
+                                                                    ? 'bg-blue-600 text-white border-blue-500'
+                                                                    : 'border border-slate-600 text-slate-300 hover:bg-slate-700'
+                                                                    }`}
+                                                            >
+                                                                {page}
+                                                            </button>
+                                                        </React.Fragment>
+                                                    ))}
+                                            </div>
+                                            <button
+                                                onClick={() => setStudentPage(p => Math.min(filteredAndPaginatedStudents.totalPages, p + 1))}
+                                                disabled={filteredAndPaginatedStudents.currentPage === filteredAndPaginatedStudents.totalPages}
+                                                className="px-2.5 py-1.5 rounded-lg border border-slate-600 text-sm font-medium text-slate-300 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-700 transition-colors"
+                                            >
+                                                Next
+                                            </button>
+                                        </div>
+                                    )}
+                                    <div className="relative w-full sm:w-64">
+                                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                            <Search size={16} className="text-slate-400" />
+                                        </div>
+                                        <input
+                                            type="text"
+                                            placeholder="Search name or code..."
+                                            value={studentSearchTerm}
+                                            onChange={(e) => setStudentSearchTerm(e.target.value)}
+                                            className="w-full pl-10 pr-4 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors placeholder:text-slate-500"
+                                        />
                                     </div>
-                                    <input
-                                        type="text"
-                                        placeholder="Search by name or code..."
-                                        value={studentSearchTerm}
-                                        onChange={(e) => setStudentSearchTerm(e.target.value)}
-                                        className="w-full pl-10 pr-4 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-colors placeholder:text-slate-500"
-                                    />
                                 </div>
                             </div>
                             <div className="overflow-x-auto rounded-xl border border-slate-700">
@@ -305,35 +400,28 @@ const ProgramDetails: React.FC = () => {
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-700/50">
-                                        {program.enrollment
-                                            ?.filter((enroll: any) => enroll.status !== 'Withdrawn')
-                                            ?.filter((enroll: any) => {
-                                                const searchLower = studentSearchTerm.toLowerCase();
-                                                return enroll.student.name?.toLowerCase().includes(searchLower) ||
-                                                    String(enroll.student.student_code || enroll.student.student_id).toLowerCase().includes(searchLower);
-                                            })
-                                            .map((enroll: any) => (
-                                                <tr key={enroll.enrollment_id} className="hover:bg-slate-700/30 transition-colors group">
-                                                    <td className="p-4 text-slate-500 text-sm">#{enroll.student.student_code || enroll.student.student_id}</td>
-                                                    <td className="p-4 font-medium text-slate-200">
-                                                        <Link to={`/students/${enroll.student.student_id}`} className="hover:text-blue-400 hover:underline">
-                                                            {enroll.student.name}
-                                                        </Link>
-                                                    </td>
-                                                    <td className="p-4 text-slate-400 text-sm font-mono">{enroll.roll_no}</td>
-                                                    <td className="p-4 text-slate-400 text-sm">{enroll.student.contact || '-'}</td>
-                                                    <td className="p-4 text-slate-500 text-sm">{enroll.enrollment_date || '-'}</td>
-                                                    <td className="p-4">
-                                                        <button
-                                                            onClick={() => setWithdrawEnrollment(enroll)}
-                                                            className="text-slate-500 hover:text-red-400 hover:bg-red-400/10 p-2 rounded-full transition-all opacity-0 group-hover:opacity-100"
-                                                            title="Withdraw / Remove Student"
-                                                        >
-                                                            <Trash2 size={18} />
-                                                        </button>
-                                                    </td>
-                                                </tr>
-                                            ))}
+                                        {filteredAndPaginatedStudents.students.map((enroll: any) => (
+                                            <tr key={enroll.enrollment_id} className="hover:bg-slate-700/30 transition-colors group">
+                                                <td className="p-4 text-slate-500 text-sm">#{enroll.student.student_code || enroll.student.student_id}</td>
+                                                <td className="p-4 font-medium text-slate-200">
+                                                    <Link to={`/students/${enroll.student.student_id}`} className="hover:text-blue-400 hover:underline">
+                                                        {enroll.student.name}
+                                                    </Link>
+                                                </td>
+                                                <td className="p-4 text-slate-400 text-sm font-mono">{enroll.roll_no}</td>
+                                                <td className="p-4 text-slate-400 text-sm">{enroll.student.contact || '-'}</td>
+                                                <td className="p-4 text-slate-500 text-sm">{enroll.enrollment_date || '-'}</td>
+                                                <td className="p-4">
+                                                    <button
+                                                        onClick={() => setWithdrawEnrollment(enroll)}
+                                                        className="text-slate-500 hover:text-red-400 hover:bg-red-400/10 p-2 rounded-full transition-all opacity-0 group-hover:opacity-100"
+                                                        title="Withdraw / Remove Student"
+                                                    >
+                                                        <Trash2 size={18} />
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))}
                                         {totalEnrolled === 0 && (
                                             <tr>
                                                 <td colSpan={6} className="text-center py-12 text-slate-500 italic">
@@ -341,19 +429,18 @@ const ProgramDetails: React.FC = () => {
                                                 </td>
                                             </tr>
                                         )}
-                                        {totalEnrolled > 0 && program.enrollment?.filter((e: any) => e.status !== 'Withdrawn').filter((e: any) => {
-                                            const searchLower = studentSearchTerm.toLowerCase();
-                                            return e.student.name?.toLowerCase().includes(searchLower) || String(e.student.student_code || e.student.student_id).toLowerCase().includes(searchLower);
-                                        }).length === 0 && (
-                                                <tr>
-                                                    <td colSpan={6} className="text-center py-12 text-slate-500 italic">
-                                                        No students found matching "{studentSearchTerm}".
-                                                    </td>
-                                                </tr>
-                                            )}
+                                        {totalEnrolled > 0 && filteredAndPaginatedStudents.totalFiltered === 0 && (
+                                            <tr>
+                                                <td colSpan={6} className="text-center py-12 text-slate-500 italic">
+                                                    No students found matching "{studentSearchTerm}".
+                                                </td>
+                                            </tr>
+                                        )}
                                     </tbody>
                                 </table>
                             </div>
+
+
                         </div>
                     )}
 
@@ -477,6 +564,15 @@ const ProgramDetails: React.FC = () => {
                     )}
                 </div>
             </div>
+
+            {/* EDIT PROGRAM MODAL */}
+            {isEditModalOpen && program && (
+                <EditProgramModal
+                    isOpen={isEditModalOpen}
+                    onClose={() => setIsEditModalOpen(false)}
+                    program={program}
+                />
+            )}
 
             {/* WITHDRAWAL MODAL */}
             {withdrawEnrollment && (

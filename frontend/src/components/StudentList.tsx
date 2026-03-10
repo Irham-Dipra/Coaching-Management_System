@@ -30,7 +30,7 @@ interface StudentListProps {
 const StudentList: React.FC<StudentListProps> = ({ fixedBatchId, hideHeader }) => {
     // --- STATE: PAGINATION & FILTERS ---
     const [page, setPage] = useState(1);
-    const [pageSize, setPageSize] = useState(50);
+    const [pageSize, setPageSize] = useState(20);
     const [searchTerm, setSearchTerm] = useState('');
     const [rollSearch, setRollSearch] = useState('');
     const [batchFilter, setBatchFilter] = useState(fixedBatchId || '');
@@ -323,7 +323,48 @@ const StudentList: React.FC<StudentListProps> = ({ fixedBatchId, hideHeader }) =
             </div>
 
             {/* DATA TABLE */}
-            <div className="rounded-2xl border border-slate-700/80 overflow-hidden relative">
+            <div className="rounded-2xl border border-slate-700/80 overflow-hidden relative mb-4">
+                {/* PAGINATION CONTROLS (TOP) */}
+                {totalCount > 0 && (
+                    <div className="p-4 border-b border-slate-700/80 bg-slate-900/50 flex flex-col md:flex-row justify-between items-center gap-4">
+                        <div className="text-sm text-slate-400">
+                            Showing {(page - 1) * pageSize + 1} to {Math.min(page * pageSize, totalCount)} of {totalCount} entries
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                            <select
+                                className="bg-slate-800 border border-slate-700 text-slate-300 rounded-lg px-2 py-1 text-sm outline-none focus:ring-1 focus:ring-blue-500 cursor-pointer"
+                                value={pageSize}
+                                onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}
+                            >
+                                <option value={20}>20 per page</option>
+                                <option value={50}>50 per page</option>
+                                <option value={100}>100 per page</option>
+                            </select>
+
+                            <div className="flex bg-slate-800 rounded-lg border border-slate-700 overflow-hidden">
+                                <button
+                                    onClick={() => setPage(p => Math.max(1, p - 1))}
+                                    disabled={page === 1}
+                                    className="p-2 hover:bg-slate-700 text-slate-300 disabled:opacity-50 disabled:hover:bg-transparent transition-colors cursor-pointer"
+                                >
+                                    <ChevronLeft size={18} />
+                                </button>
+                                <div className="px-4 py-2 text-sm font-medium text-slate-300 border-x border-slate-700">
+                                    Page {page} of {totalPages}
+                                </div>
+                                <button
+                                    onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                                    disabled={page === totalPages}
+                                    className="p-2 hover:bg-slate-700 text-slate-300 disabled:opacity-50 disabled:hover:bg-transparent transition-colors cursor-pointer"
+                                >
+                                    <ChevronRight size={18} />
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
                 {isLoading && (
                     <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-[2px] flex items-center justify-center z-10">
                         <div className="flex items-center gap-2 text-blue-400 text-sm font-semibold">
@@ -437,46 +478,6 @@ const StudentList: React.FC<StudentListProps> = ({ fixedBatchId, hideHeader }) =
                     </table>
                 </div>
 
-                {/* PAGINATION CONTROLS */}
-                {totalCount > 0 && (
-                    <div className="p-4 border-t border-slate-700 bg-slate-900/50 flex flex-col md:flex-row justify-between items-center gap-4">
-                        <div className="text-sm text-slate-400">
-                            Showing {(page - 1) * pageSize + 1} to {Math.min(page * pageSize, totalCount)} of {totalCount} entries
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                            <select
-                                className="bg-slate-800 border border-slate-700 text-slate-300 rounded-lg px-2 py-1 text-sm outline-none focus:ring-1 focus:ring-blue-500"
-                                value={pageSize}
-                                onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}
-                            >
-                                <option value={20}>20 per page</option>
-                                <option value={50}>50 per page</option>
-                                <option value={100}>100 per page</option>
-                            </select>
-
-                            <div className="flex bg-slate-800 rounded-lg border border-slate-700 overflow-hidden">
-                                <button
-                                    onClick={() => setPage(p => Math.max(1, p - 1))}
-                                    disabled={page === 1}
-                                    className="p-2 hover:bg-slate-700 text-slate-300 disabled:opacity-50 disabled:hover:bg-transparent transition-colors"
-                                >
-                                    <ChevronLeft size={18} />
-                                </button>
-                                <div className="px-4 py-2 text-sm font-medium text-slate-300 border-x border-slate-700">
-                                    Page {page} of {totalPages}
-                                </div>
-                                <button
-                                    onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                                    disabled={page === totalPages}
-                                    className="p-2 hover:bg-slate-700 text-slate-300 disabled:opacity-50 disabled:hover:bg-transparent transition-colors"
-                                >
-                                    <ChevronRight size={18} />
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                )}
             </div>
 
             {/* MODALS */}

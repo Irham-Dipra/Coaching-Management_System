@@ -100,6 +100,10 @@ const StudentProfile: React.FC = () => {
     const deleteMutation = useMutation({
         mutationFn: () => StudentRepository.deleteStudent(parseInt(id!)),
         onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['students'] });
+            queryClient.invalidateQueries({ queryKey: ['payments'] });
+            queryClient.invalidateQueries({ queryKey: ['finance-stats-quick'] });
+            queryClient.invalidateQueries({ queryKey: ['finance-stats-dues'] });
             alert("Student deleted successfully.");
             navigate('/students');
         },

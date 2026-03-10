@@ -8,6 +8,7 @@ import EditPaymentModal from '../components/EditPaymentModal';
 import { PaymentRepository } from '../repositories/PaymentRepository';
 import { useReactToPrint } from 'react-to-print';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import AnimatedNumber from '../components/AnimatedNumber';
 
 const ProgramFinanceDetails: React.FC = () => {
     const { id } = useParams<{ id: string }>();
@@ -76,7 +77,8 @@ const ProgramFinanceDetails: React.FC = () => {
                 }
             }
         },
-        enabled: !!id
+        enabled: !!id,
+        staleTime: 30_000, // Keep loaded for 30s to prevent flickering 0
     });
 
     // Delete Mutation
@@ -368,14 +370,30 @@ const ProgramFinanceDetails: React.FC = () => {
                                 <DollarSign size={80} />
                             </div>
                             <p className="text-xs text-slate-400 uppercase font-bold tracking-wider mb-1">Total Revenue</p>
-                            <p className="text-4xl font-black text-emerald-400">৳{stats.total.toLocaleString()}</p>
+                            <h3 className="text-4xl font-black text-emerald-400 h-[40px] flex items-center">
+                                {isLoading ? (
+                                    <div className="flex items-center gap-2 text-2xl opacity-70">
+                                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-emerald-500"></div> Loading...
+                                    </div>
+                                ) : (
+                                    <AnimatedNumber prefix="৳" value={stats.total || 0} />
+                                )}
+                            </h3>
                         </div>
                         <div className="bg-slate-800/50 backdrop-blur-sm p-5 rounded-2xl border border-slate-700/50 shadow-lg col-span-2 relative overflow-hidden group">
                             <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
                                 <Users size={80} />
                             </div>
                             <p className="text-xs text-blue-400 uppercase font-bold tracking-wider mb-1">Transactions</p>
-                            <p className="text-4xl font-black text-blue-500">{stats.volume}</p>
+                            <h3 className="text-4xl font-black text-blue-500 h-[40px] flex items-center">
+                                {isLoading ? (
+                                    <div className="flex items-center gap-2 text-2xl opacity-70">
+                                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-500"></div>
+                                    </div>
+                                ) : (
+                                    <AnimatedNumber value={stats.volume || 0} />
+                                )}
+                            </h3>
                         </div>
                     </>
                 )}
@@ -383,11 +401,27 @@ const ProgramFinanceDetails: React.FC = () => {
                     <>
                         <div className="bg-slate-800/50 backdrop-blur-sm p-5 rounded-2xl border border-slate-700/50 shadow-lg col-span-2">
                             <p className="text-xs text-slate-400 uppercase font-bold tracking-wider mb-1">Total Arrears</p>
-                            <p className="text-4xl font-black text-red-500">৳{stats.total_arrears.toLocaleString()}</p>
+                            <h3 className="text-4xl font-black text-red-500 h-[40px] flex items-center">
+                                {isLoading ? (
+                                    <div className="flex items-center gap-2 text-2xl opacity-70">
+                                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-red-500"></div> Loading...
+                                    </div>
+                                ) : (
+                                    <AnimatedNumber prefix="৳" value={stats.total_arrears || 0} />
+                                )}
+                            </h3>
                         </div>
                         <div className="bg-slate-800/50 backdrop-blur-sm p-5 rounded-2xl border border-slate-700/50 shadow-lg col-span-2">
                             <p className="text-xs text-blue-400 uppercase font-bold tracking-wider mb-1">Students with Dues</p>
-                            <p className="text-4xl font-black text-blue-500">{stats.count}</p>
+                            <h3 className="text-4xl font-black text-blue-500 h-[40px] flex items-center">
+                                {isLoading ? (
+                                    <div className="flex items-center gap-2 text-2xl opacity-70">
+                                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-500"></div>
+                                    </div>
+                                ) : (
+                                    <AnimatedNumber value={stats.count || 0} />
+                                )}
+                            </h3>
                         </div>
                     </>
                 )}
@@ -395,12 +429,28 @@ const ProgramFinanceDetails: React.FC = () => {
                     <>
                         <div className="bg-slate-800/50 backdrop-blur-sm p-5 rounded-2xl border border-slate-700/50 shadow-lg col-span-2 md:col-span-1">
                             <p className="text-xs text-slate-400 uppercase font-bold tracking-wider mb-1">Total Students</p>
-                            <p className="text-3xl font-bold text-white">{stats.total}</p>
+                            <h3 className="text-3xl font-bold text-white h-[36px] flex items-center">
+                                {isLoading ? (
+                                    <div className="flex items-center gap-2 text-xl opacity-70">
+                                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-slate-400"></div>
+                                    </div>
+                                ) : (
+                                    <AnimatedNumber value={stats.total || 0} />
+                                )}
+                            </h3>
                         </div>
 
                         <div className="bg-slate-800/50 backdrop-blur-sm p-5 rounded-2xl border border-slate-700/50 shadow-lg col-span-2 md:col-span-1">
                             <p className="text-xs text-red-400 uppercase font-bold tracking-wider mb-1">Due Amount</p>
-                            <p className="text-3xl font-bold text-red-500">৳{stats.due.toLocaleString()}</p>
+                            <h3 className="text-3xl font-bold text-red-500 h-[36px] flex items-center">
+                                {isLoading ? (
+                                    <div className="flex items-center gap-2 text-xl opacity-70">
+                                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-red-500"></div> Loading...
+                                    </div>
+                                ) : (
+                                    <AnimatedNumber prefix="৳" value={stats.due || 0} />
+                                )}
+                            </h3>
                         </div>
                         <div className="bg-slate-800/50 backdrop-blur-sm p-4 rounded-2xl border border-slate-700/50 shadow-lg flex flex-col justify-center gap-1.5 col-span-2">
                             <div className="flex justify-between text-xs items-center">

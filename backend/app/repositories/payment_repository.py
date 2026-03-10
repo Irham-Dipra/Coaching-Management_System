@@ -970,18 +970,26 @@ class PaymentRepository:
             "breakdown": []
         }
         
-        # 1. Total Paid Calculation (Direct Query is faster/safer than summing sub-ledgers)
-        # Actually, get_student_payments (refactored) has all payments. We can sum that?
-        # But get_student_payments is paginated or limit? No, currently fetches all for student.
-        # Let's query raw to be sure.
-        raw_payments = supabase.table(self.table)\
-            .select("paid_amount")\
-            .in_("enrollment_id", [e['enrollment_id'] for e in enrollments])\
+        # 1. Total Paid Calculation (Direct Query)
+        # BUGFIX: We must sum payments across ALL enrollments for this student, 
+        # not just the 'Active' ones, otherwise historical payments show 0 if they withdrew.
+        all_enrollments = supabase.table(self.enrollment_table)\
+            .select("enrollment_id")\
+            .eq("student_id", student_id)\
             .execute().data
             
-        summary['total_paid'] = sum(p['paid_amount'] for p in raw_payments)
+        all_eids = [e['enrollment_id'] for e in (all_enrollments or [])]
         
-        # 2. Iterate Enrollments for Due & Status
+        if all_eids:
+            raw_payments = supabase.table(self.table)\
+                .select("paid_amount")\
+                .in_("enrollment_id", all_eids)\
+                .execute().data
+            summary['total_paid'] = sum(p['paid_amount'] for p in (raw_payments or []))
+        else:
+            summary['total_paid'] = 0.0
+            
+        # 2. Iterate Enrollments for Due & Status (Only Active ones show in Breakdown)
         for env in enrollments:
             # Check for Soft Deleted Program
             # User requirement: Deleted programs should NOT show due.

@@ -25,7 +25,7 @@ const CreateExamModal: React.FC<CreateExamModalProps> = ({ isOpen, onClose, prog
     const initialFormState = {
         exam_name: '',
         exam_date: '',
-        exam_type: 'Weekly',
+        exam_type: 'Daily',
         subject: '',
         total_marks: 50,
         question_link: '',
@@ -42,7 +42,7 @@ const CreateExamModal: React.FC<CreateExamModalProps> = ({ isOpen, onClose, prog
                 setFormData({
                     exam_name: examData.exam_name || '',
                     exam_date: examData.exam_date || '',
-                    exam_type: examData.exam_type || 'Weekly',
+                    exam_type: examData.exam_type || 'Daily',
                     subject: examData.subject || '',
                     total_marks: examData.total_marks || 50,
                     question_link: examData.question_link || '',
@@ -213,6 +213,7 @@ const CreateExamModal: React.FC<CreateExamModalProps> = ({ isOpen, onClose, prog
                                 className="block w-full rounded-lg border-slate-600 bg-slate-800 p-2.5 text-white focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
                                 value={formData.exam_type} onChange={handleChange}
                             >
+                                <option value="Daily">Daily</option>
                                 <option value="Weekly">Weekly</option>
                                 <option value="Monthly">Monthly</option>
                                 <option value="Term">Term Final</option>

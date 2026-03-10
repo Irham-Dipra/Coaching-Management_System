@@ -26,6 +26,9 @@ const AdjustFeeModal: React.FC<AdjustFeeModalProps> = ({ isOpen, onClose, enroll
             queryClient.invalidateQueries({ queryKey: ['enrollments', studentId] });
             queryClient.invalidateQueries({ queryKey: ['student-financial-summary', studentId] });
             queryClient.invalidateQueries({ queryKey: ['student', studentId] });
+            queryClient.invalidateQueries({ queryKey: ['payment-status'] });     // Updates ledger
+            queryClient.invalidateQueries({ queryKey: ['finance-stats-dues'] }); // Updates total dues
+            queryClient.invalidateQueries({ queryKey: ['finance-stats-quick'] });
             onClose();
             alert("Fee adjusted successfully. The new fee will apply from the selected date.");
         },

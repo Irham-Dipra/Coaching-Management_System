@@ -10,6 +10,7 @@ import { useReactToPrint } from 'react-to-print';
 
 import BatchPaymentModal from '../components/BatchPaymentModal';
 import EditPaymentModal from '../components/EditPaymentModal';
+import AnimatedNumber from '../components/AnimatedNumber';
 
 const Finance: React.FC = () => {
 
@@ -37,7 +38,7 @@ const Finance: React.FC = () => {
 
     // --- PAGINATION STATE ---
     const [page, setPage] = useState(1);
-    const [pageSize] = useState(50); // Fixed for now
+    const [pageSize] = useState(20); // Reduced from 50 to 20 for faster loading
 
     // --- SEARCH & FILTER STATES ---
     const [searchTerm, setSearchTerm] = useState('');
@@ -88,21 +89,40 @@ const Finance: React.FC = () => {
     const totalCount = paymentsData?.total_count || 0;
     const totalPages = Math.ceil(totalCount / pageSize);
 
+    // Prefetch Next Page
+    useEffect(() => {
+        if (page < totalPages) {
+            queryClient.prefetchQuery({
+                queryKey: ['payments', page + 1, debouncedSearch, debouncedRoll, classFilter, batchFilter, programFilter, startDate, endDate],
+                queryFn: () => PaymentRepository.getRecentPayments(page + 1, pageSize, debouncedSearch, {
+                    roll_no: debouncedRoll,
+                    program_id: programFilter,
+                    class: classFilter,
+                    batch_id: batchFilter,
+                    start_date: startDate,
+                    end_date: endDate
+                }),
+                staleTime: 30_000,
+            });
+        }
+    }, [page, totalPages, debouncedSearch, debouncedRoll, classFilter, batchFilter, programFilter, startDate, endDate, queryClient]);
+
     // Fetch Batches & Programs for Filters
     const { data: batches } = useQuery({ queryKey: ['batches'], queryFn: ProgramRepository.getAllBatches });
     const { data: allPrograms } = useQuery({ queryKey: ['programs'], queryFn: ProgramRepository.getAllPrograms });
 
     // Fetch Stats — split for progressive loading
-    const { data: quickStats } = useQuery({
+    const { data: quickStats, isLoading: isQuickStatsLoading } = useQuery({
         queryKey: ['finance-stats-quick'],
         queryFn: PaymentRepository.getFinanceStatsQuick
     });
-    const { data: dueStats } = useQuery({
+    const { data: dueStats, isLoading: isDueStatsLoading } = useQuery({
         queryKey: ['finance-stats-dues'],
         queryFn: PaymentRepository.getFinanceStatsDues
     });
     // Merge for places that use 'stats'
     const stats = quickStats && dueStats ? { ...quickStats, ...dueStats } : quickStats ?? dueStats;
+    const isStatsLoading = isQuickStatsLoading || isDueStatsLoading;
 
     const deleteMutation = useMutation({
         mutationFn: PaymentRepository.deletePayment,
@@ -249,7 +269,13 @@ const Finance: React.FC = () => {
                         <div>
                             <p className="text-xs font-bold text-emerald-400 uppercase tracking-widest mb-1">Revenue (This Month)</p>
                             <h3 className="text-4xl font-black text-white mt-1 group-hover:text-emerald-300 transition-colors">
-                                ৳{(stats?.revenue_this_month || 0).toLocaleString()}
+                                {isStatsLoading ? (
+                                    <div className="flex items-center gap-2 text-2xl h-[40px] opacity-70">
+                                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-emerald-500"></div> Loading...
+                                    </div>
+                                ) : (
+                                    <AnimatedNumber prefix="৳" value={stats?.revenue_this_month || 0} />
+                                )}
                             </h3>
                         </div>
                         <div className="bg-emerald-500/20 p-3 rounded-xl text-emerald-400 group-hover:bg-emerald-500 group-hover:text-white transition-all shadow-lg shadow-emerald-900/20">
@@ -273,7 +299,13 @@ const Finance: React.FC = () => {
                         <div>
                             <p className="text-xs font-bold text-amber-400 uppercase tracking-widest mb-1">Due (This Month)</p>
                             <h3 className="text-4xl font-black text-white mt-1 group-hover:text-amber-300 transition-colors">
-                                ৳{(stats?.due_this_month || 0).toLocaleString()}
+                                {isStatsLoading ? (
+                                    <div className="flex items-center gap-2 text-2xl h-[40px] opacity-70">
+                                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-amber-500"></div> Loading...
+                                    </div>
+                                ) : (
+                                    <AnimatedNumber prefix="৳" value={stats?.due_this_month || 0} />
+                                )}
                             </h3>
                         </div>
                         <div className="bg-amber-500/20 p-3 rounded-xl text-amber-400 group-hover:bg-amber-500 group-hover:text-white transition-all shadow-lg shadow-amber-900/20">
@@ -296,7 +328,13 @@ const Finance: React.FC = () => {
                         <div>
                             <p className="text-xs font-bold text-red-400 uppercase tracking-widest mb-1">Total Dues (Overall)</p>
                             <h3 className="text-4xl font-black text-white mt-1 group-hover:text-red-300 transition-colors">
-                                ৳{(stats?.total_due || 0).toLocaleString()}
+                                {isStatsLoading ? (
+                                    <div className="flex items-center gap-2 text-2xl h-[40px] opacity-70">
+                                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-red-500"></div> Loading...
+                                    </div>
+                                ) : (
+                                    <AnimatedNumber prefix="৳" value={stats?.total_due || 0} />
+                                )}
                             </h3>
                         </div>
                         <div className="bg-red-500/20 p-3 rounded-xl text-red-400 group-hover:bg-red-500 group-hover:text-white transition-all shadow-lg shadow-red-900/20">

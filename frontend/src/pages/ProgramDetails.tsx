@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ProgramRepository } from '../repositories/ProgramRepository';
-import { Users, FileText, DollarSign, Calendar, Clock, Plus, X, Trash2, AlertCircle, Edit, ExternalLink, TrendingUp, Award, ArrowLeft, Search } from 'lucide-react';
+import { Users, FileText, DollarSign, Calendar, Clock, Plus, X, Trash2, AlertCircle, ExternalLink, TrendingUp, Award, ArrowLeft, Search } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import CreateExamModal from '../components/CreateExamModal';
 import { AttendanceRepository } from '../repositories/AttendanceRepository';

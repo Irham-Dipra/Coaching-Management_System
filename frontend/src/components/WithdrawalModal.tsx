@@ -114,10 +114,13 @@ const WithdrawalModal: React.FC<WithdrawalModalProps> = ({ isOpen, onClose, enro
             // B. Delete Enrollment (Soft Delete via Backend if payments exist)
             await StudentRepository.deleteEnrollment(enrollment.enrollment_id);
 
-            // C. Success
+            // C. Success — invalidate everything affected by payment creation + enrollment deletion
             queryClient.invalidateQueries({ queryKey: ['enrollments', studentId] });
             queryClient.invalidateQueries({ queryKey: ['payment-status'] });
-            queryClient.invalidateQueries({ queryKey: ['student-financial-summary', studentId] }); // Refresh profile summary
+            queryClient.invalidateQueries({ queryKey: ['student-financial-summary', studentId] });
+            queryClient.invalidateQueries({ queryKey: ['payments'] });             // Refresh Finance page list
+            queryClient.invalidateQueries({ queryKey: ['finance-stats-quick'] }); // Revenue changed
+            queryClient.invalidateQueries({ queryKey: ['finance-stats-dues'] });  // Dues changed
             onSuccess();
             onClose();
 

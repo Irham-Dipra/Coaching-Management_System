@@ -16,6 +16,13 @@ const Attendance: React.FC = () => {
         queryFn: ProgramRepository.getAllPrograms
     });
 
+    // Auto-select first program by default
+    useEffect(() => {
+        if (programs && programs.length > 0 && !selectedProgramId) {
+            setSelectedProgramId(programs[0].program_id.toString());
+        }
+    }, [programs, selectedProgramId]);
+
     // 2. Fetch Attendance when Program + Date selected
     const { data: fetchedAttendance } = useQuery({
         queryKey: ['attendance', selectedProgramId, date],

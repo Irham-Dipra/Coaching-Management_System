@@ -25,7 +25,9 @@ def get_students(
     roll_search: str = None,
     class_filter: str = None,
     batch_filter: str = None,
-    program_filter: str = None
+    program_filter: str = None,
+    sort_by: str = None,
+    sort_desc: bool = False
 ):
     filters = {}
     if class_filter: filters['class'] = class_filter
@@ -70,7 +72,7 @@ def get_students(
     # But `PrintBatch` loads ALL students (could be thousands). It SHOULD use pagination or search api.
     # For now, I will add `paginated` mode.
     
-    return repo.get_students_paginated(page, page_size, search, roll_search, filters)
+    return repo.get_students_paginated(page, page_size, search, roll_search, filters, sort_by, sort_desc)
 
 @router.get("/students/all")
 def get_all_students_no_page():

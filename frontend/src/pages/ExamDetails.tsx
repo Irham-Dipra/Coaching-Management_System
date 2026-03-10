@@ -749,6 +749,7 @@ const ExamDetails: React.FC = () => {
                                                         placeholder="-"
                                                         onChange={(e) => g.student?.student_id && handleMarkChange(g.student.student_id, 'written', e.target.value)}
                                                         onWheel={(e) => e.currentTarget.blur()}
+                                                        onKeyDown={(e) => { if (e.key === 'ArrowUp' || e.key === 'ArrowDown') e.preventDefault(); }}
                                                     />
                                                 </td>
                                                 <td className="p-4 text-right">
@@ -759,6 +760,7 @@ const ExamDetails: React.FC = () => {
                                                         placeholder="-"
                                                         onChange={(e) => g.student?.student_id && handleMarkChange(g.student.student_id, 'mcq', e.target.value)}
                                                         onWheel={(e) => e.currentTarget.blur()}
+                                                        onKeyDown={(e) => { if (e.key === 'ArrowUp' || e.key === 'ArrowDown') e.preventDefault(); }}
                                                     />
                                                 </td>
                                                 <td className="p-4 text-right text-slate-500 text-sm font-mono">

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { PaymentRepository } from '../repositories/PaymentRepository';
 import { StudentRepository } from '../repositories/StudentRepository';
@@ -23,8 +23,11 @@ const Finance: React.FC = () => {
 
     // Auto-Action Logic (Restored)
     useEffect(() => {
-        if (searchParams.get('action') === 'payment') {
-            setIsModalOpen(true);
+        const action = searchParams.get('action');
+        if (action === 'payment' || action === 'batch_payment') {
+            if (action === 'payment') setIsModalOpen(true);
+            if (action === 'batch_payment') setIsBatchModalOpen(true);
+
             setSearchParams(params => {
                 params.delete('action');
                 return params;
@@ -43,6 +46,18 @@ const Finance: React.FC = () => {
     const [classFilter, setClassFilter] = useState('');
     const [programFilter, setProgramFilter] = useState('');
 
+    // Debounced search terms — only fire query after user pauses typing (350ms)
+    const [debouncedSearch, setDebouncedSearch] = useState('');
+    const [debouncedRoll, setDebouncedRoll] = useState('');
+    useEffect(() => {
+        const t = setTimeout(() => setDebouncedSearch(searchTerm), 350);
+        return () => clearTimeout(t);
+    }, [searchTerm]);
+    useEffect(() => {
+        const t = setTimeout(() => setDebouncedRoll(rollSearch), 350);
+        return () => clearTimeout(t);
+    }, [rollSearch]);
+
     // Date Filters
     const [dateMode, setDateMode] = useState<'all' | 'custom'>('all');
     const [startDate, setStartDate] = useState('');
@@ -51,21 +66,22 @@ const Finance: React.FC = () => {
     // Reset Page on Filter Change
     useEffect(() => {
         setPage(1);
-    }, [searchTerm, rollSearch, batchFilter, classFilter, programFilter, startDate, endDate]);
+    }, [debouncedSearch, debouncedRoll, batchFilter, classFilter, programFilter, startDate, endDate]);
 
 
     // Fetch Recent Payments (Paginated)
     const { data: paymentsData, isLoading: isPaymentsLoading } = useQuery({
-        queryKey: ['payments', page, searchTerm, rollSearch, classFilter, batchFilter, programFilter, startDate, endDate], // Added dates to key
-        queryFn: () => PaymentRepository.getRecentPayments(page, pageSize, searchTerm, {
-            roll_no: rollSearch,
+        queryKey: ['payments', page, debouncedSearch, debouncedRoll, classFilter, batchFilter, programFilter, startDate, endDate],
+        queryFn: () => PaymentRepository.getRecentPayments(page, pageSize, debouncedSearch, {
+            roll_no: debouncedRoll,
             program_id: programFilter,
             class: classFilter,
             batch_id: batchFilter,
-            start_date: startDate, // Pass to repo
+            start_date: startDate,
             end_date: endDate
         }),
-        placeholderData: (previousData: any) => previousData
+        placeholderData: (previousData: any) => previousData,
+        staleTime: 30_000, // 30s — mutations bypass this via invalidateQueries
     });
 
     const recentPayments = paymentsData?.data || [];
@@ -224,7 +240,7 @@ const Finance: React.FC = () => {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {/* 1. REVENUE CARD */}
                 <div
-                    onClick={() => navigate('/admin/finance/breakdown/revenue')}
+                    onClick={() => navigate('/admin/finance/program/overall?view=revenue')}
                     className="bg-slate-800/50 backdrop-blur-md p-6 rounded-2xl shadow-lg border border-slate-700/50 cursor-pointer hover:shadow-emerald-900/20 hover:border-emerald-500/30 transition-all group relative overflow-hidden"
                 >
                     <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-bl-full -mr-8 -mt-8 transition-transform group-hover:scale-110"></div>
@@ -248,7 +264,7 @@ const Finance: React.FC = () => {
 
                 {/* 2. DUE THIS MONTH */}
                 <div
-                    onClick={() => navigate('/admin/finance/breakdown/due_monthly')}
+                    onClick={() => navigate('/admin/finance/program/overall?view=due_monthly')}
                     className="bg-slate-800/50 backdrop-blur-md p-6 rounded-2xl shadow-lg border border-slate-700/50 cursor-pointer hover:shadow-amber-900/20 hover:border-amber-500/30 transition-all group relative overflow-hidden"
                 >
                     <div className="absolute top-0 right-0 w-32 h-32 bg-amber-500/10 rounded-bl-full -mr-8 -mt-8 transition-transform group-hover:scale-110"></div>
@@ -271,7 +287,7 @@ const Finance: React.FC = () => {
 
                 {/* 3. TOTAL ARREARS */}
                 <div
-                    onClick={() => navigate('/admin/finance/breakdown/due_overall')}
+                    onClick={() => navigate('/admin/finance/program/overall?view=due_overall')}
                     className="bg-slate-800/50 backdrop-blur-md p-6 rounded-2xl shadow-lg border border-slate-700/50 cursor-pointer hover:shadow-red-900/20 hover:border-red-500/30 transition-all group relative overflow-hidden"
                 >
                     <div className="absolute top-0 right-0 w-32 h-32 bg-red-500/10 rounded-bl-full -mr-8 -mt-8 transition-transform group-hover:scale-110"></div>
@@ -471,7 +487,9 @@ const Finance: React.FC = () => {
                                     <td className="p-5 font-mono text-slate-500 group-hover:text-slate-300 transition-colors">#{p.sort_id}</td>
                                     <td className="p-5 text-slate-300 text-sm">{p.payment_date}</td>
                                     <td className="p-5">
-                                        <div className="font-bold text-white group-hover:text-emerald-400 transition-colors">{p.student_name}</div>
+                                        <Link to={`/students/${p.student_id}`} className="font-bold text-white group-hover:text-emerald-400 hover:underline transition-colors block">
+                                            {p.student_name}
+                                        </Link>
                                         <div className="text-xs text-blue-400 mt-0.5">{p.program_name}</div>
                                     </td>
                                     <td className="p-5 text-slate-300 text-sm font-medium">

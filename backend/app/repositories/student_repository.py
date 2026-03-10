@@ -30,14 +30,14 @@ class StudentRepository:
                 
         return data
 
-    def get_students_paginated(self, page: int = 1, page_size: int = 50, search: str = None, roll_search: str = None, filters: dict = None):
+    def get_students_paginated(self, page: int = 1, page_size: int = 50, search: str = None, roll_search: str = None, filters: dict = None, sort_by: str = None, sort_desc: bool = False):
         """
-        Fetches students with server-side pagination, search, and filters.
+        Fetches students with server-side pagination, search, filters, and sorting.
         Results are cached in memory for 60 seconds per unique parameter set.
         The cache is invalidated on any student or enrollment mutation.
         """
         # --- CACHE CHECK ---
-        cache_key = make_key(page, page_size, search, roll_search, filters)
+        cache_key = make_key(page, page_size, search, roll_search, filters, sort_by, sort_desc)
         cached = get_cached_students(cache_key)
         if cached:
             return cached
@@ -87,6 +87,17 @@ class StudentRepository:
                 query = query.eq("batch_id", int(filters['batch_id']))
             if filters.get('program_id'):
                 query = query.eq("enrollment.program_id", int(filters['program_id']))
+
+        # Sorting
+        if sort_by:
+            # Prevent invalid column names (basic validation)
+            if sort_by in ['student_code', 'student_id', 'name', 'class', 'batch_id']:
+                query = query.order(sort_by, desc=sort_desc)
+            else:
+                # Default order if unknown sort_by provided
+                query = query.order("student_id", desc=True)
+        else:
+            query = query.order("student_id", desc=True) # Default sort to newest
 
         # Pagination
         start = (page - 1) * page_size

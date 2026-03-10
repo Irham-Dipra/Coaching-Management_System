@@ -28,7 +28,7 @@ export const StudentRepository = {
   },
 
   // 1.5 Get Students Paginated (For List View)
-  async getStudentsPaginated(page: number, pageSize: number, search: string, rollSearch: string, filters: any) {
+  async getStudentsPaginated(page: number, pageSize: number, search: string, rollSearch: string, filters: any, sortBy?: string, sortDesc?: boolean) {
     const params = new URLSearchParams({
       page: page.toString(),
       page_size: pageSize.toString()
@@ -38,6 +38,8 @@ export const StudentRepository = {
     if (filters.class) params.append("class_filter", filters.class);
     if (filters.batch_id) params.append("batch_filter", filters.batch_id);
     if (filters.program_id) params.append("program_filter", filters.program_id);
+    if (sortBy) params.append("sort_by", sortBy);
+    if (sortDesc !== undefined) params.append("sort_desc", sortDesc.toString());
 
     const response = await fetch(`${API_BASE_URL}/students?${params.toString()}`);
     if (!response.ok) throw new Error("Failed to fetch students");

@@ -16,6 +16,7 @@ _cache: dict = {
     "dues": None,    # slow stats: total_due, due_this_month
     "quick_at": None,
     "dues_at": None,
+    "lists": {},
 }
 
 # Separate TTLs — quick stats can be quite fresh (2 min), dues are heavier (5 min fallback)
@@ -49,6 +50,18 @@ def set_cached_dues(data: dict):
     _cache["dues_at"] = datetime.now()
 
 
+def get_cached_list(key: str) -> dict | None:
+    if key in _cache["lists"]:
+        data, cached_at = _cache["lists"][key]
+        if (datetime.now() - cached_at).total_seconds() < DUES_TTL_SECONDS:
+            return data
+    return None
+
+
+def set_cached_list(key: str, data: dict):
+    _cache["lists"][key] = (data, datetime.now())
+
+
 def invalidate_stats_cache():
     """
     Call this after ANY mutation that changes revenue or dues:
@@ -61,3 +74,4 @@ def invalidate_stats_cache():
     _cache["quick_at"] = None
     _cache["dues"] = None
     _cache["dues_at"] = None
+    _cache["lists"].clear()

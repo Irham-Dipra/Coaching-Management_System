@@ -2,6 +2,7 @@ from app.core.supabase import supabase
 from app.core.stats_cache import (
     get_cached_quick, set_cached_quick,
     get_cached_dues, set_cached_dues,
+    get_cached_list, set_cached_list,
     invalidate_stats_cache
 )
 from datetime import datetime, date
@@ -1026,6 +1027,11 @@ class PaymentRepository:
         target_month = month if month else today.month
         target_year = year if year else today.year
         
+        cache_key = f"revenue_breakdown_{target_month}_{target_year}_{program_id}"
+        cached_data = get_cached_list(cache_key)
+        if cached_data:
+            return cached_data
+
         # 1. Fetch Payments for this month using Date Range (Postgres safe)
         start_date = date(target_year, target_month, 1)
         if target_month == 12:
@@ -1035,7 +1041,7 @@ class PaymentRepository:
         
         # Need to join with student/program for display
         query = supabase.table(self.table)\
-            .select("*, enrollment(program_id, student(name, student_id), program(program_name, program_id, batch(batch_name)))")\
+            .select("*, enrollment(program_id, student(name, student_id, student_code), program(program_name, program_id, batch(batch_name)))")\
             .gte("payment_date", start_date.isoformat())\
             .lt("payment_date", next_month_date.isoformat())\
             .order("payment_date", desc=True)
@@ -1092,6 +1098,7 @@ class PaymentRepository:
                     "payment_date": r['payment_date'],
                     "student_name": enroll.get('student', {}).get('name', 'Unknown'),
                     "student_id": enroll.get('student', {}).get('student_id'),
+                    "student_code": enroll.get('student', {}).get('student_code'),
                     "program_name": pname,
                     "amount": 0.0,
                     "payment_method": r['payment_method'],
@@ -1158,11 +1165,13 @@ class PaymentRepository:
         program_summary = [{"program_id": k[0], "name": k[1], "amount": v} for k, v in prog_revenue.items()]
         program_summary.sort(key=lambda x: x['amount'], reverse=True)
         
-        return {
+        result = {
             "month": f"{date(target_year, target_month, 1).strftime('%B %Y')}",
             "program_summary": program_summary,
             "transactions": transactions
         }
+        set_cached_list(cache_key, result)
+        return result
         
     def get_due_breakdown_list(self, program_id: int = None):
         """
@@ -1171,11 +1180,15 @@ class PaymentRepository:
         CORRECTNESS: Applies per-month fee history for accurate due calculation.
         """
         today = date.today()
+        cache_key = f"due_breakdown_list_{program_id}"
+        cached_data = get_cached_list(cache_key)
+        if cached_data:
+            return cached_data
 
         # QUERY 1: All active enrollments with program / student info
         query = supabase.table(self.enrollment_table)\
             .select("enrollment_id, roll_no, enrollment_date, program_id, "
-                    "student(name, student_id), "
+                    "student(name, student_id, student_code), "
                     "program(program_name, monthly_fee, is_active, batch(batch_name))")\
             .eq("status", "Active")
 
@@ -1323,6 +1336,7 @@ class PaymentRepository:
 
             due_list.append({
                 "student_id": env.get('student', {}).get('student_id'),
+                "student_code": env.get('student', {}).get('student_code'),
                 "student_name": env.get('student', {}).get('name'),
                 "roll_no": env.get('roll_no'),
                 "program_name": prog_name,
@@ -1334,10 +1348,12 @@ class PaymentRepository:
         program_summary.sort(key=lambda x: x['amount'], reverse=True)
         due_list.sort(key=lambda x: x['total_due'], reverse=True)
 
-        return {
+        result = {
             "program_summary": program_summary,
             "students": due_list
         }
+        set_cached_list(cache_key, result)
+        return result
 
     def get_due_breakdown_monthly(self, month: int = None, year: int = None, program_id: int = None):
         """
@@ -1348,9 +1364,14 @@ class PaymentRepository:
         target_month = month if month else today.month
         target_year = year if year else today.year
         
+        cache_key = f"due_breakdown_monthly_{target_month}_{target_year}_{program_id}"
+        cached_data = get_cached_list(cache_key)
+        if cached_data:
+            return cached_data
+
         # 1. Active Enrollments (that started before or during target month)
         query = supabase.table(self.enrollment_table)\
-            .select("*, roll_no, student(name, student_id), program(program_name, monthly_fee, is_active, batch(batch_name)), current_agreed_fee")\
+            .select("*, roll_no, student(name, student_id, student_code), program(program_name, monthly_fee, is_active, batch(batch_name)), current_agreed_fee")\
             .eq("status", "Active")
             
         if program_id:
@@ -1452,10 +1473,17 @@ class PaymentRepository:
                 prog_due_map[prog_key] = prog_due_map.get(prog_key, 0) + due
 
                 due_list.append({
+                    "enrollment_id": env['enrollment_id'],
                     "student_id": env.get('student', {}).get('student_id'),
+                    "student_code": env.get('student', {}).get('student_code'),
+                    "name": env.get('student', {}).get('name'),
                     "student_name": env.get('student', {}).get('name'),
                     "roll_no": env.get('roll_no') or env.get('student', {}).get('roll_no'),
                     "program_name": prog_name,
+                    "monthly_fee": fee,
+                    "paid_amount": paid,
+                    "due_amount": due,
+                    "status": status,
                     "total_due": due,
                     "status_detail": f"{status} (Paid: {paid})"
                 })
@@ -1464,10 +1492,12 @@ class PaymentRepository:
         program_summary.sort(key=lambda x: x['amount'], reverse=True)
         due_list.sort(key=lambda x: x['total_due'], reverse=True)
 
-        return {
+        result = {
             "program_summary": program_summary,
             "students": due_list
         }
+        set_cached_list(cache_key, result)
+        return result
 
     def _get_finance_stats_impl(self):
         """
@@ -1662,11 +1692,16 @@ class PaymentRepository:
         Fetches payment status for ALL active students in a program for a specific month.
         Returns a list of dicts with student details and payment status (Paid, Unpaid, Partial).
         """
+        cache_key = f"program_payment_status_{program_id}_{month}_{year}"
+        cached_data = get_cached_list(cache_key)
+        if cached_data:
+            return cached_data
+
         # 1. Get all ACTIVE enrollments for this program
 
         # We need student details (name, student_id, roll_no) and enrollment_id
         enrollments = supabase.table(self.enrollment_table)\
-            .select("enrollment_id, roll_no, enrollment_date, student(student_id, name), program(program_id, monthly_fee, start_date), current_agreed_fee")\
+            .select("enrollment_id, roll_no, enrollment_date, student(student_id, name, student_code), program(program_id, monthly_fee, start_date), current_agreed_fee")\
             .eq("program_id", program_id)\
             .eq("status", "Active")\
             .execute().data
@@ -1766,6 +1801,7 @@ class PaymentRepository:
             
             results.append({
                 "student_id": student.get('student_id'),
+                "student_code": student.get('student_code'),
                 "name": student.get('name'),
                 "roll_no": enroll.get('roll_no') or student.get('roll_no'),
                 "enrollment_id": eid,

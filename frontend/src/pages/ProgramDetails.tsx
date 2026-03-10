@@ -96,32 +96,43 @@ const ProgramDetails: React.FC = () => {
                 </Link>
             </div>
 
-            {/* HEADER */}
+            {/* UNIFIED HERO CARD */}
             <div className="bg-slate-800/50 backdrop-blur-md rounded-2xl border border-slate-700 p-8 shadow-xl">
-                <div className="flex flex-col md:flex-row justify-between items-start gap-6 mb-8">
-                    <div>
-                        <div className="flex items-center gap-2 mb-3">
+                {/* Top Row: Title, Batch, Dates & Actions */}
+                <div className="flex flex-col xl:flex-row justify-between items-start gap-6 mb-8">
+                    <div className="flex-1">
+                        <div className="flex flex-wrap items-center gap-2 mb-3">
                             <span className="text-xs font-bold text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded border border-blue-500/20 uppercase tracking-wider">Program</span>
                             {program.batch && (
                                 <span className="text-xs text-slate-400 font-medium px-2 py-0.5 border border-slate-600 rounded bg-slate-800">
                                     {program.batch.batch_name}
                                 </span>
                             )}
+                            <div className="flex items-center gap-2 ml-2 text-xs text-slate-400">
+                                <span className="flex items-center gap-1 bg-slate-800/80 px-2 py-0.5 rounded-md border border-slate-700/50">
+                                    <Calendar size={12} className="text-blue-400" />
+                                    Starting: <span className="text-slate-200">{program.start_date || 'TBD'}</span>
+                                </span>
+                                <span className="flex items-center gap-1 bg-slate-800/80 px-2 py-0.5 rounded-md border border-slate-700/50">
+                                    <Clock size={12} className="text-purple-400" />
+                                    Ending: <span className="text-slate-200">{program.end_date || 'Tentative'}</span>
+                                </span>
+                            </div>
                             {program.routine && (
                                 <a
                                     href={program.routine}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="flex items-center gap-1 text-xs font-medium text-blue-400 hover:text-blue-300 hover:underline ml-2 transition-colors"
+                                    className="flex items-center gap-1 text-xs font-medium text-emerald-400 hover:text-emerald-300 hover:underline ml-2 transition-colors ml-auto xl:ml-2"
                                 >
                                     <ExternalLink size={12} /> View Routine
                                 </a>
                             )}
                         </div>
-                        <h1 className="text-4xl font-bold text-white mb-2">{program.program_name}</h1>
+                        <h1 className="text-4xl font-bold text-white leading-tight">{program.program_name}</h1>
                     </div>
 
-                    <div className="flex items-center gap-3">
+                    <div className="flex flex-wrap items-center gap-3 shrink-0">
                         <button
                             onClick={() => setIsEditModalOpen(true)}
                             className="bg-slate-700 hover:bg-slate-600 text-slate-200 border border-slate-600 p-3 rounded-xl shadow-lg transition-all hover:-translate-y-0.5"
@@ -134,7 +145,7 @@ const ProgramDetails: React.FC = () => {
                             onClick={() => setIsBatchModalOpen(true)}
                             className="bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white px-6 py-3 rounded-xl shadow-lg shadow-blue-500/20 flex items-center gap-2 font-bold transition-all hover:-translate-y-0.5"
                         >
-                            <Users size={20} /> Record Batch Payment
+                            <DollarSign size={20} /> Record Batch Payment
                         </button>
 
                         <button
@@ -156,104 +167,77 @@ const ProgramDetails: React.FC = () => {
                     </div>
                 </div>
 
-                {/* Quick Stats / Finance Links Row */}
-                <div className="flex flex-wrap gap-4 pt-6 border-t border-slate-700/50">
+                {/* Middle Row: Core Stats Grid */}
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+                    <div className="bg-slate-900/40 p-5 rounded-2xl border border-slate-700/50 flex flex-col justify-center relative overflow-hidden group">
+                        <div className="absolute right-0 top-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
+                            <DollarSign size={64} className="text-emerald-400" />
+                        </div>
+                        <p className="text-xs text-slate-500 uppercase font-bold tracking-wider mb-1">Monthly Fee</p>
+                        <p className="text-3xl font-black text-emerald-400">৳{program.monthly_fee}</p>
+                    </div>
+
+                    <div className="bg-slate-900/40 p-5 rounded-2xl border border-slate-700/50 flex flex-col justify-center relative overflow-hidden group">
+                        <div className="absolute right-0 top-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
+                            <Users size={64} className="text-blue-400" />
+                        </div>
+                        <p className="text-xs text-slate-500 uppercase font-bold tracking-wider mb-1">Total Students</p>
+                        <div className="flex items-center gap-2">
+                            <span className="text-3xl font-black text-white">{totalEnrolled}</span>
+                            <span className="text-xs text-slate-500 bg-slate-800 px-2 py-0.5 rounded-md mt-1">Enrolled</span>
+                        </div>
+                    </div>
+
+                    <div className="bg-slate-900/40 p-5 rounded-2xl border border-slate-700/50 flex flex-col justify-center relative overflow-hidden group">
+                        <div className="absolute right-0 top-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
+                            <TrendingUp size={64} className="text-indigo-400" />
+                        </div>
+                        <p className="text-xs text-slate-500 uppercase font-bold tracking-wider mb-1">Total Revenue</p>
+                        <p className="text-3xl font-black text-white">৳{totalCollected.toLocaleString()}</p>
+                    </div>
+
+                    <div className="bg-slate-900/40 p-5 rounded-2xl border border-slate-700/50 flex flex-col justify-center relative overflow-hidden group">
+                        <div className="absolute right-0 top-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
+                            <FileText size={64} className="text-orange-400" />
+                        </div>
+                        <p className="text-xs text-slate-500 uppercase font-bold tracking-wider mb-1">Exams Conducted</p>
+                        <div className="flex items-center gap-2">
+                            <span className="text-3xl font-black text-white">{totalExams}</span>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Bottom Row: Finance Action Strips */}
+                <div className="flex flex-col sm:flex-row gap-4 pt-6 border-t border-slate-700/50">
                     <Link
                         to={`/admin/finance/program/${id}?view=revenue`}
-                        className="flex-1 min-w-[160px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-5 py-4 rounded-xl hover:bg-emerald-500/20 transition-all flex flex-col items-start group hover:-translate-y-0.5"
+                        className="flex-1 bg-gradient-to-br from-indigo-500/10 to-indigo-500/5 border border-indigo-500/20 px-5 py-4 rounded-xl hover:from-indigo-500/20 hover:to-indigo-500/10 transition-all flex flex-col items-start group hover:-translate-y-0.5"
                     >
-                        <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide opacity-80 mb-2">
-                            <DollarSign size={14} /> Revenue
+                        <div className="flex items-center gap-2 text-[10px] font-bold text-indigo-400 uppercase tracking-widest mb-1.5 opacity-90">
+                            <TrendingUp size={14} /> Revenue History
                         </div>
-                        <span className="text-sm font-medium group-hover:text-emerald-300 transition-colors">View Breakdown</span>
+                        <span className="text-sm font-medium text-slate-300 group-hover:text-white transition-colors">View Transactions & Breakdown</span>
                     </Link>
 
                     <Link
                         to={`/admin/finance/program/${id}?view=due_monthly`}
-                        className="flex-1 min-w-[160px] bg-amber-500/10 text-amber-400 border border-amber-500/20 px-5 py-4 rounded-xl hover:bg-amber-500/20 transition-all flex flex-col items-start group hover:-translate-y-0.5"
+                        className="flex-1 bg-gradient-to-br from-amber-500/10 to-amber-500/5 border border-amber-500/20 px-5 py-4 rounded-xl hover:from-amber-500/20 hover:to-amber-500/10 transition-all flex flex-col items-start group hover:-translate-y-0.5"
                     >
-                        <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide opacity-80 mb-2">
+                        <div className="flex items-center gap-2 text-[10px] font-bold text-amber-400 uppercase tracking-widest mb-1.5 opacity-90">
                             <FileText size={14} /> Due (Monthly)
                         </div>
-                        <span className="text-sm font-medium group-hover:text-amber-300 transition-colors">View List</span>
+                        <span className="text-sm font-medium text-slate-300 group-hover:text-white transition-colors">View Student Monthly Payments</span>
                     </Link>
 
                     <Link
                         to={`/admin/finance/program/${id}?view=due_overall`}
-                        className="flex-1 min-w-[160px] bg-rose-500/10 text-rose-400 border border-rose-500/20 px-5 py-4 rounded-xl hover:bg-rose-500/20 transition-all flex flex-col items-start group hover:-translate-y-0.5"
+                        className="flex-1 bg-gradient-to-br from-rose-500/10 to-rose-500/5 border border-rose-500/20 px-5 py-4 rounded-xl hover:from-rose-500/20 hover:to-rose-500/10 transition-all flex flex-col items-start group hover:-translate-y-0.5"
                     >
-                        <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide opacity-80 mb-2">
+                        <div className="flex items-center gap-2 text-[10px] font-bold text-rose-400 uppercase tracking-widest mb-1.5 opacity-90">
                             <AlertCircle size={14} /> Due (All-Time)
                         </div>
-                        <span className="text-sm font-medium group-hover:text-rose-300 transition-colors">View List</span>
+                        <span className="text-sm font-medium text-slate-300 group-hover:text-white transition-colors">View Students in Arrears</span>
                     </Link>
-                </div>
-            </div>
-
-            {/* Batch Payment Modal */}
-            <BatchPaymentModal
-                isOpen={isBatchModalOpen}
-                onClose={() => setIsBatchModalOpen(false)}
-                initialProgramId={id}
-            />
-
-            {/* Edit Program Modal */}
-            <EditProgramModal
-                isOpen={isEditModalOpen}
-                onClose={() => setIsEditModalOpen(false)}
-                program={program}
-            />
-
-            <div className="bg-slate-800/50 backdrop-blur-md rounded-2xl border border-slate-700 p-8 shadow-xl">
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
-                    <div>
-                        <div className="flex gap-6 mt-2 text-sm text-slate-400">
-                            <div className="flex items-center gap-2 bg-slate-800/50 px-3 py-1.5 rounded-lg border border-slate-700">
-                                <Calendar size={16} className="text-blue-400" />
-                                <span>Starts: <span className="text-slate-200 font-medium">{program.start_date || 'TBD'}</span></span>
-                            </div>
-                            <div className="flex items-center gap-2 bg-slate-800/50 px-3 py-1.5 rounded-lg border border-slate-700">
-                                <Clock size={16} className="text-purple-400" />
-                                <span>Ends: <span className="text-slate-200 font-medium">{program.end_date || 'Tentative'}</span></span>
-                            </div>
-                        </div>
-                    </div>
-                    <div className="text-right mt-6 md:mt-0 bg-slate-800/50 p-4 rounded-xl border border-slate-700 backdrop-blur-sm">
-                        <p className="text-xs text-slate-500 uppercase tracking-widest font-semibold mb-1">Monthly Fee</p>
-                        <p className="text-3xl font-bold text-emerald-400">৳{program.monthly_fee}</p>
-                    </div>
-                </div>
-
-                {/* STATS GRID */}
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 mt-8 pt-8 border-t border-slate-700/50">
-                    <div className="p-4 bg-slate-800/50 rounded-xl border border-slate-700 hover:bg-slate-800 transition-colors">
-                        <p className="text-xs text-slate-500 uppercase font-semibold tracking-wider">Total Students</p>
-                        <div className="flex items-center gap-3 mt-2">
-                            <div className="p-2 bg-blue-500/10 rounded-lg text-blue-400"><Users size={20} /></div>
-                            <span className="text-2xl font-bold text-white">{totalEnrolled}</span>
-                        </div>
-                    </div>
-                    <div className="p-4 bg-slate-800/50 rounded-xl border border-slate-700 hover:bg-slate-800 transition-colors">
-                        <p className="text-xs text-slate-500 uppercase font-semibold tracking-wider">Total Revenue</p>
-                        <div className="flex items-center gap-3 mt-2">
-                            <div className="p-2 bg-emerald-500/10 rounded-lg text-emerald-400"><DollarSign size={20} /></div>
-                            <span className="text-2xl font-bold text-white">৳{totalCollected}</span>
-                        </div>
-                    </div>
-                    <div className="p-4 bg-slate-800/50 rounded-xl border border-slate-700 hover:bg-slate-800 transition-colors">
-                        <p className="text-xs text-slate-500 uppercase font-semibold tracking-wider">Teachers Info</p>
-                        <div className="flex items-center gap-3 mt-2">
-                            <div className="p-2 bg-purple-500/10 rounded-lg text-purple-400"><GraduationCap size={20} /></div>
-                            <span className="text-2xl font-bold text-white">{teachersCount} <span className="text-sm font-normal text-slate-500 ml-1">Assigned</span></span>
-                        </div>
-                    </div>
-                    <div className="p-4 bg-slate-800/50 rounded-xl border border-slate-700 hover:bg-slate-800 transition-colors">
-                        <p className="text-xs text-slate-500 uppercase font-semibold tracking-wider">Exams Conducted</p>
-                        <div className="flex items-center gap-3 mt-2">
-                            <div className="p-2 bg-orange-500/10 rounded-lg text-orange-400"><FileText size={20} /></div>
-                            <span className="text-2xl font-bold text-white">{totalExams}</span>
-                        </div>
-                    </div>
                 </div>
             </div>
 

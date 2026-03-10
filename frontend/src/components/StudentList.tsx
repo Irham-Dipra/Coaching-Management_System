@@ -1,10 +1,10 @@
 ﻿import React, { useState, useRef, useMemo } from 'react';
-import { useQuery, keepPreviousData } from '@tanstack/react-query';
+import { useQuery, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useReactToPrint } from 'react-to-print';
 import { ProgramRepository } from '../repositories/ProgramRepository';
 import { StudentRepository } from '../repositories/StudentRepository';
-import { Search, Plus, ChevronRight, ChevronLeft, Upload, Printer, SquareCheck, Square, X } from 'lucide-react';
+import { Search, Plus, ChevronRight, ChevronLeft, Upload, Printer, SquareCheck, Square, X, Users } from 'lucide-react';
 import CreateStudentModal from './CreateStudentModal';
 import ImportStudentModal from './ImportStudentModal';
 import IDCardTemplate from './IDCardTemplate';
@@ -36,6 +36,8 @@ const StudentList: React.FC<StudentListProps> = ({ fixedBatchId, hideHeader }) =
     const [batchFilter, setBatchFilter] = useState(fixedBatchId || '');
     const [classFilter, setClassFilter] = useState('');
     const [programFilter, setProgramFilter] = useState('');
+    const [sortBy, setSortBy] = useState<string>('student_code');
+    const [sortDesc, setSortDesc] = useState<boolean>(false);
 
     // --- STATE: SELECTION (Persistent across pages) ---
     const [selectedStudents, setSelectedStudents] = useState<Map<number, Student>>(new Map());
@@ -60,12 +62,12 @@ const StudentList: React.FC<StudentListProps> = ({ fixedBatchId, hideHeader }) =
 
     // --- FETCH DATA (PAGINATED) ---
     const { data: studentData, isLoading, error } = useQuery({
-        queryKey: ['students', page, pageSize, searchTerm, rollSearch, classFilter, batchFilter, programFilter],
+        queryKey: ['students', page, pageSize, searchTerm, rollSearch, classFilter, batchFilter, programFilter, sortBy, sortDesc],
         queryFn: () => StudentRepository.getStudentsPaginated(page, pageSize, searchTerm, rollSearch, {
             class: classFilter,
             batch_id: batchFilter,
             program_id: programFilter
-        }),
+        }, sortBy, sortDesc),
         placeholderData: keepPreviousData,
         staleTime: 30_000, // Consider data fresh for 30s — prevents redundant re-fetches on navigation
     });
@@ -77,6 +79,32 @@ const StudentList: React.FC<StudentListProps> = ({ fixedBatchId, hideHeader }) =
     const students: Student[] = studentData?.data || [];
     const totalCount = studentData?.total_count || 0;
     const totalPages = Math.ceil(totalCount / pageSize);
+
+    // --- PREFETCH NEXT PAGE ---
+    const queryClient = useQueryClient();
+    React.useEffect(() => {
+        if (totalPages > page) {
+            queryClient.prefetchQuery({
+                queryKey: ['students', page + 1, pageSize, searchTerm, rollSearch, classFilter, batchFilter, programFilter, sortBy, sortDesc],
+                queryFn: () => StudentRepository.getStudentsPaginated(page + 1, pageSize, searchTerm, rollSearch, {
+                    class: classFilter,
+                    batch_id: batchFilter,
+                    program_id: programFilter
+                }, sortBy, sortDesc),
+                staleTime: 30_000,
+            });
+        }
+    }, [page, pageSize, searchTerm, rollSearch, classFilter, batchFilter, programFilter, sortBy, sortDesc, totalPages, queryClient]);
+
+    const handleSort = (field: string) => {
+        if (sortBy === field) {
+            setSortDesc(!sortDesc);
+        } else {
+            setSortBy(field);
+            setSortDesc(false);
+        }
+        setPage(1);
+    };
 
     // --- SELECTION LOGIC ---
     const toggleStudent = (student: Student) => {
@@ -170,38 +198,46 @@ const StudentList: React.FC<StudentListProps> = ({ fixedBatchId, hideHeader }) =
                 </div>
             </div>
 
-            {/* HEADER & ACTIONS */}
-            {!hideHeader && (
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 animate-fade-in">
-                    <div>
-                        <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-400">
-                            Student Directory
-                        </h1>
-                        <p className="text-slate-400 text-sm mt-1">
-                            {totalCount} Students Found &bull; Page {page} of {totalPages || 1}
-                        </p>
-                    </div>
-                </div>
-            )}
 
-            {/* BULK ACTIONS BAR */}
-            <div className="flex flex-wrap items-center justify-between gap-4">
-                {/* Selection Status */}
-                <div className={`flex items-center gap-3 transition-all ${selectedStudents.size > 0 ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
-                    <span className="text-slate-300 font-medium bg-blue-900/40 px-3 py-1.5 rounded-lg border border-blue-500/30">
-                        {selectedStudents.size} Selected
-                    </span>
-                    <button onClick={clearSelection} className="text-slate-400 hover:text-white flex items-center gap-1 text-sm">
-                        <X size={14} /> Clear
-                    </button>
-                    <div className="h-6 w-px bg-slate-700 mx-2"></div>
-                    <button
-                        onClick={() => triggerPrint()}
-                        className="bg-blue-600 text-white px-4 py-1.5 rounded-lg flex items-center gap-2 hover:bg-blue-500 shadow-md transition-all text-sm font-bold"
-                    >
-                        <Printer size={16} />
-                        Print ID Cards
-                    </button>
+
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+
+                {/* LEFT SIDE: Title OR Selection Status */}
+                <div className="flex items-center gap-4 min-h-[40px]">
+                    {selectedStudents.size > 0 ? (
+                        <div className="flex items-center gap-3 transition-all animate-fade-in">
+                            <span className="text-slate-300 font-medium bg-blue-900/40 px-3 py-1.5 rounded-lg border border-blue-500/30">
+                                {selectedStudents.size} Selected
+                            </span>
+                            <button onClick={clearSelection} className="text-slate-400 hover:text-white flex items-center gap-1 text-sm">
+                                <X size={14} /> Clear
+                            </button>
+                            <div className="h-6 w-px bg-slate-700 mx-2"></div>
+                            <button
+                                onClick={() => triggerPrint()}
+                                className="bg-blue-600 text-white px-4 py-1.5 rounded-lg flex items-center gap-2 hover:bg-blue-500 shadow-md transition-all text-sm font-bold"
+                            >
+                                <Printer size={16} />
+                                Print ID Cards
+                            </button>
+                        </div>
+                    ) : (
+                        !hideHeader && (
+                            <div className="animate-fade-in flex items-center gap-3">
+                                <div className="p-2.5 bg-blue-500/10 rounded-xl border border-blue-500/20 text-blue-400">
+                                    <Users size={24} />
+                                </div>
+                                <div>
+                                    <h1 className="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-400">
+                                        Student Directory
+                                    </h1>
+                                    <p className="text-slate-400 text-sm mt-0.5">
+                                        Manage students &bull; {totalCount} total found
+                                    </p>
+                                </div>
+                            </div>
+                        )
+                    )}
                 </div>
 
                 {/* Right Actions */}
@@ -287,81 +323,101 @@ const StudentList: React.FC<StudentListProps> = ({ fixedBatchId, hideHeader }) =
             </div>
 
             {/* DATA TABLE */}
-            <div className="bg-slate-800/30 rounded-2xl shadow-xl border border-slate-700 overflow-hidden backdrop-blur-sm relative">
+            <div className="rounded-2xl border border-slate-700/80 overflow-hidden relative">
                 {isLoading && (
-                    <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-10">
-                        <div className="text-blue-400 font-bold animate-pulse">Loading...</div>
+                    <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-[2px] flex items-center justify-center z-10">
+                        <div className="flex items-center gap-2 text-blue-400 text-sm font-semibold">
+                            <span className="w-4 h-4 border-2 border-blue-400/50 border-t-blue-400 rounded-full animate-spin"></span>
+                            Loading...
+                        </div>
                     </div>
                 )}
 
                 <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse min-w-[1000px]">
-                        <thead className="bg-slate-900/50 text-slate-400 text-xs uppercase font-semibold border-b border-slate-700">
-                            <tr>
-                                <th className="p-4 w-[50px]">
-                                    <button onClick={toggleAllPage} className="text-slate-400 hover:text-white">
-                                        {isAllPageSelected ? <SquareCheck size={18} className="text-blue-500" /> : <Square size={18} />}
+                    <table className="w-full text-left min-w-[900px]">
+                        <thead>
+                            <tr className="bg-slate-900/80 border-b border-slate-700">
+                                <th className="px-4 py-3 w-[50px]">
+                                    <button onClick={toggleAllPage} className="text-slate-500 hover:text-white transition-colors">
+                                        {isAllPageSelected ? <SquareCheck size={16} className="text-blue-400" /> : <Square size={16} />}
                                     </button>
                                 </th>
-                                <th className="p-4 border-b border-slate-700/50">ID</th>
-                                <th className="p-4 border-b border-slate-700/50">Student Name</th>
-                                <th className="p-4 border-b border-slate-700/50">Enrolled Programs (Roll)</th>
-                                <th className="p-4 border-b border-slate-700/50">Father's Name</th>
-                                <th className="p-4 border-b border-slate-700/50">Class</th>
-                                <th className="p-4 border-b border-slate-700/50">School</th>
-                                <th className="p-4 border-b border-slate-700/50">Contact</th>
-                                <th className="p-4 border-b border-slate-700/50 text-right">Actions</th>
+                                <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-widest cursor-pointer hover:text-slate-300 transition-colors select-none" onClick={() => handleSort('student_code')}>
+                                    <div className="flex items-center gap-1">
+                                        ID {sortBy === 'student_code' && <span className="text-blue-400">{sortDesc ? '↓' : '↑'}</span>}
+                                    </div>
+                                </th>
+                                <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-widest">Student</th>
+                                <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-widest">Programs</th>
+                                {!fixedBatchId && <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-widest">Father</th>}
+                                <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-widest">Class</th>
+                                <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-widest">School</th>
+                                <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-widest">Contact</th>
+                                <th className="px-4 py-3 text-xs font-bold text-slate-500 uppercase tracking-widest text-right">Actions</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-700/50">
+                        <tbody>
                             {students.length > 0 ? (
                                 students.map((student: Student) => {
                                     const isSelected = selectedStudents.has(student.student_id);
                                     return (
-                                        <tr key={student.student_id} className={`transition-colors group ${isSelected ? 'bg-blue-900/20' : 'hover:bg-slate-700/30'}`}>
-                                            <td className="p-4">
-                                                <button onClick={() => toggleStudent(student)} className="text-slate-400 hover:text-white">
-                                                    {isSelected ? <SquareCheck size={18} className="text-blue-500" /> : <Square size={18} />}
+                                        <tr
+                                            key={student.student_id}
+                                            className={`border-b border-slate-800 transition-colors group ${isSelected
+                                                ? 'bg-blue-500/8'
+                                                : 'hover:bg-slate-800/60'
+                                                }`}
+                                        >
+                                            <td className="px-4 py-3">
+                                                <button onClick={() => toggleStudent(student)} className="text-slate-600 hover:text-slate-300 transition-colors">
+                                                    {isSelected ? <SquareCheck size={16} className="text-blue-400" /> : <Square size={16} />}
                                                 </button>
                                             </td>
-                                            <td className="p-4 text-slate-500 text-sm">#{student.student_code || student.student_id}</td>
-                                            <td className="p-4 font-bold text-slate-200">
-                                                <Link to={`/students/${student.student_id}`} className="hover:text-blue-400 transition-colors">
+                                            <td className="px-4 py-3">
+                                                <span className="font-mono text-xs font-semibold text-slate-500 bg-slate-800/80 border border-slate-700/50 px-2 py-0.5 rounded-md">
+                                                    #{student.student_code || student.student_id}
+                                                </span>
+                                            </td>
+                                            <td className="px-4 py-3">
+                                                <Link to={`/students/${student.student_id}`} className="font-semibold text-slate-100 hover:text-blue-400 transition-colors text-sm">
                                                     {student.name}
                                                 </Link>
                                             </td>
-                                            <td className="p-4">
-                                                <div className="flex flex-col gap-1.5">
+                                            <td className="px-4 py-3">
+                                                <div className="flex flex-col gap-1">
                                                     {student.enrollment?.map((enroll, idx) => (
-                                                        <span key={idx} className="text-xs bg-slate-800 px-2.5 py-1 rounded-md border border-slate-700 text-slate-300 whitespace-nowrap inline-block w-fit">
-                                                            <span className="font-bold text-blue-400">{enroll.roll_no || 'N/A'}</span> &bull; <span className="text-slate-400">{enroll.program?.program_name}</span>
+                                                        <span key={idx} className="text-xs bg-slate-800/80 px-2 py-0.5 rounded border border-slate-700/60 text-slate-300 whitespace-nowrap w-fit">
+                                                            <span className="font-bold text-blue-400 mr-1">{enroll.roll_no || '—'}</span>
+                                                            <span className="text-slate-400">{enroll.program?.program_name}</span>
                                                         </span>
                                                     ))}
-                                                    {(!student.enrollment || student.enrollment.length === 0) && <span className="text-slate-600 text-xs italic">Not Enrolled</span>}
+                                                    {(!student.enrollment || student.enrollment.length === 0) && (
+                                                        <span className="text-slate-600 text-xs italic">Not enrolled</span>
+                                                    )}
                                                 </div>
                                             </td>
-                                            <td className="p-4 text-slate-400 text-sm">{student.fathers_name || '-'}</td>
-                                            <td className="p-4">
-                                                <span className="bg-blue-500/10 text-blue-400 px-2.5 py-1 rounded-md text-xs font-bold border border-blue-500/20">
+                                            {!fixedBatchId && <td className="px-4 py-3 text-slate-400 text-sm">{student.fathers_name || <span className="text-slate-600">—</span>}</td>}
+                                            <td className="px-4 py-3">
+                                                <span className="text-xs font-bold text-blue-300 bg-blue-500/10 border border-blue-500/20 px-2 py-0.5 rounded-md">
                                                     {student.class}
                                                 </span>
                                             </td>
-                                            <td className="p-4 text-slate-400 text-sm">{student.school || '-'}</td>
-                                            <td className="p-4 text-slate-400 text-sm font-mono">{student.contact ? String(student.contact).replace(/\.0$/, '') : '-'}</td>
-                                            <td className="p-4 text-right">
-                                                <div className="flex items-center justify-end gap-2">
+                                            <td className="px-4 py-3 text-slate-400 text-sm max-w-[140px] truncate">{student.school || <span className="text-slate-600">—</span>}</td>
+                                            <td className="px-4 py-3 text-slate-400 text-sm font-mono">{student.contact ? String(student.contact).replace(/\.0$/, '') : <span className="text-slate-600">—</span>}</td>
+                                            <td className="px-4 py-3 text-right">
+                                                <div className="flex items-center justify-end gap-1.5 opacity-60 group-hover:opacity-100 transition-opacity">
                                                     <button
                                                         onClick={() => triggerPrint(student.student_id)}
                                                         title="Print ID Card"
-                                                        className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-slate-800 text-slate-400 hover:text-white hover:bg-blue-600 transition-all"
+                                                        className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white transition-all border border-slate-700/50"
                                                     >
-                                                        <Printer size={16} />
+                                                        <Printer size={14} />
                                                     </button>
                                                     <Link
                                                         to={`/students/${student.student_id}`}
-                                                        className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-slate-800 text-slate-400 hover:text-white hover:bg-blue-600 transition-all"
+                                                        className="p-1.5 rounded-lg bg-blue-500/10 hover:bg-blue-600 text-blue-400 hover:text-white transition-all border border-blue-500/20"
                                                     >
-                                                        <ChevronRight size={18} />
+                                                        <ChevronRight size={14} />
                                                     </Link>
                                                 </div>
                                             </td>

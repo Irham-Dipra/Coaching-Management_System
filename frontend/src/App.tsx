@@ -3,6 +3,7 @@ import Layout from './components/Layout';
 import Dashboard from './pages/Dashboard';
 import Batches from './pages/Batches';
 import BatchDetails from './pages/BatchDetails';
+import BatchPerformancePage from './pages/BatchPerformancePage';
 import Programs from './pages/Programs';
 import StudentList from './components/StudentList';
 import StudentProfile from './pages/StudentProfile';
@@ -11,7 +12,6 @@ import ExamDetails from './pages/ExamDetails';
 import Exams from './pages/Exams';
 import Attendance from './pages/Attendance';
 import Finance from './pages/Finance';
-import FinanceBreakdown from './pages/FinanceBreakdown';
 import ProgramFinanceDetails from './pages/ProgramFinanceDetails';
 import Scheduling from './pages/Scheduling';
 import ScheduleDetails from './pages/ScheduleDetails';
@@ -58,13 +58,13 @@ function App() {
 
               <Route path="/batches" element={<Batches />} />
               <Route path="/batches/:id" element={<BatchDetails />} />
+              <Route path="/batches/:id/performance" element={<BatchPerformancePage />} />
 
               <Route path="/exams" element={<Exams />} />
               <Route path="/exams/:id" element={<ExamDetails />} />
 
               <Route path="/attendance" element={<Attendance />} />
               <Route path="/finance" element={<Finance />} />
-              <Route path="/admin/finance/breakdown/:type" element={<FinanceBreakdown />} />
               <Route path="/admin/finance/program/:id" element={<ProgramFinanceDetails />} />
               <Route path="/admin/scheduling" element={<Scheduling />} />
               <Route path="/admin/scheduling/:id" element={<ScheduleDetails />} />

@@ -58,6 +58,8 @@ class ProgramRepository:
     def get_batch_by_id(self, batch_id: int):
         # Fetch batch details along with all programs in this batch
         # We can also fetch students via filtered queries later, but basic batch info first.
+        # We only fetch batch details and assigned programs.
+        # This keeps the payload small and API fast.
         query = """
             *,
             programs:program(*)

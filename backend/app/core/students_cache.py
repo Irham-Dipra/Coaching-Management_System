@@ -18,7 +18,7 @@ _cache: dict = {}
 TTL_SECONDS = 60
 
 
-def make_key(page: int, page_size: int, search: str, roll_search: str, filters: dict) -> tuple:
+def make_key(page: int, page_size: int, search: str, roll_search: str, filters: dict, sort_by: str = None, sort_desc: bool = False) -> tuple:
     """Build a hashable cache key from all query parameters."""
     return (
         page,
@@ -28,6 +28,8 @@ def make_key(page: int, page_size: int, search: str, roll_search: str, filters: 
         (filters.get("class") if filters else None),
         (filters.get("batch_id") if filters else None),
         (filters.get("program_id") if filters else None),
+        sort_by,
+        sort_desc,
     )
 
 

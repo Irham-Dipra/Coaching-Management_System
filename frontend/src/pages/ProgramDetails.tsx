@@ -2,13 +2,11 @@ import React, { useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ProgramRepository } from '../repositories/ProgramRepository';
-import { Users, FileText, DollarSign, Calendar, GraduationCap, Clock, Plus, X, Trash2, AlertCircle, Edit, ExternalLink, TrendingUp, Award, ArrowLeft, Search } from 'lucide-react';
+import { Users, FileText, DollarSign, Calendar, Clock, Plus, X, Trash2, AlertCircle, Edit, ExternalLink, TrendingUp, Award, ArrowLeft, Search } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import CreateExamModal from '../components/CreateExamModal';
-import EditProgramModal from '../components/EditProgramModal';
 import { AttendanceRepository } from '../repositories/AttendanceRepository';
 import { ScheduleRepository } from '../repositories/ScheduleRepository';
-import BatchPaymentModal from '../components/BatchPaymentModal';
 import WithdrawalModal from '../components/WithdrawalModal';
 import ProgramPerformance from './ProgramPerformance';
 
@@ -16,8 +14,6 @@ const ProgramDetails: React.FC = () => {
     const { id } = useParams<{ id: string }>();
     const [activeTab, setActiveTab] = useState<'students' | 'exams' | 'attendance' | 'schedule' | 'performance'>('students');
     const [isExamModalOpen, setIsExamModalOpen] = useState(false);
-    const [isBatchModalOpen, setIsBatchModalOpen] = useState(false);
-    const [isEditModalOpen, setIsEditModalOpen] = useState(false);
     const [attendanceDate, setAttendanceDate] = useState(new Date().toISOString().split('T')[0]);
     const [attendanceData, setAttendanceData] = useState<any[]>([]);
     const [withdrawEnrollment, setWithdrawEnrollment] = useState<any>(null); // New state for modal
@@ -73,7 +69,6 @@ const ProgramDetails: React.FC = () => {
 
     // --- Statistics Calculation ---
     const totalEnrolled = program.enrollment?.length || 0;
-    const teachersCount = program.teacher_program_enrollment?.length || 0;
     const totalExams = program.program_exam?.length || 0;
 
     // Calculate Fees
@@ -133,21 +128,6 @@ const ProgramDetails: React.FC = () => {
                     </div>
 
                     <div className="flex flex-wrap items-center gap-3 shrink-0">
-                        <button
-                            onClick={() => setIsEditModalOpen(true)}
-                            className="bg-slate-700 hover:bg-slate-600 text-slate-200 border border-slate-600 p-3 rounded-xl shadow-lg transition-all hover:-translate-y-0.5"
-                            title="Edit Program Details"
-                        >
-                            <Edit size={20} />
-                        </button>
-
-                        <button
-                            onClick={() => setIsBatchModalOpen(true)}
-                            className="bg-gradient-to-r from-blue-600 to-blue-500 hover:from-blue-500 hover:to-blue-400 text-white px-6 py-3 rounded-xl shadow-lg shadow-blue-500/20 flex items-center gap-2 font-bold transition-all hover:-translate-y-0.5"
-                        >
-                            <DollarSign size={20} /> Record Batch Payment
-                        </button>
-
                         <button
                             onClick={() => {
                                 if (window.confirm("Are you sure you want to delete this program? This action cannot be undone.")) {

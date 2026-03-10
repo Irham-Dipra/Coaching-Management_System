@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { ArrowLeft, Users, Filter, CheckCircle, XCircle, AlertTriangle, DollarSign, Download, SquareCheck, Square, Edit, Trash2, Printer, Search } from 'lucide-react';
+import { Users, Filter, CheckCircle, XCircle, AlertTriangle, DollarSign, Download, SquareCheck, Square, Edit, Trash2, Printer, Search } from 'lucide-react';
 import { ProgramRepository } from '../repositories/ProgramRepository';
 import ReceiptTemplate from '../components/ReceiptTemplate';
 import EditPaymentModal from '../components/EditPaymentModal';

@@ -43,7 +43,7 @@ class ResultRepository:
         # Fetch results with student details for the Merit List
         # Now linked via student_id directly
         response = supabase.table(self.result_table)\
-            .select("*, student(student_id, name)")\
+            .select("*, student(student_id, name, contact)")\
             .eq("exam_id", exam_id)\
             .order("total_score", desc=True)\
             .execute()
@@ -74,7 +74,7 @@ class ResultRepository:
         # 3. Fetch results with student details for the Merit List
         # Only for valid students
         response = supabase.table(self.result_table)\
-            .select("*, student(student_id, name)")\
+            .select("*, student(student_id, name, contact)")\
             .eq("exam_id", exam_id)\
             .in_("student_id", valid_student_ids)\
             .order("total_score", desc=True)\

@@ -331,13 +331,26 @@ const ExamDetails: React.FC = () => {
     const exportMeritListPDF = () => {
         if (!candidates) return;
 
+        // Filter out absent students (all marks 0 or unrecorded)
+        const activeCandidates = candidates.filter((c: any) => 
+            (c.mcq_marks || 0) !== 0 || (c.written_marks || 0) !== 0 || (c.total_score || 0) !== 0
+        );
+
         // Sort by Total Score Descending (Rank)
-        const rankedList = [...candidates]
-            .sort((a: any, b: any) => (b.total_score || 0) - (a.total_score || 0))
-            .map((c: any, index: number) => ({
+        const sortedList = [...activeCandidates].sort((a: any, b: any) => (b.total_score || 0) - (a.total_score || 0));
+        let currentRank = 1;
+        let previousScore: number | null = null;
+        
+        const rankedList = sortedList.map((c: any, index: number) => {
+            if (previousScore === null || c.total_score !== previousScore) {
+                currentRank = index + 1;
+                previousScore = c.total_score;
+            }
+            return {
                 ...c,
-                rank: index + 1
-            }));
+                rank: currentRank
+            };
+        });
 
         const doc = new jsPDF();
 
@@ -429,6 +442,66 @@ const ExamDetails: React.FC = () => {
         }
 
         doc.save(`${exam.exam_name}_Merit_List.pdf`);
+    };
+
+    // 3. Download CSV
+    const exportMeritListCSV = () => {
+        if (!candidates) return;
+
+        // Filter out absent students (all marks 0 or unrecorded)
+        const activeCandidates = candidates.filter((c: any) => 
+            (c.mcq_marks || 0) !== 0 || (c.written_marks || 0) !== 0 || (c.total_score || 0) !== 0
+        );
+
+        // Sort by Total Score Descending (Rank)
+        const sortedList = [...activeCandidates].sort((a: any, b: any) => (b.total_score || 0) - (a.total_score || 0));
+        let currentRank = 1;
+        let previousScore: number | null = null;
+        
+        const rankedList = sortedList.map((c: any, index: number) => {
+            if (previousScore === null || c.total_score !== previousScore) {
+                currentRank = index + 1;
+                previousScore = c.total_score;
+            }
+            return {
+                ...c,
+                rank: currentRank
+            };
+        });
+
+        const headers = ['Rank', 'Name', 'Contact Number', 'MCQ', 'Written', 'Total Marks'];
+        
+        const escapeCSV = (str: string | number | null | undefined) => {
+            if (str === null || str === undefined) return '""';
+            const s = String(str);
+            if (s.includes(',') || s.includes('"') || s.includes('\n')) {
+                return `"${s.replace(/"/g, '""')}"`;
+            }
+            return s;
+        };
+
+        const rows = rankedList.map((c: any) => [
+            escapeCSV(c.rank),
+            escapeCSV(c.student?.name || 'Unknown'),
+            escapeCSV(c.student?.contact || ''),
+            escapeCSV(c.mcq_marks || 0),
+            escapeCSV(c.written_marks || 0),
+            escapeCSV(c.total_score || 0)
+        ]);
+
+        const csvContent = [
+            headers.join(','),
+            ...rows.map(r => r.join(','))
+        ].join('\n');
+
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.setAttribute('download', `${exam.exam_name}_Merit_List.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
     };
 
     return (
@@ -653,6 +726,13 @@ const ExamDetails: React.FC = () => {
                         title="Download Professional Merit List"
                     >
                         <FileText size={16} /> Merit List
+                    </button>
+                    <button
+                        onClick={exportMeritListCSV}
+                        className="flex items-center gap-2 text-white bg-green-600 border border-green-500 px-3 py-2 rounded-lg hover:bg-green-500 transition-colors shadow-lg shadow-green-500/20 text-sm font-bold"
+                        title="Download CSV Merit List"
+                    >
+                        <Download size={16} /> CSV
                     </button>
                 </div>
             </div>

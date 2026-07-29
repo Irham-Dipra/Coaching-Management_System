@@ -71,6 +71,20 @@ export const PaymentRepository = {
         return await response.json();
     },
 
+    // Waive payment for a whole month
+    async waiveMonth(month: number, year: number, programId: number) {
+        const response = await fetch(`${API_BASE_URL}/finance/waive-month`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ month, year, program_id: programId })
+        });
+        if (!response.ok) {
+            const err = await response.json();
+            throw new Error(err.detail || "Failed to waive month");
+        }
+        return await response.json();
+    },
+
     // New: Get Payment Status (Ledger)
     async getPaymentStatus(enrollmentId: number) {
         const response = await fetch(`${API_BASE_URL}/enrollments/${enrollmentId}/payment-status`);

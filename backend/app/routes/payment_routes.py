@@ -1,7 +1,7 @@
 from typing import List
 from fastapi import APIRouter, HTTPException, Query
 from app.repositories.payment_repository import PaymentRepository
-from app.schemas.payment import PaymentCreate, PaymentUpdate
+from app.schemas.payment import PaymentCreate, PaymentUpdate, WaiveMonthRequest
 
 router = APIRouter()
 payment_repo = PaymentRepository()
@@ -72,6 +72,13 @@ def delete_payment(payment_id: int):
 def create_bulk_payment(payments: List[PaymentCreate]):
     try:
         return payment_repo.create_bulk_payment([p.dict() for p in payments])
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@router.post("/finance/waive-month")
+def waive_month_for_program(request: WaiveMonthRequest):
+    try:
+        return payment_repo.waive_month_for_program(request.month, request.year, request.program_id)
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 

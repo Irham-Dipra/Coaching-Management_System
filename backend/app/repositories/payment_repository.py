@@ -1820,3 +1820,86 @@ class PaymentRepository:
             })
             
         return results
+
+    def waive_month_for_program(self, target_month: int, target_year: int, program_id: int):
+        import uuid
+        active_enrollments = supabase.table("enrollment").select("enrollment_id").eq("status", "Active").eq("program_id", program_id).execute().data
+        if not active_enrollments:
+            return {"success": True, "message": "No active enrollments found for this program."}
+            
+        enrollment_ids = [e['enrollment_id'] for e in active_enrollments]
+        
+        all_histories = []
+        chunk_size = 100
+        for i in range(0, len(enrollment_ids), chunk_size):
+            chunk = enrollment_ids[i:i + chunk_size]
+            h_res = supabase.table("enrollment_fee_history")\
+                .select("history_id, enrollment_id, fee_amount, effective_month, effective_year")\
+                .in_("enrollment_id", chunk).execute()
+            if h_res.data:
+                all_histories.extend(h_res.data)
+                
+        history_map = {}
+        for h in all_histories:
+            eid = h['enrollment_id']
+            if eid not in history_map:
+                history_map[eid] = []
+            history_map[eid].append(h)
+            
+        for eid in history_map:
+            history_map[eid].sort(key=lambda x: (x['effective_year'], x['effective_month']))
+            
+        next_month = target_month + 1
+        next_year = target_year
+        if next_month > 12:
+            next_month = 1
+            next_year += 1
+            
+        inserts = []
+        ids_to_delete = []
+        
+        for eid in enrollment_ids:
+            histories = history_map.get(eid, [])
+            
+            expected_fee = 0.0
+            for h in histories:
+                if h['effective_year'] < target_year or (h['effective_year'] == target_year and h['effective_month'] <= target_month):
+                    expected_fee = float(h['fee_amount'])
+                else:
+                    break
+                    
+            has_future_change = any(h['effective_year'] == next_year and h['effective_month'] == next_month for h in histories)
+            
+            for h in histories:
+                if h['effective_year'] == target_year and h['effective_month'] == target_month:
+                    ids_to_delete.append(h['history_id'])
+            
+            inserts.append({
+                "history_id": str(uuid.uuid4()),
+                "enrollment_id": eid,
+                "fee_amount": 0,
+                "effective_month": target_month,
+                "effective_year": target_year
+            })
+            
+            if not has_future_change and expected_fee > 0:
+                inserts.append({
+                    "history_id": str(uuid.uuid4()),
+                    "enrollment_id": eid,
+                    "fee_amount": expected_fee,
+                    "effective_month": next_month,
+                    "effective_year": next_year
+                })
+                
+        if ids_to_delete:
+            for i in range(0, len(ids_to_delete), chunk_size):
+                chunk = ids_to_delete[i:i + chunk_size]
+                supabase.table("enrollment_fee_history").delete().in_("history_id", chunk).execute()
+                
+        if inserts:
+            for i in range(0, len(inserts), chunk_size):
+                chunk = inserts[i:i + chunk_size]
+                supabase.table("enrollment_fee_history").insert(chunk).execute()
+                
+        invalidate_stats_cache()
+        return {"success": True, "message": f"Successfully waived {target_month}/{target_year} for {len(enrollment_ids)} students."}

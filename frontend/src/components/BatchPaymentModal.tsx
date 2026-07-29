@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { PaymentRepository } from '../repositories/PaymentRepository';
 import { ProgramRepository } from '../repositories/ProgramRepository';
-import { X, Check, DollarSign, Users, AlertCircle, Search } from 'lucide-react';
+import { X, Check, DollarSign, Users, AlertCircle, Search, Gift } from 'lucide-react';
 
 interface BatchPaymentModalProps {
     isOpen: boolean;
@@ -196,6 +196,19 @@ const BatchPaymentModal: React.FC<BatchPaymentModalProps> = ({ isOpen, onClose, 
         onError: (err: any) => alert("Batch Payment Failed: " + err.message)
     });
 
+    const waiveMonthMutation = useMutation({
+        mutationFn: ({ month, year, programId }: { month: number, year: number, programId: number }) => PaymentRepository.waiveMonth(month, year, programId),
+        onSuccess: (data) => {
+            queryClient.invalidateQueries({ queryKey: ['payments'] });
+            queryClient.invalidateQueries({ queryKey: ['finance-stats-quick'] });
+            queryClient.invalidateQueries({ queryKey: ['finance-stats-dues'] });
+            queryClient.invalidateQueries({ queryKey: ['batch-status'] });
+            alert(`✅ ${data.message || 'Successfully waived month!'}`);
+            onClose();
+        },
+        onError: (err: any) => alert("Waive Month Failed: " + err.message)
+    });
+
     // Handlers
     const toggleFullClearAll = () => {
         setIsFullClearAll(prev => !prev);
@@ -236,7 +249,7 @@ const BatchPaymentModal: React.FC<BatchPaymentModalProps> = ({ isOpen, onClose, 
             return;
         }
 
-        const payments = [];
+        const payments: any[] = [];
         const today = new Date().toISOString().split('T')[0];
 
         // Helper to create payment object
@@ -248,7 +261,7 @@ const BatchPaymentModal: React.FC<BatchPaymentModalProps> = ({ isOpen, onClose, 
             let amount = student.due_amount;
             if (!isClearMode) {
                 const custom = customAmounts[student.student_id];
-                if (custom !== undefined && custom > 0) {
+                if (custom !== undefined && custom !== null && !isNaN(custom)) {
                     amount = custom;
                 }
             }
@@ -259,8 +272,8 @@ const BatchPaymentModal: React.FC<BatchPaymentModalProps> = ({ isOpen, onClose, 
                 program_id: Number(selectedProgramId),
                 paid_amount: amount,
                 payment_date: today,
-                month,
-                year,
+                month: Number(month),
+                year: Number(year),
                 payment_method: 'Cash',
                 remarks: `Batch Payment - ${listType} ${isClearMode ? '(Clear All)' : '(Custom)'}`
             };
@@ -282,8 +295,25 @@ const BatchPaymentModal: React.FC<BatchPaymentModalProps> = ({ isOpen, onClose, 
             }
         }
 
-        if (confirm(`Are you sure you want to record ${payments.length} payments?`)) {
+        if (window.confirm(`Are you sure you want to record ${payments.length} payments?`)) {
             bulkPaymentMutation.mutate(payments);
+        }
+    };
+
+    const handleWaiveMonthClick = () => {
+        if (!selectedProgramId || !month || !year) {
+            alert("Please select a program, month, and year.");
+            return;
+        }
+        
+        const prog = programs?.find((p: any) => p.program_id.toString() === selectedProgramId);
+        
+        if (window.confirm(`Are you sure you want to waive the fee for ALL students in ${prog?.program_name} for this month?`)) {
+            waiveMonthMutation.mutate({
+                month: Number(month),
+                year: Number(year),
+                programId: Number(selectedProgramId)
+            });
         }
     };
 
@@ -532,6 +562,16 @@ const BatchPaymentModal: React.FC<BatchPaymentModalProps> = ({ isOpen, onClose, 
                         Selected: <b className="text-white">{selectedFullIds.length + selectedPartialIds.length}</b> Students
                     </div>
                     <div className="flex gap-3">
+                        {selectedProgramId && month && year && (
+                            <button
+                                onClick={handleWaiveMonthClick}
+                                disabled={waiveMonthMutation.isPending}
+                                className="bg-purple-600/20 text-purple-400 border border-purple-500/30 px-4 py-2 rounded-lg hover:bg-purple-600/30 hover:text-purple-300 disabled:opacity-50 flex items-center gap-2 font-semibold transition-all mr-auto"
+                                title="Waive fee for all students in this program for this month"
+                            >
+                                <Gift size={16} /> Waive Entire Month
+                            </button>
+                        )}
                         <button onClick={onClose} className="px-4 py-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition-colors">Cancel</button>
                         <button
                             onClick={handleProcessBatch}

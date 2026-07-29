@@ -24,6 +24,11 @@ class PaymentCreate(BaseModel):
     payment_method: str
     remarks: Optional[str] = None
 
+class WaiveMonthRequest(BaseModel):
+    month: int
+    year: int
+    program_id: int
+
 class PaymentUpdate(BaseModel):
     enrollment_id: Optional[int] = None
     paid_amount: Optional[float] = None

@@ -39,6 +39,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setSession(session);
             setUser(session?.user ?? null);
             if (session?.user) {
+                setLoading(true);
                 fetchUserProfile(session.user.id);
             } else {
                 clearProfile();
@@ -91,7 +92,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     return (
         <AuthContext.Provider value={{ session, user, userName, dbUserId, roleId, userRole, loading, signOut }}>
-            {!loading && children}
+            {children}
         </AuthContext.Provider>
     );
 };
